@@ -56,6 +56,7 @@ private:
     float smoothedTherapy_ = 0.0f;
     float previousEnvelope_ = 0.0f;
     float envelope_ = 0.0f;
+    std::uint64_t seed_ = 0xACCE55123456789ULL;
     std::uint64_t random_ = 0xACCE55123456789ULL;
     bool alternate_ = false;
     Settings settings_{};

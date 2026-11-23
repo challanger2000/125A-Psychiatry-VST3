@@ -218,7 +218,9 @@ bool Processor::processSpan(Vst::ProcessData& data,
                     const auto c=static_cast<std::size_t>(ch);
                     const float dry=original_[c][static_cast<std::size_t>(i)];
                     const float wet=ptrs[c][i];
-                    ptrs[c][i]=dry+w*(wet-dry);
+                    // Exact endpoints need no subtract/add round trip.
+                    if(w==0.f)ptrs[c][i]=dry;
+                    else if(w<1.f)ptrs[c][i]=dry+w*(wet-dry);
                 }
             }
         }

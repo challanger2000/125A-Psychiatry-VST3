@@ -125,5 +125,25 @@ int main() {
         for(std::size_t i=0;i<l.size();++i)
             CHECK(std::isfinite(l[i]) && std::isfinite(r[i]));
     }
-    std::puts("P001 PASS: dry, therapy, finite outputs, reverse triggers, tempo, transient, block size");
+    {
+        const Audio extended{0.f,1.e-30f,-1.e-30f,20.f,-20.f,0.3f};
+        for(float therapy:{0.f,1.f}) {
+            Paranoia fx; fx.prepare(sr);
+            Paranoia::Settings s;
+            s.amount=therapy==0.f?0.f:1.f; s.therapy=therapy;
+            fx.setSettings(s);fx.reset();
+            auto l=extended,r=extended; run(fx,l,r,3);
+            CHECK(l==extended && r==extended && "P016 extended-range dry");
+        }
+        Paranoia fx;fx.prepare(sr);fx.setSeed(125);
+        Paranoia::Settings s;
+        s.amount=.9f;s.trigger=Paranoia::Trigger::Timed;
+        s.pattern=Paranoia::Pattern::Random;s.intervalMs=78.f;
+        fx.setSettings(s);fx.reset();
+        auto l=original,r=original;run(fx,l,r,137);
+        fx.reset();
+        auto x=original,y=original;run(fx,x,y,1024);
+        CHECK(l==x&&r==y&&"P016 reset must reproduce seeded render");
+    }
+    std::puts("P001 PASS: dry, therapy, finite outputs, reverse triggers, tempo, transient, block size, P016 reset and extended-range endpoints");
 }

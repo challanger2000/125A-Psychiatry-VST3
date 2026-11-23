@@ -38,6 +38,7 @@ void Paranoia::reset() noexcept {
     smoothedTherapy_ = clamp01(settings_.therapy);
     alternate_ = false;
     stats_ = {};
+    random_ = seed_; // Reproduce event timing after resetting playback.
     scheduleNext();
 }
 
@@ -52,7 +53,8 @@ void Paranoia::setSettings(Settings p) noexcept {
 }
 
 void Paranoia::setSeed(std::uint64_t seed) noexcept {
-    random_ = seed == 0 ? 0xACCE55123456789ULL : seed;
+    seed_ = seed == 0 ? 0xACCE55123456789ULL : seed;
+    random_ = seed_;
 }
 
 std::uint32_t Paranoia::nextRandom() noexcept {
@@ -160,9 +162,12 @@ void Paranoia::process(float* const* channels, unsigned channelCount,
         const float affectedL = inL + m * (wetL - inL);
         const float affectedR = inR + m * (wetR - inR);
         const float wetAmount = 1.0f - smoothedTherapy_;
-        channels[0][i] = inL + wetAmount * (affectedL - inL);
-        if (channelCount == 2)
-            channels[1][i] = inR + wetAmount * (affectedR - inR);
+        // Internal history sanitation must not alter inactive output.
+        if (m > 0.f && wetAmount > 0.f) {
+            channels[0][i] = inL + wetAmount * (affectedL - inL);
+            if (channelCount == 2)
+                channels[1][i] = inR + wetAmount * (affectedR - inR);
+        }
         cursor_ = (cursor_ + 1) % size;
     }
 }

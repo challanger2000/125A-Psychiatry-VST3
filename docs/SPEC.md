@@ -1,5 +1,5 @@
 # 125A PSYCHIATRY — Product and DSP Specification
-Version: **0.1.0-concept** · Updated: **2026-11-23** · Status: **design proposal, no audio implementation accepted**
+Version: **concept baseline** · Updated: **2026-11-24** · Implementation: **v0.9.4, P015 verified engineering tests; NOT a product release**. See [STATUS](../STATUS.md) for authoritative progress.
 
 ## Intent
 Windows x64 VST3 **insert audio effect**, not an instrument. Dark, extreme, purposeful sound design for Gothic, Darkwave, EBM, Industrial, Thriller and Horror. It should create powerful sounds from ordinary source material. Not a conventional multi-effect with theatrical labels: every knob is a **curated multi-algorithm macro**, whose processors and routing evolve together.

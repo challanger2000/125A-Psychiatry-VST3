@@ -2,6 +2,13 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## P015 — actual VST3 multirate and two-tone alias audit (2026-11-24; factory remains 0.9.4)
+
+- Real `Processor::process` now probes **44.1/48/96 kHz** with 14+15-kHz two-tone input. All nine macro 0% Dry and inverse THERAPY 100% Dry endpoints are bit-identical at each rate; all 27 full-Wet outputs are finite and below 4.0 peak.
+- Four nonlinear macros contribute **32 folded third-order two-tone lines** at 44.1/48 kHz. Worst measured is **−52.18 dB relative to input**; an explicit **−45 dB(input)** CI gate guards all 32. At 96 kHz 42–45-kHz products are correctly classified as in-band, **not** aliases.
+- [Final Windows VST3 run 45288772417](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45288772417): **SUCCESS**, Steinberg 47/47, existing P010 180-row audio and sample automation PASS, P015 75-row export PASS. [Windows/Linux DSP run 45288772568](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45288772568): **SUCCESS**.
+- Pure testing/documentation extension: **no DSP rework, no changed plugin IDs, no factory version change**. This does not certify all other nonlinearities, transient/phase correctness, real-world listening or Studio Pro recall.
+
 ## 0.9.4 — P014 measured PANIC alias reduction (2026-11-23)
 
 - Oversampled PANIC's actual wet-only excitation/tanh nonlinear branch with the reusable 2× streamed sixth-order Butterworth interpolator and decimator. Existing trigger and transient/impulse behavior preserved; 0% Dry, 100% wet and inverse THERAPY unchanged.

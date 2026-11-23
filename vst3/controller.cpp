@@ -190,9 +190,10 @@ public:
         const auto w=r.getWidth(),h=r.getHeight();
         auto x=[&](double n){return r.left+n*w;};
         auto y=[&](double n){return r.top+n*h;};
-        const CColor black{8,12,13,255}, dark{19,28,27,255};
-        const CColor green{142,178,154,255}, faint{55,83,69,255};
-        const CColor bright{201,215,193,255}, dim{32,45,41,255};
+        // True monochrome CRT; the controls outside remain orange-lit.
+        const CColor black{8,8,8,255}, dark{21,21,21,255};
+        const CColor green{183,183,183,255}, faint{75,75,75,255};
+        const CColor bright{224,224,224,255}, dim{36,36,36,255};
         auto fill=[&](double l,double t,double rr,double bb,const CColor& color){
             dc->setFillColor(color);dc->drawRect(CRect(x(l),y(t),x(rr),y(bb)),kDrawFilled);
         };
@@ -342,14 +343,21 @@ public:
             fill(xx,.860,xx+.052,.878,
                  amounts_[static_cast<std::size_t>(i)]>.08f?green:dim);
         }
-        static constexpr const char* sceneNames[]{
+        static constexpr const char* sceneEnglish[]{
             "WARD / CORRIDOR","OBSERVATION","DOUBLE EXPOSURE",
             "ACTIVITY METER","ELECTRICAL TRACE","ISOLATION ROOM",
             "REPEATED RECORD","SHADOW ECHO","SIGNAL FRACTURE"
         };
+        static constexpr const char* sceneGerman[]{
+            "LEERER FLUR","BEOBACHTUNG","DOPPELBELICHTUNG",
+            "AKTIVITAET","ELEKTRISCHE KURVE","ISOLATIONSRAUM",
+            "WIEDERHOLUNG","SCHATTEN-ECHO","SIGNALBRUCH"
+        };
+        const bool german=controller_->isGermanUi();
         char display[96]{};
-        std::snprintf(display,sizeof(display),"CH %02d  %s  %02d%%",
-                      chosen+1,sceneNames[chosen],
+        std::snprintf(display,sizeof(display),"%s %02d  %s  %02d%%",
+                      german?"KAN":"CH",chosen+1,
+                      german?sceneGerman[chosen]:sceneEnglish[chosen],
                       static_cast<int>(std::lround(intensity*100.f)));
         dc->setFont(VSTGUI::kNormalFontSmall);
         dc->setFontColor(bright);

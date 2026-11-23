@@ -16,5 +16,5 @@ enum Param : Steinberg::Vst::ParamID {
     kTherapy=200, kBypass=999
 };
 static constexpr Steinberg::int32 kStateMagic=0x50535932; // 'PSY2'
-static constexpr Steinberg::int32 kStateVersion=1;
+static constexpr Steinberg::int32 kStateVersion=2;
 } // namespace psychiatry::vst3

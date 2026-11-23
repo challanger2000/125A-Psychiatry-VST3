@@ -1,0 +1,36 @@
+# Visual Studio / MSBuild
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+ipch/
+Debug/
+Release/
+x64/
+x86/
+out/
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+*.obj
+*.pdb
+*.ilk
+*.tlog
+*.lastbuildstate
+# Generated / audio test outputs
+*.wav
+*.flac
+*.mp3
+*.vst3
+*.zip
+*.7z
+# Generated packages and local secrets
+dist/
+artifacts/
+.env
+.env.*
+!*.example
+.DS_Store
+Thumbs.db

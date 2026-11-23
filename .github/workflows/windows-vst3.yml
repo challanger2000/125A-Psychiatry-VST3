@@ -1,4 +1,4 @@
-name: P009 Windows Diagnostic CRT VSTGUI
+name: P011 Windows VST3 Audio Level Review
 
 on:
   push:
@@ -119,7 +119,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P009-DiagnosticCRT-NOT-FINAL
+          name: 125A-PSYCHIATRY-P011-GainReview-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

@@ -391,6 +391,15 @@ int main(int argc,char** argv){
                 if(input==0 && amount==1.f && exportWav)
                     writeWav(std::string(argv[1])+"/P010_"+std::string(kMacroNames[effect])+"_WET100.wav",wet);
                 if(amount==1.f) {
+                    // P011 guard: a distinctive 100%-wet effect is not an
+                    // excuse for massive unintentional gain swings.
+                    // This is deliberately per source and per macro.
+                    if(m.changeDb< -8.0 || m.changeDb> 6.0) {
+                        std::fprintf(stderr,
+                            "P011 FULL-WET LEVEL REGRESSION %s %s gain=%+.3f dB\n",
+                            kInputs[input],kMacroNames[effect],m.changeDb);
+                        check(false,"P011 100% effect gain outside -8/+6 dB audit bounds");
+                    }
                     if(m.shapeResidual>=.035 && m.nullRatio>=.06)
                         ++substantial;
                     else{

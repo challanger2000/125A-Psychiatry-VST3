@@ -144,7 +144,13 @@ void Dissociation::process(float* const* io,unsigned channels,std::size_t frames
             s.blur+=(0.012f+0.014f*(1.f-m))*(spectralBlur-s.blur);
             const float displaced=0.48f*window*backwards+
                 0.50f*s.blur+0.16f*(s.high-s.low);
-            if(m>0.f) io[ch][i]=x+m*(displaced-x);
+            // P011: recovered/reversed grains are attenuated by windowing,
+            // smoothing, and destructive source-correlation. Restore useful
+            // full-wet output energy WITHOUT reintroducing the dry input:
+            // makeup multiplies only the transformed time-displaced branch.
+            // Unity at 0%; smooth +~5.1 dB at 100%. Not a limiter/AGC.
+            const float makeup=1.f+0.80f*m*m;
+            if(m>0.f) io[ch][i]=x+m*(makeup*displaced-x);
         }
     }
 }
@@ -212,7 +218,11 @@ void Hallucination::process(float* const* io,unsigned channels,std::size_t frame
             if(++s.echoWrite>=s.echo.size())s.echoWrite=0;
             const float transformed=std::tanh(0.57f*shifted+
                 (0.24f+0.20f*m)*otherVoice+0.28f*echo);
-            if(m>0.f)io[ch][i]=x+m*(transformed-x);
+            // P011: analytic phase/echo paths lost ~5-7.5 dB on P010
+            // source proxies. Apply gradual makeup ONLY to the effected
+            // signal. At 100%, the output remains pure wet (no dry blend).
+            const float makeup=1.f+0.65f*m*m;
+            if(m>0.f)io[ch][i]=x+m*(makeup*transformed-x);
         }
     }
 }

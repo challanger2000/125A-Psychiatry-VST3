@@ -125,7 +125,11 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
             const float tremor=0.80f + 0.20f*std::sin(kTau*s.phase*0.037f);
             const float wet=std::tanh(x*(1.f+0.25f*m)+
                 0.85f*m*pulse+0.4f*m*piercing);
-            const float transformed=wet*(1.f-0.35f*m*(1.f-tremor));
+            // P011: energetic electric transients should not win a blind
+            // level comparison simply by being ~+4.5 dB louder on voice.
+            // Smooth macro-dependent wet-only trim, unity at 0%.
+            const float levelTrim=1.f/(1.f+0.25f*m*m);
+            const float transformed=levelTrim*wet*(1.f-0.35f*m*(1.f-tremor));
             if(m>0.f) audio[ch][i]=x+m*(transformed-x);
         }
     }

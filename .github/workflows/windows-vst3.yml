@@ -100,7 +100,11 @@ jobs:
       - name: Export real VST3 per-macro audio comparisons and metrology CSV
         shell: pwsh
         run: |
-          & "./build-vst3/Release/test_vst3_audio_path.exe" "artifacts"
+          $auditor = Get-ChildItem -LiteralPath "build-vst3" -Recurse -File -Filter "test_vst3_audio_path.exe" |
+            Where-Object { $_.FullName -match '[\\/]Release[\\/]' } |
+            Select-Object -First 1
+          if (-not $auditor) { throw "Real VST3 audio auditor executable not found in MSVC build" }
+          & $auditor.FullName "artifacts"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $rows = @(Import-Csv "artifacts/P010_actual_vst3_audio_metrics.csv")
           if ($rows.Count -ne 180) { throw "Expected 5 sources x 9 macros x 4 positions = 180 measured real VST3 audio rows" }

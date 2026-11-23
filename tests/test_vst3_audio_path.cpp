@@ -174,6 +174,82 @@ Metric measure(const Stereo& dry,const Stereo& wet){
     m.fullScaleDb=20.*std::log10(std::max(m.peak,1.e-12));
     return m;
 }
+// Reference the actual effect classes at exactly 100% wet. This is not
+// a mock output: it is the same real DSP class compiled into the plugin.
+// All other VST3 macro stages are at 0%; the plugin's output MUST match
+// this wet-only signal without a parallel undistorted/dry mix.
+template<class FX>
+void directSimple(FX& effect,Stereo& processed) {
+    effect.prepare(kRate);
+    effect.setAmount(1.f);
+    effect.reset();
+    for(int start=0;start<kFrames;start+=kBlock){
+        const auto n=std::min(kBlock,kFrames-start);
+        float* ptr[]{processed.l.data()+start,processed.r.data()+start};
+        effect.process(ptr,2,static_cast<std::size_t>(n));
+    }
+}
+Stereo pureWetReference(const Stereo& dry,int effect) {
+    Stereo ref=dry;
+    switch(effect) {
+        case 0: { psychiatry::Depression fx;directSimple(fx,ref);break; }
+        case 1: {
+            psychiatry::Paranoia fx;fx.prepare(kRate);
+            psychiatry::Paranoia::Settings ps;
+            ps.amount=1.f;ps.therapy=0.f;
+            ps.trigger=psychiatry::Paranoia::Trigger::Hybrid;
+            ps.pattern=psychiatry::Paranoia::Pattern::Every;
+            fx.setSettings(ps);fx.reset();
+            for(int start=0;start<kFrames;start+=kBlock){
+                const auto n=std::min(kBlock,kFrames-start);
+                float* ptr[]{ref.l.data()+start,ref.r.data()+start};
+                fx.process(ptr,2,static_cast<std::size_t>(n));
+            }
+            break;
+        }
+        case 2: { psychiatry::Schizophrenia fx;directSimple(fx,ref);break; }
+        case 3: { psychiatry::Mania fx;directSimple(fx,ref);break; }
+        case 4: { psychiatry::Panic fx;directSimple(fx,ref);break; }
+        case 5: { psychiatry::Dissociation fx;directSimple(fx,ref);break; }
+        case 6: { psychiatry::Obsession fx;directSimple(fx,ref);break; }
+        case 7: { psychiatry::Hallucination fx;directSimple(fx,ref);break; }
+        case 8: { psychiatry::Psychosis fx;directSimple(fx,ref);break; }
+        default: check(false,"unexpected 100% wet reference macro");
+    }
+    return ref;
+}
+double spectralBandDistance(const Stereo& a,const Stereo& b) {
+    // Four actual frequency ranges by splitting low-pass outputs at
+    // 140 Hz / 900 Hz / 3600 Hz. Compare normalized band energies,
+    // therefore gain-only changes must return approximately zero.
+    auto bands=[](const Stereo& s){
+        std::array<double,4> energy{};
+        const double alpha1=1.-std::exp(-2.*kPi*140./kRate);
+        const double alpha2=1.-std::exp(-2.*kPi*900./kRate);
+        const double alpha3=1.-std::exp(-2.*kPi*3600./kRate);
+        for(const auto* input:{&s.l,&s.r}){
+            double l1=0.,l2=0.,l3=0.;
+            for(const float sample:*input){
+                l1+=alpha1*(sample-l1);
+                l2+=alpha2*(sample-l2);
+                l3+=alpha3*(sample-l3);
+                const std::array<double,4> p{
+                    l1,l2-l1,l3-l2,static_cast<double>(sample)-l3};
+                for(std::size_t k=0;k<4;++k)energy[k]+=p[k]*p[k];
+            }
+        }
+        double total=0.;
+        for(double v:energy)total+=v;
+        for(auto& v:energy)v/=std::max(total,1.e-18);
+        return energy;
+    };
+    const auto dry=bands(a),wet=bands(b);
+    double distance=0.;
+    for(std::size_t i=0;i<4;++i)
+        distance+=std::pow(std::sqrt(dry[i])-std::sqrt(wet[i]),2.);
+    return std::sqrt(distance);
+}
+
 // Negative control: a pure gain change MUST NOT be mistaken for a new effect.
 void rejectGainPlacebo(const Stereo& dry){
     Stereo gain=dry;
@@ -182,6 +258,8 @@ void rejectGainPlacebo(const Stereo& dry){
     const auto m=measure(dry,gain);
     check(m.nullRatio>.30,"negative-control raw null should differ");
     check(m.shapeResidual<1.e-5,"negative-control gain-only fails spectral-identity check");
+    check(spectralBandDistance(dry,gain)<1.e-5,
+          "negative-control pure gain must preserve normalized spectral bands");
 }
 void write16(std::ofstream& f,std::uint16_t v){
     f.put(static_cast<char>(v&255));f.put(static_cast<char>((v>>8)&255));
@@ -275,7 +353,7 @@ int main(int argc,char** argv){
         const std::string path=argv[1];
         csv.open(path+"/P010_actual_vst3_audio_metrics.csv");
         check(csv.good(),"create CSV");
-        csv<<"source,macro,amount,therapy,dry_rms,output_rms,gain_db,peak_dbfs,raw_null_ratio,gain_matched_residual\n";
+        csv<<"source,macro,amount,therapy,dry_rms,output_rms,gain_db,peak_dbfs,raw_null_ratio,gain_matched_residual,band_shape_distance\n";
     }
     testAutomation();
     int substantial=0,weak=0;
@@ -293,6 +371,23 @@ int main(int argc,char** argv){
             for(const float amount:{.20f,.50f,.75f,1.f}){
                 const Stereo wet=render(dry,effect,amount,0.f);
                 const Metric m=measure(dry,wet);
+                const double bandDistance=spectralBandDistance(dry,wet);
+                if(amount==1.f){
+                    const Stereo expected=pureWetReference(dry,effect);
+                    double maxReferenceError=0.;
+                    for(std::size_t k=0;k<dry.size();++k){
+                        maxReferenceError=std::max(maxReferenceError,
+                            std::abs(static_cast<double>(wet.l[k])-expected.l[k]));
+                        maxReferenceError=std::max(maxReferenceError,
+                            std::abs(static_cast<double>(wet.r[k])-expected.r[k]));
+                    }
+                    if(maxReferenceError>3.e-6)
+                        std::fprintf(stderr,
+                            "P010 WET ENDPOINT FAIL %s %s: VST3 vs wet-only max error %.9g\n",
+                            kInputs[input],kMacroNames[effect],maxReferenceError);
+                    check(maxReferenceError<=3.e-6,
+                        "100% macro output contains extra dry/mixing or mismatched wet DSP");
+                }
                 if(input==0 && amount==1.f && exportWav)
                     writeWav(std::string(argv[1])+"/P010_"+std::string(kMacroNames[effect])+"_WET100.wav",wet);
                 if(amount==1.f) {
@@ -309,7 +404,7 @@ int main(int argc,char** argv){
                 if(csv.good())csv<<kInputs[input]<<","<<kMacroNames[effect]<<","
                     <<std::fixed<<std::setprecision(6)<<amount<<",0,"
                     <<m.dryRms<<","<<m.wetRms<<","<<m.changeDb<<","
-                    <<m.fullScaleDb<<","<<m.nullRatio<<","<<m.shapeResidual<<"\n";
+                    <<m.fullScaleDb<<","<<m.nullRatio<<","<<m.shapeResidual<<","<<bandDistance<<"\n";
                 if(amount==1.f)
                     std::printf("P010 full wet: %-13s %-16s gain=%+7.2f dB rawNull=%6.3f gainMatchedResidual=%6.3f\n",
                         kInputs[input],kMacroNames[effect],

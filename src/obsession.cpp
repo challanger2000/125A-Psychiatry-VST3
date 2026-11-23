@@ -78,7 +78,7 @@ void Obsession::process(float* const* channels,unsigned count,std::size_t frames
                 degrade*std::tanh(1.5f*quantize(sample.l,quantSteps));
             const float loopR=(1.f-degrade)*sample.r+
                 degrade*std::tanh(1.5f*quantize(sample.r,quantSteps));
-            channels[0][n]=rawL+wet*(loopL-rawL);
+            channels[0][n]=safe(rawL)+wet*(loopL-safe(rawL));
             if(count==2) channels[1][n]=rawR+wet*(loopR-rawR);
         }
         ++phase_;

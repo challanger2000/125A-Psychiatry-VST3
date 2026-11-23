@@ -68,6 +68,7 @@
     <view class="CTextLabel" origin="693, 449" size="270, 19" title="SOURCE: PARAMETER MOTION" font="~ NormalFontSmall" font-color="Muted" text-alignment="center" transparent="true" mouse-enabled="false"/>
     <view class="CTextLabel" origin="693, 475" size="270, 19" title="9  /  INDEPENDENT CHANNELS" font="~ NormalFontSmall" font-color="Text" text-alignment="center" transparent="true" mouse-enabled="false"/>
     <view class="CTextLabel" origin="693, 505" size="270, 21" title="NO LIVE PATIENT DATA" font="~ NormalFontSmall" font-color="Accent" text-alignment="center" transparent="true" mouse-enabled="false"/>
+    <view class="CCheckBox" origin="729, 526" size="218, 22" control-tag="MONITOR_MOTION" title="MOTION" font="~ NormalFontSmall" font-color="Text" box-frame-color="Muted" box-fill-color="Glow" check-mark-color="Black" mouse-enabled="true" tooltip="Enable slow CRT animation; off by default"/>
   </template>
   <template class="CViewContainer" name="view_de" origin="0, 0" size="1004, 570" minSize="1004, 570" maxSize="1004, 570" background-color="Background" background-color-draw-style="filled and stroked" transparent="false" mouse-enabled="true">
     <view class="CTextLabel" origin="26, 14" size="950, 34" title="125A    P S Y C H I A T R Y" font="~ NormalFontVeryBig" font-antialias="true" font-color="Glow" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="center" mouse-enabled="false" transparent="true"/>
@@ -101,7 +102,7 @@
     <view class="CKnob" origin="519, 354" size="58, 58" control-tag="PSYCHOSIS" default-value="0" min-value="0" max-value="1" angle-start="135" angle-range="270" circle-drawing="false" corona-drawing="true" corona-color="Accent" corona-inset="8" corona-dash-dot="false" corona-outline="true" corona-outline-width-add="3" handle-line-width="3" handle-color="Glow" skip-handle-drawing="false" mouse-enabled="true" wheel-inc-value="0.01" zoom-factor="4" tooltip="PSYCHOSIS — 0 to 100%" wants-focus="true"/>
     <view class="CParamDisplay" origin="513, 417" size="72, 20" control-tag="PSYCHOSIS" font="~ NormalFontSmall" font-color="Glow" back-color="Black" frame-color="Off" frame-width="1" value-precision="2" text-alignment="center" transparent="false" mouse-enabled="false"/>
     <view class="CViewContainer" origin="28, 453" size="624, 99" background-color="Panel" background-color-draw-style="filled and stroked" transparent="false" mouse-enabled="false"/>
-    <view class="CTextLabel" origin="47, 465" size="176, 16" title="THERAPIE  /  ORIGINAL–EFFEKT" font="~ NormalFont" font-antialias="true" font-color="Text" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="center" mouse-enabled="false" transparent="true"/>
+    <view class="CTextLabel" origin="47, 465" size="176, 16" title="THERAPIE  /  MIX" font="~ NormalFont" font-antialias="true" font-color="Text" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="center" mouse-enabled="false" transparent="true"/>
     <view class="CKnob" origin="97, 483" size="56, 56" control-tag="THERAPY" default-value="0" min-value="0" max-value="1" angle-start="135" angle-range="270" corona-drawing="true" corona-color="Accent" corona-inset="7" corona-outline="true" corona-outline-width-add="3" handle-line-width="3" handle-color="Glow" skip-handle-drawing="false" mouse-enabled="true" wheel-inc-value="0.01" zoom-factor="4" tooltip="0 = fully processed, 100 = fully dry" wants-focus="true"/>
     <view class="CParamDisplay" origin="168, 495" size="65, 25" control-tag="THERAPY" font="~ NormalFont" font-color="Glow" back-color="Black" frame-color="Off" text-alignment="center" value-precision="2" transparent="false" mouse-enabled="false"/>
     <view class="CTextLabel" origin="236, 488" size="115, 18" title="0% = EFFEKT" font="~ NormalFontSmall" font-antialias="true" font-color="Muted" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="left" mouse-enabled="false" transparent="true"/>
@@ -115,6 +116,7 @@
     <view class="CTextLabel" origin="693, 449" size="270, 19" title="SOURCE: PARAMETER MOTION" font="~ NormalFontSmall" font-color="Muted" text-alignment="center" transparent="true" mouse-enabled="false"/>
     <view class="CTextLabel" origin="693, 475" size="270, 19" title="9  /  INDEPENDENT CHANNELS" font="~ NormalFontSmall" font-color="Text" text-alignment="center" transparent="true" mouse-enabled="false"/>
     <view class="CTextLabel" origin="693, 505" size="270, 21" title="NO LIVE PATIENT DATA" font="~ NormalFontSmall" font-color="Accent" text-alignment="center" transparent="true" mouse-enabled="false"/>
+    <view class="CCheckBox" origin="729, 526" size="218, 22" control-tag="MONITOR_MOTION" title="BEWEGUNG" font="~ NormalFontSmall" font-color="Text" box-frame-color="Muted" box-fill-color="Glow" check-mark-color="Black" mouse-enabled="true" tooltip="Langsame Monitoranimation; standardmaessig aus"/>
   </template>
   <control-tags>
     <control-tag name="DEPRESSION" tag="100"/>
@@ -130,5 +132,6 @@
     <control-tag name="BYPASS" tag="999"/>
     <control-tag name="LOSS_OF_CONTROL" tag="9000"/>
     <control-tag name="UI_LANGUAGE" tag="9001"/>
+    <control-tag name="MONITOR_MOTION" tag="9002"/>
   </control-tags>
 </vstgui-ui-description>

@@ -17,6 +17,8 @@ public:
     void triggerLossOfControl();
     bool isGermanUi() const noexcept {return germanUi_;}
     void setGermanUi(bool german) noexcept {germanUi_=german;}
+    bool isMotionEnabled() const noexcept {return motionEnabled_;}
+    void setMotionEnabled(bool value) noexcept {motionEnabled_=value;}
     Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override;
     Steinberg::tresult PLUGIN_API setState(Steinberg::IBStream* state) override;
     Steinberg::tresult PLUGIN_API getParamStringByValue(
@@ -25,6 +27,7 @@ public:
         Steinberg::Vst::String128 string) override;
 private:
     bool germanUi_=false;
+    bool motionEnabled_=false; // reduced-motion mode is the default
     std::mt19937 random_{std::random_device{}()};
 };
 } // namespace psychiatry::vst3

@@ -69,7 +69,11 @@ jobs:
               throw "P009 panel must reserve dedicated CRT area"
             }
           }
-          Write-Host "Verified English/German GUI + CRT and packaged parameter controls:" ($must -join ", ")
+          $motion = @($ui.SelectNodes("//view[@class='CCheckBox' and @control-tag='MONITOR_MOTION']"))
+          if ($motion.Count -ne 2) { throw "Reduced-motion control missing in one GUI language" }
+          $motionTag = @($ui.SelectNodes("//control-tag[@name='MONITOR_MOTION' and @tag='9002']"))
+          if ($motionTag.Count -ne 1) { throw "Reduced-motion UI-only tag missing" }
+          Write-Host "Verified EN/DE GUI + nine-scene CRT + reduced motion control:" ($must -join ", ")
       - name: Verify bundle and stage artifact
         shell: pwsh
         run: |

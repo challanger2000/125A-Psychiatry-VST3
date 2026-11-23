@@ -6,6 +6,7 @@
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "vstgui/lib/cview.h"
 #include "vstgui/lib/cdrawcontext.h"
+#include "vstgui/lib/cfont.h"
 #include <cstring>
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 
@@ -19,8 +20,9 @@ using namespace Steinberg;
 namespace {
 constexpr Steinberg::int32 kLossOfControlUiTag=9000;
 constexpr Steinberg::int32 kLanguageUiTag=9001;
+constexpr Steinberg::int32 kMotionUiTag=9002;
 constexpr Steinberg::int32 kLanguageStateMagic=0x50535955; // 'PSYU'
-constexpr Steinberg::int32 kLanguageStateVersion=1;
+constexpr Steinberg::int32 kLanguageStateVersion=2;
 // Exactly the nine sound-macro IDs: order is independent of DSP serial routing.
 constexpr std::array<Steinberg::Vst::ParamID,9> kMacroIds{
     kDepression,kParanoia,kSchizophrenia,kMania,kPanic,
@@ -95,21 +97,26 @@ tresult PLUGIN_API Controller::getState(IBStream* state) {
     IBStreamer stream(state,kLittleEndian);
     if(!stream.writeInt32(kLanguageStateMagic)||
        !stream.writeInt32(kLanguageStateVersion)||
-       !stream.writeInt32(germanUi_?1:0))return kResultFalse;
+       !stream.writeInt32(germanUi_?1:0)||
+       !stream.writeInt32(motionEnabled_?1:0))return kResultFalse;
     return kResultOk;
 }
 tresult PLUGIN_API Controller::setState(IBStream* state) {
     if(!state)return kResultFalse;
     IBStreamer stream(state,kLittleEndian);
-    int32 magic=0,version=0,lang=0;
+    int32 magic=0,version=0,lang=0,motion=0;
     if(!stream.readInt32(magic)) {
-        germanUi_=false; // empty legacy controller state
+        germanUi_=false;
+        motionEnabled_=false; // no legacy UI state => safely static CRT
         return kResultOk;
     }
     if(magic!=kLanguageStateMagic||
-       !stream.readInt32(version)||version!=kLanguageStateVersion||
+       !stream.readInt32(version)||(version!=1&&version!=2)||
        !stream.readInt32(lang)||(lang!=0&&lang!=1))return kResultFalse;
+    if(version==2 && (!stream.readInt32(motion)||(motion!=0&&motion!=1)))
+        return kResultFalse;
     germanUi_=(lang==1);
+    motionEnabled_=(motion!=0);
     return kResultOk;
 }
 
@@ -169,8 +176,13 @@ public:
             if(std::abs(old-amounts_[i])>0.00005f)changed=true;
         }
         // A slow, gentle sweep rather than an abrupt flash/strobe.
-        tick_=(tick_+1)%1200u;
-        if(changed || tick_%3==0)invalid();
+        if(controller_->isMotionEnabled()){
+            tick_=(tick_+1)%1200u;
+            if(changed || tick_%3==0)invalid();
+        }else if(changed){
+            tick_=0;
+            invalid();
+        }
     }
     void draw(VSTGUI::CDrawContext* dc) override {
         using namespace VSTGUI;
@@ -321,6 +333,19 @@ public:
             fill(xx,.860,xx+.052,.878,
                  amounts_[static_cast<std::size_t>(i)]>.08f?green:dim);
         }
+        static constexpr const char* sceneNames[]{
+            "WARD / CORRIDOR","OBSERVATION","DOUBLE EXPOSURE",
+            "ACTIVITY METER","ELECTRICAL TRACE","ISOLATION ROOM",
+            "REPEATED RECORD","SHADOW ECHO","SIGNAL FRACTURE"
+        };
+        char display[96]{};
+        std::snprintf(display,sizeof(display),"CH %02d  %s  %02d%%",
+                      chosen+1,sceneNames[chosen],
+                      static_cast<int>(std::lround(intensity*100.f)));
+        dc->setFont(VSTGUI::kNormalFontSmall);
+        dc->setFontColor(bright);
+        dc->drawString(display,CRect(x(.075),y(.085),x(.925),y(.125)),
+                       VSTGUI::kCenterText,true);
         dc->setFrameColor(green);
         dc->setLineWidth(1.);
         dc->drawRect(CRect(x(.036),y(.036),x(.964),y(.963)),kDrawStroked);
@@ -350,6 +375,10 @@ public:
     }
 protected:
     void valueChanged(VSTGUI::CControl* control) override {
+        if(control && control->getTag()==kMotionUiTag) {
+            parent_->setMotionEnabled(control->getValueNormalized()>0.5f);
+            return;
+        }
         if(control && control->getTag()==kLanguageUiTag) {
             if(control->getValueNormalized()>0.5f) {
                 const bool german=!parent_->isGermanUi();
@@ -366,6 +395,15 @@ protected:
             return;
         }
         VSTGUI::VST3Editor::valueChanged(control);
+    }
+    void onViewAdded(VSTGUI::CFrame* frame,VSTGUI::CView* view) override {
+        VSTGUI::VST3Editor::onViewAdded(frame,view);
+        if(auto* control=dynamic_cast<VSTGUI::CControl*>(view)) {
+            if(control->getTag()==kMotionUiTag){
+                control->setValueNormalized(parent_->isMotionEnabled()?1.f:0.f);
+                control->invalid();
+            }
+        }
     }
 private:
     Controller* parent_;

@@ -245,19 +245,37 @@ int main(){
     {
         ResizableMemoryIBStream saved;
         CHECK(!controller.isGermanUi());
+        CHECK(!controller.isMotionEnabled());
         controller.setGermanUi(true);
+        controller.setMotionEnabled(true);
         CHECK(controller.getState(&saved)==kResultOk);
         controller.setGermanUi(false);
+        controller.setMotionEnabled(false);
         saved.rewind();
         CHECK(controller.setState(&saved)==kResultOk);
         CHECK(controller.isGermanUi());
+        CHECK(controller.isMotionEnabled());
         controller.setGermanUi(false);
+        controller.setMotionEnabled(false);
         ResizableMemoryIBStream savedEn;
         CHECK(controller.getState(&savedEn)==kResultOk);
         controller.setGermanUi(true);
+        controller.setMotionEnabled(true);
         savedEn.rewind();
         CHECK(controller.setState(&savedEn)==kResultOk);
         CHECK(!controller.isGermanUi());
+        CHECK(!controller.isMotionEnabled());
+        // P009 compatibility: old v1 controller state only stored language.
+        ResizableMemoryIBStream oldUi;
+        IBStreamer legacy(&oldUi,kLittleEndian);
+        CHECK(legacy.writeInt32(0x50535955));
+        CHECK(legacy.writeInt32(1));
+        CHECK(legacy.writeInt32(1));
+        oldUi.rewind();
+        controller.setMotionEnabled(true);
+        CHECK(controller.setState(&oldUi)==kResultOk);
+        CHECK(controller.isGermanUi());
+        CHECK(!controller.isMotionEnabled());
     }
     CHECK(controller.terminate()==kResultOk);
     CHECK(component.terminate()==kResultOk);

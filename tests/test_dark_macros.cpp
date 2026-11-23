@@ -76,6 +76,9 @@ int main() {
         double tail=0;
         for(std::size_t i=12000;i<24000;++i) tail+=std::abs(l[i])+std::abs(r[i]);
         CHECK(tail>0.01);
+        double late=0;
+        for(std::size_t i=72000;i<84000;++i) late+=std::abs(l[i])+std::abs(r[i]);
+        CHECK(late < tail*0.9 && "reverb feedback must decay after silence");
     }
     {
         psychiatry::Obsession fx;fx.prepare(44100);fx.setAmount(0.9f);fx.reset();

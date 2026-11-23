@@ -73,11 +73,13 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
                 0.5f*(out[0]-out[1]-out[2]+out[3])
             };
             const float send=(m<=0.f?0.f:(0.12f+0.28f*m))*body;
-            const float feedback=0.67f+0.20f*m;
+            // Maximum small-signal feedback is 0.84*1.10 = 0.924 (<1).
+            // This is intentionally non-self-oscillating even at full macro.
+            const float feedback=0.60f+0.24f*m;
             for(std::size_t i=0;i<kDelayCount;++i) {
                 // Saturation in the *return* path creates a progressively
                 // crumbling hall, rather than an ordinary clean plate.
-                const float put=std::tanh(send + feedback*mixed[i]*(1.f+0.45f*m));
+                const float put=std::tanh(send + feedback*mixed[i]*(1.f+0.10f*m));
                 c.delay[i][c.cursor[i]]=put;
                 if(++c.cursor[i]>=c.delay[i].size()) c.cursor[i]=0;
             }

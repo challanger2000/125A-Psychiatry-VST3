@@ -2,6 +2,15 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.0 — P009 (2026-11-23)
+
+- Added original VSTGUI vector CRT with **nine effect-specific diagnostic worlds**, 288×325 pixel area in a 1004×570 dark dual-language front panel. Dominant macro selects scene, other macros introduce interference; UI sampling only, no audio-thread graphics.
+- Actual Steinberg Windows **EditorHost mouse-click test** now proves LOSS OF CONTROL changes the live visible CRT, and switching EN→DE survives in the same session.
+- Fixed visually subtle DEPRESSION response with an intensity meter. Reduced-motion (MOTION/BEWEGUNG) **off by default**, controller UI state v2 with v1 compatibility; DSP state v4 unchanged.
+- Converted the CRT to actual **black and white**, completed German monitor labels and shortened THERAPIE / MIX to prevent clipping.
+- QA: Steinberg VST3 47/47, 1/1 state/regression, P006 Windows/Linux DSP suite, P009 Win32 click/screenshot proof: **all PASS**.
+- Historic photo assets, high-fidelity audio listening, aliasing/CPU in Studio Pro and final acceptance still pending.
+
 ## 0.8.0 — P008 (2026-11-23)
 - Implemented real LOSS OF CONTROL GUI button: 9 host-automatable VST3 parameter edits, optional grouped undo, no THERAPY or Bypass mutation.
 - Added mock DAW host check for each begin/perform/end edit and group boundaries; two successive presses yield changing macro values.

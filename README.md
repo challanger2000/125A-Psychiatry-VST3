@@ -2,7 +2,7 @@
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **Current engineering checkpoint: P008 / v0.8.0**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, **LOSS OF CONTROL randomizer** and switchable **DE/EN VSTGUI**. Latest build: **47/47 Steinberg validator PASS**, mock-host/controller-state 1/1 PASS, official **Steinberg EditorHost opened the actual Win32 GUI**. **Not the finished historical GUI and not yet musically signed off in Studio Pro.**
+> **Current engineering checkpoint: P009 / v0.9.0**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**. **Not the final photographic GUI and not yet approved in Studio Pro.**
 
 ## Nine equally important effect worlds
 
@@ -35,6 +35,20 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 
 The 120 audit cases use **synthetic** bass, drum, voice-like and atmosphere proxies. No claim is made that automated measurements prove musical quality, that the plugin reproduces psychiatric symptoms, or that project recall works in a real Studio Pro session.
 
+## P009 — Reactive monochrome clinical CRT (working prototype)
+
+- **Source commit `4473273ef9006d2800b11f89ac9f3092c9aa265c` tested on main.**
+- [Windows VST3, Steinberg 47/47 PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301904) — [P009 NOT-FINAL engineering artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301904/artifacts/14864082290).
+- [Real Win32 EditorHost **click** regression](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923) **PASS**, proving LOSS OF CONTROL changes the visible CRT and switching EN→DE keeps the editor alive.
+- [Actual English/German EditorHost screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923/artifacts/14864592486): original monochrome CRT, nine original signal diagrams, live effect-intensity meter, correct dual-language captions and an optional MOTION/BEWEGUNG checkbox.
+- [Windows/Linux DSP regression](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301899): SUCCESS, original nine audio algorithms unchanged.
+- **Motion is OFF by default.** Motion preference and UI language are saved in controller UI state **v2**, compatible with v1, while VST3 DSP project state remains **v4**, backward compatible with v1–v3.
+- No original or third-party photographs are embedded: the **vector-generated screens are a legal-clearance-safe precursor**, not the final archival/horror image library. Display data are macro settings, not an input-audio waveform.
+
+[Technical audit and remaining blockers](docs/P009.md) · [Current status](STATUS.md).
+
+**The first user test in Studio Pro is still deferred until the remaining music-quality and final host tests.**
+
 ## P008 — Verified provisional bilingual VSTGUI
 
 - [Official Windows VST3 build (47/47 Steinberg PASS)](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238).
@@ -49,7 +63,7 @@ The 120 audit cases use **synthetic** bass, drum, voice-like and atmosphere prox
 
 ## Historical visual direction
 
-The eventual GUI should resemble a disturbing old clinical diagnostic instrument: worn metal, analog meters, institutional imagery, documentary-style monochrome photographs and a damaged black-and-white monitor. **Each macro drives a corresponding visual world**, and active macros may mix those behaviors. Imagery must be licensed, historically appropriate and respectful of real patients. The audiovisual display must remain outside the real-time audio callback and offer reduced-motion controls. **No historical images or custom GUI are bundled yet.**
+The eventual GUI should resemble a disturbing old clinical diagnostic instrument: worn metal, analog meters, institutional imagery, documentary-style monochrome photographs and a damaged black-and-white monitor. **Each macro drives a corresponding visual world**, and active macros may mix those behaviors. Imagery must be licensed, historically appropriate and respectful of real patients. The current P009 CRT is entirely generated in the UI thread from the real macro values and has reduced-motion controls; **no photographic archive assets are bundled yet**, and the final vintage-hardware appearance is still in development.
 
 ## Development
 

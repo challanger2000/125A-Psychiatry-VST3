@@ -1,15 +1,15 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-23**. Latest audited Windows build: **P008 bilingual functional VSTGUI / VST3 factory v0.8.0**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-23**. Latest audited Windows build: **P009 interactive diagnostic monitor / VST3 factory v0.9.0**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `a799f56bf1c1697f9b3b27e23fef3d08b246c4e4` on **main** (P008 verified bilingual GUI, grouped randomizer, percentage displays).
-- **Windows/MSVC x64 real VST3 workflow:** [run 45262697238](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238), **SUCCESS**.
+- **Source commit tested:** `4473273ef9006d2800b11f89ac9f3092c9aa265c` on **main** (P009 monochrome diagnostic CRT, P009 click regression, fully bilingual labels and motion-off default).
+- **Windows/MSVC x64 real VST3 workflow:** [run 45269301904](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301904), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P008 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238/artifacts/14861920364): `125A-PSYCHIATRY-P008-GUI-Bilingual-NOT-FINAL` (7-day retention, expires 2026-11-30).
-- **Windows + Linux standalone audio workflow:** [run 45262697261](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697261), **SUCCESS**.
+  - [P009 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301904/artifacts/14864082290): `125A-PSYCHIATRY-P009-DiagnosticCRT-NOT-FINAL` (7-day retention, expires 2026-11-30).
+- **Windows + Linux standalone audio workflow:** [run 45269301899](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301899), **SUCCESS**.
   - **6/6 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
   - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues.
   - [Quality audit CSV and synthetic WAV archive](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45207296078/artifacts/14834208034); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
@@ -21,11 +21,22 @@ Updated: **2026-11-23**. Latest audited Windows build: **P008 bilingual function
 
 Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA → DISSOCIATION → OBSESSION → HALLUCINATION → PSYCHOSIS → **one global inverse THERAPY Dry/Wet mix**.
 
-- **P008 verified temporary GUI:** actual Steinberg **VSTGUI**, dark 680×570 panel, dual English/German templates, nine real FX knobs plus THERAPY, Bypass, LOSS OF CONTROL, numeric percent values and DE/EN button. Both XML layouts and all host parameter tags are bundled inside the Windows `.vst3`.
+- **P009 verified CRT interface:** Steinberg **VSTGUI**, dark 1004×570 panel, two EN/DE templates, nine live FX knobs, THERAPY, Bypass, LOSS OF CONTROL, percent readouts, language switch and original software-drawn **monochrome diagnostic CRT**. CRT scenes and cross-macro signal corruption are calculated on the UI thread from the actual controller parameters. No patient photos or third-party graphics are used.
 - VST3 `createView(kEditor)` now constructs `VSTGUI::VST3Editor`, rather than returning null and falling back to host generic controls.
-- **Official Steinberg EditorHost Win32 test passed:** [run 45262697188](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697188). The actual VST3 GUI window opened, and [the captured image](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697188/artifacts/14861312737) was inspected. **This is not Studio Pro or a test of actual audio/UI clicking.**
+- **Official Steinberg EditorHost GUI interaction PASSED:** [run 45269301923](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923). An actual Win32 GUI was created, a mouse click on LOSS OF CONTROL changed nine effect values and the CRT image (482 sampled pixels differed, RGB delta 81,702), and the subsequent DE language switch retained a working editor. [Three run screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923/artifacts/14864592486) were visually inspected. **This is still not Studio Pro or an audio listening test.**
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
-- VST3 factory version now **0.8.0**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+- VST3 factory version now **0.9.0**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+
+
+## P009 — proven CRT implementation and honest scope
+
+- **Custom view `PSYCHIATRY_DIAGNOSTIC`** is constructed through `VST3EditorDelegate::createCustomView` and VSTGUI `CView` drawing. Both GUI layouts embed the same 288×325 original drawing surface. Nine different institutional/diagnostic patterns are displayed depending on the **dominant live macro**; the remaining active macros add visible cross-effect interference.
+- **Zero audio-thread work added.** Monitor samples the existing nine parameter values on the GUI idle callback, smooths transitions, and draws with no copied photographs or visual assets. **Actual audio amplitude or FFT data are not transmitted to the display.**
+- **Actual GUI interaction test:** a Windows EditorHost-generated left click triggers the working LOSS OF CONTROL randomizer, the nine macro readouts visibly update and the CRT responds. In the final P009 reference, 482 sampled CRT pixels changed, summed RGB delta 81,702. Subsequent EN→DE view switch completed without window crash; screenshots are retained.
+- **Accessibility:** full-screen strobing is deliberately absent; the **MOTION / BEWEGUNG** checkbox is off by default, so values update the screen without continuous movement. Enabled mode adds only gentle scan motion. The setting is persisted in controller-only UI state v2 with v1 state backward decoding. DSP component state remains v4.
+- **Quality fixes revealed by screenshots and UI tests:** initially DEPRESSION could leave the base corridor largely unchanged after randomization despite correct knob movement, so an always-visible CRT intensity strip was added. The English/German templates now translate the diagnostic labels and shortened German THERAPIE / MIX label. The monitor was changed from green-tinted to true grayscale.
+- **Verified commit:** `4473273ef9006d2800b11f89ac9f3092c9aa265c`. [Windows 47/47 API+1/1 SDK state](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301904); [Windows/Linux DSP suite](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301899); [real Win32 GUI/click test](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923), all **SUCCESS**.
+- [Complete P009 design and verification log](docs/P009.md). This is an early visual implementation and **not final historic photography**.
 
 ## P008 — implemented controls and real Windows evidence
 
@@ -33,7 +44,7 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - The actual VST3 controller calls `beginEdit/setParamNormalized/performEdit/endEdit` for all nine macro IDs, with `startGroupEdit/finishGroupEdit` for hosts supporting IComponentHandler2. A simulated host spy regression verifies 9×3 notifications and grouped undo.
 - **EN/DE** uses two `.uidesc` templates and a momentary language button on private tag `9001`. This preference persists in **controller-only UI state** (`PSYU`), independent of processor project state v4; earlier projects default to English.
 - **Percent readouts** use actual 0–100% values. Visual screenshot review caught cramped rows, light buttons with poor contrast and missing THERAPY pointer; corrected and re-tested.
-- **Windows official validation:** [run 45262697238](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238) **SUCCESS**, 47/47 official validator, 1/1 VST3 controller/legacy-state regression and packaged both bilingual GUIs.
+- **Windows official validation:** [run 45269301904](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301904) **SUCCESS**, 47/47 official validator, 1/1 VST3 controller/legacy-state regression and packaged both bilingual GUIs.
 - **Runtime Win32 proof:** [Steinberg EditorHost run 45262697188](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697188) **SUCCESS**, actual GUI window with HWND and captured screenshot; manually inspected. Does NOT prove operation within Studio Pro.
 - [Detailed engineering notes](docs/P008.md). The first user test is **not requested yet**.
 
@@ -50,17 +61,17 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 
 ## Still not implemented / NO-GO
 
-- **A temporary VSTGUI exists, but no final historic psychiatric equipment design, dynamic monochrome photo/video monitor, approved image rights or asset provenance.**
+- **The functional P009 monochrome vector CRT exists, but the final historic photographic GUI, photo/asset rights review and the full old-clinic atmosphere are not yet finished.**
 - **LOSS OF CONTROL and DE/EN toggles are implemented**, but their physical click-to-audio behavior in Studio Pro has not yet been user-verified.
 - **No real Studio Pro listening test or project save/reopen, no user listening acceptance, no real musical/vocal audio comparison.** The audit uses generated *proxies*, not recorded bass, guitar, drums and speech.
 - **No production high-fidelity assurance** for wavefolder aliasing, spectral/Hilbert sidebands, grain clicks, transient smoothing, long automation and long-session CPU behavior. The VST3 47/47 tests do not validate subjective quality.
-- No release installer or final VST3 product. Do not call P008 a finished product.
+- No release installer or final VST3 product. Do not call P009 a finished product.
 
 ## Next engineering gates
 
 1. **Next audio acceptance:** source-specific recordings (bass, guitar, drums, vocals, atmospheres), properly level-matched listening, anti-alias/spectral/CPU investigation and revision of weak FX where necessary. Real DAW testing **at the end** per project policy.
-2. **Final custom GUI phase:** dark historical psychiatric examination apparatus, nine thematic image pools, responsive small damaged monochrome monitor, no work in audio callback, accessibility/reduced motion, verified asset licensing, DE/EN labels, LOSS OF CONTROL.
-3. **P009 final QA:** actual Windows Studio Pro audible/protected realtime validation, project recall/automation/installer verification, final release readiness only on proof.
+2. **Next final art phase:** establish rights-cleared original historic-clinic photographic motifs and richer worn-instrument styling for the already functioning monochrome CRT, keeping UI rendering off the audio thread; retain motion-off accessibility and bilingual labels.
+3. **Final release QA:** actual Windows Studio Pro audible/protected realtime validation, project recall/automation/installer verification, final release readiness only on proof.
 
 ## Project rules
 

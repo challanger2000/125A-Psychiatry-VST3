@@ -1,4 +1,4 @@
-name: P012 Windows VST3 Spectral and CPU Audit
+name: P013 Windows VST3 Spectral and CPU Audit
 
 on:
   push:
@@ -124,7 +124,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P012-Oversampled-Psychosis-NOT-FINAL
+          name: 125A-PSYCHIATRY-P013-Filtered-Mania-Depression-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

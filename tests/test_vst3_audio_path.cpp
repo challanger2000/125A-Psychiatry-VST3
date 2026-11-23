@@ -398,6 +398,10 @@ void testHighBandAliasing(const std::string& dir) {
             // It does NOT certify all sources or all alias harmonics.
             if(effect==8)check(db<=-45.0,
                 "P012 PSYCHOSIS third-harmonic alias suppression insufficient");
+            // P013: fail if the newly 2x oversampled wet shapers do not
+            // substantially suppress the exact tested 3rd-harmonic fold.
+            if(effect==0||effect==3)check(db<=-35.0,
+                "P013 DEPRESSION/MANIA folded-harmonic alias above -35 dBc");
             if(csv.good())csv<<"narrowband,"<<(effect<0?"DRY":kMacroNames[effect])
                 <<","<<inputHz<<","<<aliasHz<<","<<fundamental<<","
                 <<alias<<","<<db<<",,,, "<<maxSample<<"\n";

@@ -315,6 +315,15 @@ public:
                 if(i%3==0)stroke(.22,t+.14,.84,t+.03,bright);
             }
         }
+        // Continuous CRT signal strength strip. It MUST visibly respond
+        // even when DEPRESSION remains the dominant scene both before and
+        // after a randomization (a previous GUI smoke test exposed this).
+        // 0% is an empty black strip; any active macro fills by intensity.
+        fill(.12,.758,.88,.830,black);
+        fill(.14,.769,.14+.72*static_cast<double>(intensity),.817,green);
+        stroke(.12,.758,.88,.758,faint);
+        stroke(.12,.830,.88,.830,faint);
+
         // Cross-macro interference: extra non-dominant worlds affect density.
         const float contamination=std::clamp(total-top,0.f,4.f);
         const int bands=static_cast<int>(std::min(15.f,contamination*3.f));

@@ -1,0 +1,52 @@
+name: P002 Windows VST3 Prototype
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  windows-vst3:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned Steinberg VST3 SDK 3.8.1
+        shell: pwsh
+        run: |
+          git clone --no-checkout https://github.com/steinbergmedia/vst3sdk.git external/vst3sdk
+          git -C external/vst3sdk checkout 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          git -C external/vst3sdk submodule update --init --recursive
+          git -C external/vst3sdk rev-parse HEAD
+      - name: Configure MSVC 2022 x64
+        shell: pwsh
+        run: |
+          cmake -S . -B build-vst3 -G "Visual Studio 17 2022" -A x64 -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
+      - name: Build real Windows VST3
+        run: cmake --build build-vst3 --config Release --target PsychiatryPrototype --parallel 4
+      - name: Verify bundle and stage artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "artifacts" | Out-Null
+          $bundles = @(Get-ChildItem -Path "build-vst3" -Recurse -Directory -Filter "*.vst3")
+          $files = @(Get-ChildItem -Path "build-vst3" -Recurse -File -Filter "*.vst3")
+          if ($bundles.Count -eq 0 -and $files.Count -eq 0) {
+            throw "No built VST3 bundle/file found - CI must not claim success"
+          }
+          if ($bundles.Count -gt 0) {
+            $chosen = $bundles | Sort-Object FullName | Select-Object -First 1
+            Copy-Item -LiteralPath $chosen.FullName -Destination "artifacts" -Recurse -Force
+            Write-Host "Staged bundle:" $chosen.FullName
+          } else {
+            $chosen = $files | Sort-Object FullName | Select-Object -First 1
+            Copy-Item -LiteralPath $chosen.FullName -Destination "artifacts" -Force
+            Write-Host "Staged VST3:" $chosen.FullName
+          }
+          Get-ChildItem artifacts -Recurse | Select-Object FullName,Length
+      - name: Attach experimental VST3 (NOT a release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-PSYCHIATRY-P002-Windows-VST3-UNVALIDATED
+          path: artifacts/**
+          if-no-files-found: error
+          retention-days: 7

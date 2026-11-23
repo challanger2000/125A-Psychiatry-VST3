@@ -115,7 +115,7 @@ jobs:
       - name: Attach P010 actual-processor audio metrology (not a release)
         uses: actions/upload-artifact@v4
         with:
-          name: P010-Actual-VST3-Per-Macro-WetDry-Metrics-WAV
+          name: P012-Real-VST3-Aliasing-CPU-WetDry-Metrics
           path: |
             artifacts/P010_*
             artifacts/P012_*
@@ -124,7 +124,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P011-GainReview-NOT-FINAL
+          name: 125A-PSYCHIATRY-P012-Oversampled-Psychosis-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

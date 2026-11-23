@@ -396,7 +396,7 @@ void testHighBandAliasing(const std::string& dir) {
             // This guard compares the measurable third-harmonic foldback
             // against our P012 pre-oversampling baseline (-18.85/-20.33).
             // It does NOT certify all sources or all alias harmonics.
-            if(effect==8)check(db<=-28.0,
+            if(effect==8)check(db<=-45.0,
                 "P012 PSYCHOSIS third-harmonic alias suppression insufficient");
             if(csv.good())csv<<"narrowband,"<<(effect<0?"DRY":kMacroNames[effect])
                 <<","<<inputHz<<","<<aliasHz<<","<<fundamental<<","

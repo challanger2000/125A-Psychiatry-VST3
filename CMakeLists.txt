@@ -106,7 +106,9 @@ if(PSYCHIATRY_BUILD_VST3)
   # Reject zero-effect placebo, pure-gain false positives and bad endpoints.
   add_executable(test_vst3_audio_path
       tests/test_vst3_audio_path.cpp
-      vst3/processor.cpp)
+      vst3/processor.cpp
+      # Steinberg's host-side ParameterChanges helper is not part of sdk.lib.
+      "${PSYCHIATRY_VST3_SDK_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp")
   target_include_directories(test_vst3_audio_path PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_link_libraries(test_vst3_audio_path PRIVATE psychiatry_audio sdk)

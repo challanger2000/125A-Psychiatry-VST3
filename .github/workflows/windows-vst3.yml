@@ -1,4 +1,4 @@
-name: P008 Windows VSTGUI Randomizer + DE EN
+name: P009 Windows Diagnostic CRT VSTGUI
 
 on:
   push:
@@ -61,7 +61,15 @@ jobs:
           if ($language.Count -ne 2) { throw "Language selector must be present in both templates" }
           $uiLanguageTag = @($ui.SelectNodes("//control-tag[@name='UI_LANGUAGE' and @tag='9001']"))
           if ($uiLanguageTag.Count -ne 1) { throw "UI-only language tag missing" }
-          Write-Host "Verified English/German GUI and packaged parameter controls:" ($must -join ", ")
+          $monitors = @($ui.SelectNodes("//view[@custom-view-name='PSYCHIATRY_DIAGNOSTIC']"))
+          if ($monitors.Count -ne 2) { throw "Expected two diagnostic CRT views, EN and DE" }
+          $rootViews = @($ui.SelectNodes("//template[@name='view' or @name='view_de']"))
+          foreach ($panel in $rootViews) {
+            if ($panel.GetAttribute("size") -ne "1004, 570") {
+              throw "P009 panel must reserve dedicated CRT area"
+            }
+          }
+          Write-Host "Verified English/German GUI + CRT and packaged parameter controls:" ($must -join ", ")
       - name: Verify bundle and stage artifact
         shell: pwsh
         run: |
@@ -84,7 +92,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P008-GUI-Bilingual-NOT-FINAL
+          name: 125A-PSYCHIATRY-P009-DiagnosticCRT-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

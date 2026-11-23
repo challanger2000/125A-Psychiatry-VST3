@@ -1,4 +1,4 @@
-name: P008 GUI Runtime Smoke (Steinberg EditorHost)
+name: P009 GUI Runtime Smoke (Steinberg EditorHost)
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P008-EditorHost-Win32-GUI-Probe
+          name: P009-EditorHost-Win32-GUI-Probe
           path: artifacts/P008-EditorHost-Windows.png
           if-no-files-found: ignore
           retention-days: 7

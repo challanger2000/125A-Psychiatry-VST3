@@ -4,6 +4,9 @@
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/base/ustring.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
+#include "vstgui/lib/cview.h"
+#include "vstgui/lib/cdrawcontext.h"
+#include <cstring>
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 
 #include <algorithm>
@@ -145,12 +148,207 @@ void Controller::triggerLossOfControl() {
     finishGroupEdit();
 }
 
+// P009 provisional audiovisual diagnostic monitor.
+// Entirely original vector graphics: no patient photography, no borrowed
+// imagery, no disk I/O, no DSP/audio callback, and no external textures.
+// Rendered on the UI thread, max ~30 Hz via VSTGUI CView::onIdle.
+class DiagnosticMonitor final : public VSTGUI::CView {
+public:
+    explicit DiagnosticMonitor(Controller* controller)
+        : VSTGUI::CView(VSTGUI::CRect(0,0,288,325)), controller_(controller) {
+        setWantsIdle(true);
+        VSTGUI::CView::idleRate=24;
+    }
+    void onIdle() override {
+        bool changed=false;
+        for(std::size_t i=0;i<amounts_.size();++i) {
+            const double n=controller_->getParamNormalized(kMacroIds[i]);
+            const float target=std::isfinite(n)
+                ? static_cast<float>(std::clamp(n,0.0,1.0)) : 0.f;
+            const float old=amounts_[i];
+            amounts_[i]+=0.12f*(target-old);
+            if(std::abs(old-amounts_[i])>0.00005f)changed=true;
+        }
+        // A slow, gentle sweep rather than an abrupt flash/strobe.
+        tick_=(tick_+1)%1200u;
+        if(changed || tick_%3==0)invalid();
+    }
+    void draw(VSTGUI::CDrawContext* dc) override {
+        using namespace VSTGUI;
+        const auto r=getViewSize();
+        const auto w=r.getWidth(),h=r.getHeight();
+        auto x=[&](double n){return r.left+n*w;};
+        auto y=[&](double n){return r.top+n*h;};
+        const CColor black{8,12,13,255}, dark{19,28,27,255};
+        const CColor green{142,178,154,255}, faint{55,83,69,255};
+        const CColor bright{201,215,193,255}, dim{32,45,41,255};
+        auto fill=[&](double l,double t,double rr,double bb,const CColor& color){
+            dc->setFillColor(color);dc->drawRect(CRect(x(l),y(t),x(rr),y(bb)),kDrawFilled);
+        };
+        auto stroke=[&](double x1,double y1,double x2,double y2,const CColor& color,double thickness=1.){
+            dc->setFrameColor(color);dc->setLineWidth(thickness);
+            dc->drawLine(CPoint(x(x1),y(y1)),CPoint(x2),CPoint(y2)));
+        };
+        fill(0,0,1,1,black);
+        fill(.035,.035,.965,.962,dark);
+        fill(.055,.066,.945,.928,black);
+        // Scene selection shares the same nine real macro control values
+        // as the FX processor; when several are active, the strongest is
+        // the dominant image, other effects contribute contamination.
+        int chosen=0;
+        float top=0.f,total=0.f;
+        for(std::size_t i=0;i<amounts_.size();++i){
+            total+=amounts_[i];
+            if(amounts_[i]>top){top=amounts_[i];chosen=static_cast<int>(i);}
+        }
+        const float intensity=std::clamp(top,0.f,1.f);
+        const double phase=static_cast<double>(tick_)*0.04;
+        // Film gate corners and registration marks.
+        for(double sy:{.095,.905}){
+            stroke(.08,sy,.16,sy,green);
+            stroke(.84,sy,.92,sy,green);
+        }
+        stroke(.5,.074,.5,.098,faint);
+        stroke(.5,.902,.5,.925,faint);
+        // Nine distinct originally drawn institutional/diagnostic worlds.
+        // All proportions are relative to the CRT view to work under UI scale.
+        if(chosen==0 || top<.08f){ // empty institutional corridor
+            fill(.11,.14,.89,.84,dim);
+            for(int i=0;i<6;++i) {
+                const double d=static_cast<double>(i)/6.;
+                const double ll=.10+.33*d,rr=.90-.33*d;
+                stroke(ll,.15+.30*d,ll,.84-.18*d,faint);
+                stroke(rr,.15+.30*d,rr,.84-.18*d,faint);
+                stroke(.10,.15+.30*d,.90,.15+.30*d,faint);
+                stroke(.10,.84-.18*d,.90,.84-.18*d,faint);
+            }
+            fill(.455,.44,.545,.73,black);
+            stroke(.455,.44,.545,.44,green);
+            if(intensity>.18f)fill(.469,.465,.485,.55,bright);
+        }else if(chosen==1){ // surveillance plate: tracking gaze
+            for(int i=0;i<7;++i){
+                const double t=.16+i*.094;
+                stroke(.11,t,.89,t,faint);
+            }
+            const double shift=.07*intensity*std::sin(phase*.24);
+            stroke(.25+shift,.34,.75+shift,.34,green,2);
+            stroke(.25+shift,.68,.75+shift,.68,green,2);
+            stroke(.25+shift,.34,.25+shift,.68,green);
+            stroke(.75+shift,.34,.75+shift,.68,green);
+            fill(.47+shift,.49,.53+shift,.54,bright);
+        }else if(chosen==2){ // double exposed diagnostic radiograph
+            for(int copy=0;copy<2;++copy){
+                const double ofs=copy==0?-.075*intensity:.075*intensity;
+                const auto col=copy==0?faint:green;
+                for(int i=0;i<6;++i){
+                    const double py=.21+i*.103;
+                    stroke(.29+ofs,py,.71+ofs,py,col);
+                    stroke(.29+ofs,py,.42+ofs,py+.058,col);
+                    stroke(.71+ofs,py,.58+ofs,py+.058,col);
+                }
+                stroke(.50+ofs,.14,.50+ofs,.83,col,2);
+            }
+        }else if(chosen==3){ // manic accelerating analog meter
+            for(int i=0;i<28;++i){
+                const double xx=.11+i*.028;
+                const double hh=.13+.22*std::abs(std::sin(i*.91+phase*.33));
+                stroke(xx,.70,xx,.70-hh,i%3==0?bright:faint);
+            }
+            const double v=.14+.7*(.5+.5*std::sin(phase*.2));
+            stroke(v,.18,v,.84,green,2);
+        }else if(chosen==4){ // electrical examination / EEG pulse
+            double px=.10,py=.55;
+            for(int i=1;i<=70;++i){
+                const double xx=.10+(.80*i)/70.;
+                const double pulse=(i%18==8?-.30*intensity:i%18==10?.24*intensity:0.);
+                const double yy=.55+pulse+.035*std::sin(i*.42+phase*.15);
+                stroke(px,py,xx,yy,i%9==0?bright:green);
+                px=xx;py=yy;
+            }
+            stroke(.18,.75,.82,.75,faint);
+        }else if(chosen==5){ // isolation / empty observation room
+            fill(.18,.19,.82,.82,dim);
+            for(int i=0;i<5;++i){
+                const double z=i*.043;
+                stroke(.18+z,.19+z,.82-z,.19+z,faint);
+                stroke(.18+z,.19+z,.18+z,.82-z,faint);
+                stroke(.82-z,.19+z,.82-z,.82-z,faint);
+            }
+            stroke(.48,.33,.52,.33,bright,2);
+            stroke(.50,.33,.50,.69,green);
+        }else if(chosen==6){ // repeated institutional record cycles
+            for(int j=0;j<7;++j){
+                const double cy=.15+j*.102;
+                stroke(.13,cy,.86,cy,faint);
+                for(int i=0;i<12;++i){
+                    const double xx=.16+i*.055;
+                    const double hv=.013+.065*std::abs(std::sin(phase*.18+i*.6+j*.45));
+                    stroke(xx,cy,xx,cy+hv,i%3==0?green:faint);
+                }
+            }
+        }else if(chosen==7){ // shadow echo in empty ward
+            for(int k=0;k<3;++k){
+                const double offset=(k-1)*.065*intensity;
+                const auto color=k==1?green:faint;
+                stroke(.5+offset,.23,.40+offset,.40,color,2);
+                stroke(.5+offset,.23,.60+offset,.40,color,2);
+                stroke(.40+offset,.40,.36+offset,.72,color);
+                stroke(.60+offset,.40,.64+offset,.72,color);
+                stroke(.36+offset,.72,.64+offset,.72,color);
+            }
+        }else{ // fragmented signal/clinical chart
+            for(int i=0;i<13;++i){
+                const double t=.12+i*.055;
+                const double displacement=.09*intensity*std::sin(i*3.1+phase*.11);
+                stroke(.12+displacement,t,.78-displacement,t+.14,green);
+                if(i%3==0)stroke(.22,t+.14,.84,t+.03,bright);
+            }
+        }
+        // Cross-macro interference: extra non-dominant worlds affect density.
+        const float contamination=std::clamp(total-top,0.f,4.f);
+        const int bands=static_cast<int>(std::min(15.f,contamination*3.f));
+        for(int i=0;i<bands;++i){
+            const double yy=.12+std::fmod((i*0.173+tick_*.0007),.75);
+            stroke(.09,yy,.92,yy,i%3==0?green:faint);
+        }
+        // Fixed low-contrast scanlines, never a rapid full-screen flash.
+        for(int i=0;i<84;++i){
+            const double yy=.104+i*.0095;
+            stroke(.062,yy,.938,yy,i%5==0?faint:dim);
+        }
+        fill(.075,.848,.925,.887,black);
+        for(int i=0;i<9;++i){
+            const double xx=.12+i*.084;
+            fill(xx,.860,xx+.052,.878,
+                 amounts_[static_cast<std::size_t>(i)]>.08f?green:dim);
+        }
+        dc->setFrameColor(green);
+        dc->setLineWidth(1.);
+        dc->drawRect(CRect(x(.036),y(.036),x(.964),y(.963)),kDrawStroked);
+        setDirty(false);
+    }
+private:
+    Controller* controller_;
+    std::array<float,9> amounts_{};
+    unsigned tick_=0;
+};
+
 // This is a host-embedded editor, not a stand-alone UI.
 // Its private UI-only tag (9000) does not enter the VST3 parameter list.
-class PsychiatryEditor final : public VSTGUI::VST3Editor {
+class PsychiatryEditor final : public VSTGUI::VST3Editor, public VSTGUI::VST3EditorDelegate {
 public:
     explicit PsychiatryEditor(Controller* parent)
-        : VSTGUI::VST3Editor(parent,parent->isGermanUi()?"view_de":"view","psychiatry.uidesc"), parent_(parent) {}
+        : VSTGUI::VST3Editor(parent,parent->isGermanUi()?"view_de":"view","psychiatry.uidesc"), parent_(parent) {
+        setDelegate(this);
+    }
+    VSTGUI::CView* createCustomView(VSTGUI::UTF8StringPtr name,
+            const VSTGUI::UIAttributes&,
+            const VSTGUI::IUIDescription*,
+            VSTGUI::VST3Editor*) override {
+        if(name && std::strcmp(name,"PSYCHIATRY_DIAGNOSTIC")==0)
+            return new DiagnosticMonitor(parent_);
+        return nullptr;
+    }
 protected:
     void valueChanged(VSTGUI::CControl* control) override {
         if(control && control->getTag()==kLanguageUiTag) {

@@ -23,6 +23,7 @@ void Depression::prepare(double sampleRate) {
                 std::max<std::size_t>(2,static_cast<std::size_t>(
                     rate_*(times[i]+(ch?0.0037:0.0)))),0.f);
     step_=static_cast<float>(1.-std::exp(-1./(0.012*rate_)));
+    for(auto& channel:state_)channel.saturation.prepare();
     reset();
 }
 void Depression::reset() noexcept {
@@ -31,6 +32,7 @@ void Depression::reset() noexcept {
         c.damping.fill(0);
         c.darkness=0.f;
         c.dynamics=0.f;
+        c.saturation.reset();
         for(auto& line:c.delay) std::fill(line.begin(),line.end(),0.f);
     }
     smoothed_=target_;
@@ -53,7 +55,12 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
             // Program-dependent compression with saturator; gradual onset.
             c.dynamics+=step_*4.f*(std::abs(x)-c.dynamics);
             const float drive=1.f+4.5f*m*m;
-            const float compressed=std::tanh(drive*x)/(1.f+0.3f*m*c.dynamics*drive);
+            // P013: 2x filtered wet-only tanh saturation. Original high
+            // source frequencies generated aliases before the lowpass;
+            // first create the harmonics at 2x, then decimate safely.
+            const float compressed=c.saturation.process(x,[&](float up) noexcept {
+                return std::tanh(drive*up);
+            })/(1.f+0.3f*m*c.dynamics*drive);
             // A dynamically narrowing band, not a passive EQ preset.
             const float cutoff=7500.f*std::pow(0.062f,m);
             const float a=1.f-std::exp(-6.28318530718f*cutoff/static_cast<float>(rate_));

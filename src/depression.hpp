@@ -2,6 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <vector>
+#include "oversample2x.hpp"
 
 namespace psychiatry {
 // P003 reference chain: program-driven crush -> downward filter -> dark modulated
@@ -21,6 +22,7 @@ private:
         std::array<float,kDelayCount> damping{};
         float darkness=0.f;
         float dynamics=0.f;
+        detail::Oversample2x saturation{};
     };
     std::array<ChannelState,2> state_{};
     float target_=0.f;

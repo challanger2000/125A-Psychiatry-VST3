@@ -2,6 +2,16 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.2 — P012 measured PSYCHOSIS oversampling (2026-11-23)
+
+- Discovered unwanted folded 3rd-harmonic aliases using **actual VST3 Processor::process**: 15-kHz tone aliased to 3 kHz at **−18.85 dBc** under PSYCHOSIS 100%; 14 kHz folded to 6 kHz at **−20.33 dBc**.
+- Replaced preliminary single-pole PSYCHOSIS postfilter with **2× reconstructed wet-only nonlinear shaping**, three 2nd-order Butterworth sections (sixth-order) **before** each of the three shaper band paths and **after** combined wet output. No heap allocation in processing.
+- Verified −59.47 dBc (15k →3k) and −65.25 dBc (14k→6k), roughly **40–45 dB alias reduction** on the two specified probes. Added **−45 dBc P012 regression guard** on both.
+- Kept the 0%=bit-perfect Dry / 100%=pure DSP Wet contract, inverted global THERAPY, VST3 IDs and project state intact. Actual Windows DSP 45/45 full-Wet and 180-row reference metrology still pass.
+- Actual Windows 9-macro 100% CPU probe **0.0526× realtime** on its Actions runner; runner-dependent and not a DAW CPU guarantee.
+- [Windows VST3/Steinberg 47/47, alias and CPU build 45283355056](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45283355056), [Windows/Linux 6/6 and 120-case audit 45283355041](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45283355041), [Win32 GUI smoke 45283355019](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45283355019): all **SUCCESS**.
+- **Not yet fixed:** MANIA and DEPRESSION folded aliases, 44.1/96-kHz spectrum benchmarks, realistic musical/transient/phase acceptance and finished historical interface.
+
 ## 0.9.1 — P011 measurable wet-only gain staging (2026-11-23)
 
 - Corrected sound level only **inside the effected branch** of DISSOCIATION (gradual 1 + 0.80 m² makeup), HALLUCINATION (1 + 0.65 m² makeup) and PANIC (1 / (1 + 0.25 m²) attenuation), preserving 0% Dry and 100% processed Wet semantics.

@@ -2,7 +2,7 @@
 
 **Experimental Dark Multi-FX for Gothic, Darkwave, EBM, Industrial and Cinematic Horror Sound Design.**
 
-> **Current status (2026-11-23): P003 Windows x64 VST3 prototype. Steinberg validator 47/47 PASS for the three-macro build on tested commit `717941a0`. DEPRESSION, PARANOIA and OBSESSION now have real audio DSP, global THERAPY and Bypass. Six sound worlds and the custom GUI remain to be built.** See [STATUS.md](STATUS.md) for the tested commit, logs, limitations and milestones.
+> **Current status (2026-11-23): P003 Windows x64 VST3 prototype. Steinberg validator 47/47 PASS for the three-macro build on tested commit `e40c2752`. DEPRESSION, PARANOIA and OBSESSION now have real audio DSP, global THERAPY and Bypass. Six sound worlds and the custom GUI remain to be built.** See [STATUS.md](STATUS.md) for the tested commit, logs, limitations and milestones.
 
 ## Vision
 Nine **equal-priority** multi-algorithm sound worlds, one macro per world. Each knob progressively morphs a *curated compound effect* rather than one ordinary processor. The goal is extreme **and usable** sound design with a reactive historical diagnostic-monitor GUI.
@@ -19,7 +19,7 @@ Nine **equal-priority** multi-algorithm sound worlds, one macro per world. Each 
 | HALLUCINATION | HALLUZINATION | Phantom harmonics and spectral ghosts |
 | PSYCHOSIS | PSYCHOSE | Powerful *localized* distortion world |
 
-**THERAPY / THERAPIE** is inverted global Dry/Wet (0% = wet; 100% = dry). **LOSS OF CONTROL / KONTROLLVERLUST** randomizes the nine macro values without changing therapy. **Three macros (DEPRESSION, PARANOIA, OBSESSION) and global THERAPY are implemented and wired through the **P003 VST3**, along with native Bypass. The other six remain reserved and not exposed; the nine-macro design is not yet complete.
+**THERAPY / THERAPIE** is inverted global Dry/Wet (0% = wet; 100% = dry). **LOSS OF CONTROL / KONTROLLVERLUST** is planned to randomize the nine macro values without changing THERAPY; it is **not yet implemented**. **DEPRESSION, PARANOIA and OBSESSION**, plus global **THERAPY**, are implemented in the P003 VST3, along with native Bypass. The other six remain reserved and not exposed; the nine-macro design is not yet complete.
 
 ## P001: PARANOIA audio-only prototype
 Based on an **original** past-audio reverser design inspired by Freakshow Industries Backmask's event-driven approach, combined with nonlinear feedback and stereo diffusion.
@@ -41,11 +41,11 @@ The P001 CI checks verify only the standalone audio prototype. **P003 now builds
 
 ## P003 Windows VST3 prototype
 
-- [Real Windows build, Steinberg 47/47 validator and prototype bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45191507273)
+- [Real Windows build, Steinberg 47/47 validator and prototype bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45192471302)
 - [VST3 engineering notes](docs/P002.md)
 - Audio is available through the **host's generic parameter UI**; there is **no custom GUI yet**.
 - Supported host I/O: mono/stereo, 32-bit float; DEPRESSION, PARANOIA, OBSESSION, THERAPY and Bypass are automated and saved in project state; the P002 state layout remains readable.
-- The Actions artifact is a **temporary development build, not a final tested release**. [P003 compound sound examples](docs/P003.md) are synthetic, not a substitute for musician listening tests.
+- The Actions artifact is a **temporary development build, not a final tested release**. [P003 compound sound examples](docs/P003.md) are synthetic, not a substitute for musician listening tests. [Compare six dry and processed WAVs](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45192471228/artifacts/14825783048).
 
 ## Historical visual concept
 An old diagnostic display with dynamic monochrome historical asylum interiors and equipment. Each macro drives corresponding image transformations; source and license records for all assets are required before bundling. No third-party pictures ship now.

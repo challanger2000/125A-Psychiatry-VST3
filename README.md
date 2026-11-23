@@ -2,7 +2,7 @@
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **Current engineering checkpoint: P009 / v0.9.0**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**. **Not the final photographic GUI and not yet approved in Studio Pro.**
+> **Current engineering checkpoint: P010 actual-VST3 audio verification / factory v0.9.0**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Not the final photographic GUI and not yet approved in Studio Pro.**
 
 ## Nine equally important effect worlds
 
@@ -23,6 +23,18 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 **THERAPY / THERAPIE** is an inverted global Dry/Wet: 0% is fully processed; 100% is completely dry. VST3-native Bypass is also available.
 
 **LOSS OF CONTROL / KONTROLLVERLUST** now changes the nine host-automatable macro settings as a single grouped automation gesture where supported. It never modifies THERAPY or Bypass. The **DE/EN toggle** switches between two actual UI templates and saves the language independently of sound state. This is a **functional provisional VSTGUI**, not the final historic visual concept.
+
+## P010 — Effect audibility and 0%/100% endpoint verification through the real VST3
+
+- [P010 Windows test run: real processor, wet/dry, nine effect worlds, automation, 47/47 Steinberg validator](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45277192703): **SUCCESS** on tested source commit `ceb57ac2dc4d16b274cd2efcec2200f2d9b37e5a`.
+- [180 actual-VST3 measurement rows + 10 WAV comparisons](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45277192703/artifacts/14867677257): 5 synthetic stereo sources (synth bass, drums, guitar-like, voice-like, atmosphere) × 9 macros × 20/50/75/100%. WAVs: one bass dry and nine bass fully wet. **7-day engineering artifact, not a public release**.
+- **0% each macro:** bit-for-bit identical dry output with global THERAPY=0. **100% each macro:** direct wet-only DSP reference matches the actual VST3 within 3×10⁻⁶ on all 45 macro/source combinations; no additional parallel dry mixing at full macro.
+- **THERAPY 0%:** pure chain output. **THERAPY 100%:** exact dry source. **THERAPY 50%:** linear half wet/half dry to within 5×10⁻⁶. Native Bypass returns bit-exact dry.
+- **Placebo / loudness control:** pure-gain-only reference is rejected. On **45/45 full-wet** macro/source cases, gain-matched waveform residual exceeds the defined audibility-screen threshold; differences are not explained merely by volume. Four normalized spectral bands are compared and exported.
+- VST3 automation event at **sample 128** changes MANIA output only at/after the event, not before.
+- This is an **objective synthetic reference check**, not proof of subjective quality, frequency-domain anti-aliasing quality, true vocal/guitar recordings or DAW session functionality.
+
+[Complete P010 test method, exact thresholds and limitations](docs/P010.md).
 
 ## P006 verified build and audio-quality gate
 

@@ -2,6 +2,15 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## P010 — real VST3 audio metrology (2026-11-23; plugin factory remains 0.9.0)
+
+- Introduced `tests/test_vst3_audio_path.cpp`, compiling the actual Windows VST3 Processor into a host-style audio rendering executable. No parallel fake DSP abstraction.
+- Proven 0% macro = bit-perfect Dry and 100% macro = its raw full-wet DSP output within 3×10⁻⁶ (45 full-wet macro/source runs). THERAPY 100% = exact Dry, THERAPY 50% = half Wet, and Bypass = Dry.
+- 180 objective metrology rows: 5 deterministic synthetic sound categories × 9 macros × 4 effect intensities. All 45 full-wet source/macro combinations pass gain-invariant residual gate; a gain-only counterexample is rejected.
+- Added 4-band gain-normalized spectral descriptor and sample-accurate MANIA automation regression at sample 128. Exported 10 actual-VST3 audio WAVs and full CSV in CI.
+- MSVC Windows [run 45277192703](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45277192703): SUCCESS, Steinberg 47/47 plus state and real audio gates; no DSP binary algorithms or project-state IDs changed.
+- Musical listening, aliasing/transient analysis, CPU under Studio Pro and final historical GUI remain pending.
+
 ## 0.9.0 — P009 (2026-11-23)
 
 - Added original VSTGUI vector CRT with **nine effect-specific diagnostic worlds**, 288×325 pixel area in a 1004×570 dark dual-language front panel. Dominant macro selects scene, other macros introduce interference; UI sampling only, no audio-thread graphics.

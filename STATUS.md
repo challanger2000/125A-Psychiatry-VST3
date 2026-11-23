@@ -1,17 +1,17 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-23**. Latest audited Windows build: **P009 interactive diagnostic monitor / VST3 factory v0.9.0**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-23**. Latest verified gate: **P010 actual-VST3 audio and 0/100 wet/dry audit / factory v0.9.0**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `4473273ef9006d2800b11f89ac9f3092c9aa265c` on **main** (P009 monochrome diagnostic CRT, P009 click regression, fully bilingual labels and motion-off default).
-- **Windows/MSVC x64 real VST3 workflow:** [run 45269301904](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301904), **SUCCESS**.
+- **Source commit tested:** `ceb57ac2dc4d16b274cd2efcec2200f2d9b37e5a` on **main** (P010 true VST3 processor output vs direct wet engine, nine-macro placebo checks and four spectral band metrics, unchanged v0.9.0 plugin DSP).
+- **Windows/MSVC x64 real VST3 workflow:** [run 45277192703](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45277192703), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P009 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301904/artifacts/14864082290): `125A-PSYCHIATRY-P009-DiagnosticCRT-NOT-FINAL` (7-day retention, expires 2026-11-30).
-- **Windows + Linux standalone audio workflow:** [run 45269301899](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301899), **SUCCESS**.
+  - [P010-verified Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45277192703/artifacts/14866583867): `125A-PSYCHIATRY-P009-DiagnosticCRT-NOT-FINAL` (7-day retention, expires 2026-11-30).
+- **Windows + Linux standalone audio workflow:** [run 45277192527](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45277192527), **SUCCESS**.
   - **6/6 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
-  - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues.
+  - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues. **P010 adds a separate 180-case test of the actual VST3 processor, not merely standalone DSP**.
   - [Quality audit CSV and synthetic WAV archive](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45207296078/artifacts/14834208034); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
 - All Windows Actions artefacts are temporary engineering packages, not release installers.
 
@@ -27,6 +27,19 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
 - VST3 factory version now **0.9.0**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
+
+## P010 — real VST3 signal-path verification, not a placebo
+
+The major new evidence is **actual audio passing through `psychiatry::vst3::Processor::process`**, with real Steinberg `ProcessData`, stereo float32 buffers, and `IBStream` v4 state. Previous P006 tests isolated the standalone DSP; P010 exercises the plugin's complete output path.
+
+- **Verified Windows Actions run [45277192703](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45277192703), SUCCESS:** Steinberg validator **47/47**, VST3 state **1/1**, real VST3 audio gate **1/1**. [180-row CSV and 10 WAV probes](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45277192703/artifacts/14867677257), expires 2026-11-30.
+- Source signals: deterministic synthetic **bass, drums, guitar-like, voice-like, atmospheric stereo**, 48 kHz, each 1.25 seconds. Every macro individually tested at **0%, 20%, 50%, 75%, 100%**, while others are 0 and global THERAPY is 0.
+- **0% each of nine macros:** bit-identical Dry input across all five test sources. Native Bypass: bit-identical Dry. **100% macro:** actual VST3 sample output matches its corresponding raw DSP wet output, max error ≤ **3×10⁻⁶**, for all **45** full-wet macro/source combinations; no extra dry path is added by the VST3 mixer.
+- **THERAPY inverted by specification:** 0% is the wet engine result; 100% returns bit-identical original Dry; 50% is the expected 50/50 Dry/Wet mix with max sample error ≤ **5×10⁻⁶**. Verified per macro on synth-bass source.
+- **45/45** full-wet macro/source results pass both raw-change and **gain-matched** waveform-residual thresholds, so it is not merely a volume effect. Minimum measured gain-matched residual among the 45 was **0.328** (PANIC on guitar-like material), above acceptance threshold **0.035**. A reference consisting solely of 0.41× Dry is deliberately detected as a **placebo-like pure-gain** counterexample; a normalized 4-band spectral descriptor is exported for tonal difference review.
+- **Real VST3 parameter automation:** change MANIA at audio sample **128** of a 256-sample block. Before sample 128 audio is bit-exact dry; thereafter it changes. No duplicate/misplaced processing.
+- Level observations remain relevant: DISSOCIATION at full wet is around **−11.12 dB RMS on synthetic drums** and HALLUCINATION around **−7.46 dB on synth bass**; PANIC voice-like rises **+4.47 dB**. These are effects that are demonstrably different, **not proof of musically good gain staging**. Human listening, aliasing and proper loudness normalization remain NO-GO items.
+- [Full repeatable P010 method, direct wet reference and scope](docs/P010.md). The final `.vst3` binary still reports **v0.9.0**; P010 changed tests and CI, not audio processing algorithms or IDs.
 
 ## P009 — proven CRT implementation and honest scope
 
@@ -63,9 +76,9 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 
 - **The functional P009 monochrome vector CRT exists, but the final historic photographic GUI, photo/asset rights review and the full old-clinic atmosphere are not yet finished.**
 - **LOSS OF CONTROL and DE/EN toggles are implemented**, but their physical click-to-audio behavior in Studio Pro has not yet been user-verified.
-- **No real Studio Pro listening test or project save/reopen, no user listening acceptance, no real musical/vocal audio comparison.** The audit uses generated *proxies*, not recorded bass, guitar, drums and speech.
+- **No real Studio Pro listening test or project save/reopen, no user listening acceptance, no captured real musical/vocal audio comparison.** P010 proves significant transformations using generated bass, drum, guitar-like, voice-like and atmosphere *proxies*, not recordings.
 - **No production high-fidelity assurance** for wavefolder aliasing, spectral/Hilbert sidebands, grain clicks, transient smoothing, long automation and long-session CPU behavior. The VST3 47/47 tests do not validate subjective quality.
-- No release installer or final VST3 product. Do not call P009 a finished product.
+- No release installer or final VST3 product. P010 is a measured audio-engineering proof, not a finished or musically accepted product.
 
 ## Next engineering gates
 

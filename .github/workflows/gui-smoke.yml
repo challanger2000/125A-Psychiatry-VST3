@@ -1,0 +1,51 @@
+name: P008 GUI Runtime Smoke (Steinberg EditorHost)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'vst3/**'
+      - 'resource/**'
+      - 'src/**'
+      - '.github/workflows/gui-smoke.yml'
+      - 'tools/gui_smoke.ps1'
+  workflow_dispatch:
+
+concurrency:
+  group: psychiatry-gui-runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  editorhost-windows:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned Steinberg SDK including official EditorHost
+        shell: pwsh
+        run: |
+          git clone --no-checkout https://github.com/steinbergmedia/vst3sdk.git external/vst3sdk
+          git -C external/vst3sdk checkout 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          git -C external/vst3sdk submodule update --init --recursive
+      - name: Configure actual Windows VSTGUI and Steinberg editorhost
+        shell: pwsh
+        run: |
+          cmake -S . -B build-vst3 -G "Visual Studio 17 2022" -A x64 -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=ON -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=ON
+      - name: Build Windows VST3 and official Steinberg GUI host
+        shell: pwsh
+        run: |
+          cmake --build build-vst3 --config Release --target PsychiatryPrototype editorhost --parallel 4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Attempt real Win32 editor attachment
+        shell: pwsh
+        run: |
+          & "./tools/gui_smoke.ps1"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Publish GUI smoke screenshot if captured
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P008-EditorHost-Win32-GUI-Probe
+          path: artifacts/P008-EditorHost-Windows.png
+          if-no-files-found: ignore
+          retention-days: 7

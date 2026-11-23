@@ -2,7 +2,7 @@
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **Current engineering checkpoint: P012 measured PSYCHOSIS anti-aliasing / factory v0.9.2**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Not the final photographic GUI and not yet approved in Studio Pro.**
+> **Current engineering checkpoint: P013 MANIA + DEPRESSION alias reduction / factory v0.9.3**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Not the final photographic GUI and not yet approved in Studio Pro.**
 
 ## Nine equally important effect worlds
 
@@ -23,6 +23,16 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 **THERAPY / THERAPIE** is an inverted global Dry/Wet: 0% is fully processed; 100% is completely dry. VST3-native Bypass is also available.
 
 **LOSS OF CONTROL / KONTROLLVERLUST** now changes the nine host-automatable macro settings as a single grouped automation gesture where supported. It never modifies THERAPY or Bypass. The **DE/EN toggle** switches between two actual UI templates and saves the language independently of sound state. This is a **functional provisional VSTGUI**, not the final historic visual concept.
+
+## P013 — Measured MANIA + DEPRESSION alias suppression
+
+- **Verified factory v0.9.3**, source `37988d988b8180eb28c99d5f53d51e4d0ff67e2a` on `main`. [Windows build + true VST3 audio test](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249372): **SUCCESS**, Steinberg **47/47**, 45/45 full-Wet comparisons, THERAPY endpoints, native Bypass, sample-accurate automation and placebo negative.
+- Added **true 2× filtered oversampling** around the MANIA feedback saturator and DEPRESSION program-dependent saturator, avoiding an extra Dry path. Their 15-kHz-source/3-kHz-alias levels improved from **−20.22 to −57.32 dBc (MANIA)** and **−20.47 to −59.03 dBc (DEPRESSION)**. Both now have a **−50 dBc regression gate** for two defined tones.
+- [Actual per-macro VST3 WAV comparisons plus wet/dry, alias and CPU metrics](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249372/artifacts/14872505322); [v0.9.3 Windows .vst3 experimental bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249372/artifacts/14870953327).
+- [Windows/Linux DSP suite and 120 quality cases](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249438): **SUCCESS**, 0 safety violations or review flags. [Official Windows VSTGUI EditorHost regression](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249313): **SUCCESS**.
+- **PANIC remains at approximately −31.87 dBc** in that high-tone alias probe. Full multi-tone spectral audit, 44.1/96-kHz response, phase/transient QA, and musical acceptance with real instruments remain NO-GO items.
+
+[Technical P013 report](docs/P013.md) · [current STATUS](STATUS.md). **No early user test requested.**
 
 ## P012 — Real PSYCHOSIS alias improvement, objectively verified
 

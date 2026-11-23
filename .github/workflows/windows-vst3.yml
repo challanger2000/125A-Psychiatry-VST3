@@ -37,7 +37,7 @@ jobs:
         run: |
           $resource = @(Get-ChildItem -Path "build-vst3" -Recurse -File -Filter "psychiatry.uidesc")
           if ($resource.Count -eq 0) { throw "VSTGUI .uidesc missing from Windows build output" }
-          $bundled = @($resource | Where-Object { $_.FullName -match "\\.vst3[\\/]" })
+          $bundled = @($resource | Where-Object { $_.FullName -match '\.vst3[\\/]' })
           if ($bundled.Count -eq 0) { throw "VSTGUI XML exists, but not within a .vst3 bundle" }
           [xml]$ui = Get-Content -LiteralPath $bundled[0].FullName -Raw
           $controls = @($ui.SelectNodes("//view[@control-tag]"))

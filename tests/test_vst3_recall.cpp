@@ -18,6 +18,11 @@
 using namespace psychiatry::vst3;
 using namespace Steinberg;
 
+// The SDK's standalone test executable is not a VST3 DLL; it has no DllMain.
+// Provide only the module-handle symbol expected by VSTGUI support.
+// The real plugin bundle receives its module handle from Steinberg's DLL entry.
+void* moduleHandle = nullptr;
+
 static void writeLegacy(ResizableMemoryIBStream& memory,int version,bool invalid=false){
     IBStreamer stream(&memory,kLittleEndian);
     CHECK(stream.writeInt32(kStateMagic));

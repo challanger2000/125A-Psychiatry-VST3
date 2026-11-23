@@ -1,0 +1,37 @@
+name: P001 Audio Prototype (not a VST3)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: DSP test - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Compile audio prototype
+        run: cmake --build build --config Release --parallel 2
+      - name: Run realtime DSP tests
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Render comparison audio
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          & "./build/Release/render_paranoia.exe" "artifacts/Paranoia_P001"
+      - name: Publish example WAV pair (not a plugin)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Paranoia-P001-Dry-Wet-WAV
+          path: artifacts/*.wav
+          if-no-files-found: error
+          retention-days: 7

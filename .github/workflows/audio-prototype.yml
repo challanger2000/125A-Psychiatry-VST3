@@ -1,4 +1,4 @@
-name: P004 DSP Tests and Audio Comparisons
+name: P005 Nine-World DSP Tests and Audio Comparisons
 
 on:
   push:
@@ -41,11 +41,16 @@ jobs:
         shell: pwsh
         run: |
           & "./build/Release/render_three_worlds.exe" "artifacts/P004"
+      - name: Render three spectral macro comparisons
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          & "./build/Release/render_spectral_worlds.exe" "artifacts/P005"
       - name: Publish example WAV pair (not a plugin)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: P004-Six-Macro-Audio-Probes-WAV
+          name: P005-Nine-Macro-Audio-Probes-WAV
           path: artifacts/*.wav
           if-no-files-found: error
           retention-days: 7

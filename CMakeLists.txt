@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(PsychiatryAudioPrototype VERSION 0.4.0 LANGUAGES CXX)
+project(PsychiatryAudioPrototype VERSION 0.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,7 +10,8 @@ add_library(psychiatry_audio STATIC
     src/paranoia.cpp
     src/depression.cpp
     src/obsession.cpp
-    src/three_worlds.cpp)
+    src/three_worlds.cpp
+    src/spectral_worlds.cpp)
 target_include_directories(psychiatry_audio PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set_target_properties(psychiatry_audio PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(MSVC)
@@ -37,6 +38,13 @@ add_test(NAME P004_ThreeWorlds COMMAND test_three_worlds)
 
 add_executable(render_three_worlds tools/render_three_worlds.cpp)
 target_link_libraries(render_three_worlds PRIVATE psychiatry_audio)
+
+add_executable(test_spectral_worlds tests/test_spectral_worlds.cpp)
+target_link_libraries(test_spectral_worlds PRIVATE psychiatry_audio)
+add_test(NAME P005_SpectralWorlds COMMAND test_spectral_worlds)
+
+add_executable(render_spectral_worlds tools/render_spectral_worlds.cpp)
+target_link_libraries(render_spectral_worlds PRIVATE psychiatry_audio)
 
 add_executable(render_paranoia tools/render_paranoia.cpp)
 target_link_libraries(render_paranoia PRIVATE psychiatry_audio)

@@ -481,7 +481,7 @@ void testMultirateIntermod(const std::string& dir) {
     if(!dir.empty()) {
         csv.open(dir+"/P015_multirate_intermod_metrics.csv");
         check(csv.good(),"P015 multirate CSV open");
-        csv<<"rate_hz,effect,probe,frequency_hz,reference_amp,measured_amp,relative_dbc,peak\n";
+        csv<<"rate_hz,effect,probe,frequency_hz,reference_amp,measured_amp,relative_to_input_db,peak\n";
     }
     constexpr std::array<int,4> highProducts{42000,45000,43000,44000};
     constexpr std::array<const char*,4> labels{
@@ -531,11 +531,17 @@ void testMultirateIntermod(const std::string& dir) {
                 const double ratio=20.*std::log10(std::max(measured,1.e-15)/
                                                   std::max(reference,1.e-15));
                 check(std::isfinite(ratio),"P015 spectral measurement nonfinite");
+                // Input-referenced dB, not a ratio to the processed carrier.
+                // On the verified 44.1/48-kHz P015 baseline every monitored
+                // folded line is at or below -52.18 dB relative to Dry.
+                // Keep a conservative 7.18-dB regression margin.
+                if(sr!=96000)check(ratio<=-45.,
+                    "P015 two-tone folded product above -45 dB vs Dry input");
                 if(csv.good())csv<<sr<<","<<kMacroNames[fx]<<","
                     <<(sr==96000?"inband_":"folded_")<<labels[k]<<","
                     <<inspected<<","<<reference<<","<<measured<<","
                     <<ratio<<","<<peak<<"\n";
-                std::printf("P015 rate=%d fx=%s product=%s frequency=%.0fHz rel=%+.2fdBc\n",
+                std::printf("P015 rate=%d fx=%s product=%s frequency=%.0fHz rel=%+.2fdB(input)\n",
                             sr,kMacroNames[fx],labels[k],inspected,ratio);
                 // Avoid unearned pass/fail targets for new intermodulation
                 // lines until they have a measured Windows baseline.

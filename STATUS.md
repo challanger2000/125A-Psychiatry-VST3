@@ -3,10 +3,11 @@
 Updated: **2026-11-23** · Current code phase: **P005 / v0.5.0 (nine-macro Windows VST3 prototype, NOT a finished release)**
 
 ## Last verified tested code
-- Source commit: **`c118854dd7fcb8806ae722c1838ba53a2d4d4bdf`** on **main only**.
-- Official Windows 2022/MSVC VST3 build and Steinberg API validator [45198013374](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198013374): **SUCCESS; 47/47 tests passed, zero failures**.
-- P005 standalone DSP workflow [45198012444](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198012444): **SUCCESS on both Windows and Linux**, all **4/4 CTest test groups**.
-- [Windows prototype artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198013374/artifacts/14829946498) — `125A-PSYCHIATRY-P005-Windows-VST3-NOT-FINAL` (temporary artifact, 7-day retention; **not a final installer**).
+- Source commit: **`7f54e3802faa8192e31a2680aded07ead1055c1f`** on **main only**.
+- Official Windows 2022/MSVC VST3 build and Steinberg API validator [45198889548](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889548): **SUCCESS; 47/47 tests passed, zero failures**.
+- P005 standalone DSP workflow [45198889541](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889541): **SUCCESS on both Windows and Linux**, all **5/5 CTest test groups**.
+- [Windows prototype artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889548/artifacts/14829987368) — `125A-PSYCHIATRY-P005-Windows-VST3-NOT-FINAL` (temporary artifact, 7-day retention; **not a final installer**).
+- **P005 concurrent-chain regression:** nine DSP engines ran together, dry zero-amount output bit-exact, output finite and peak-bounded, results invariant across host block partitions, and **zero heap allocations detected inside the audio-processing call** on Windows and Linux. This is not proof of a production CPU budget.
 - [Nine-world synthetic WAV probe bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45197686369/artifacts/14828402907) (temporary, includes grouped examples).
 
 ## Implemented and present in the Windows VST3

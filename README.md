@@ -46,10 +46,11 @@ The P001 CI checks verify only the standalone audio prototype. **P005 now builds
 
 ## P005 Windows nine-macro VST3 prototype
 
-- **Verified Windows Actions:** [P005 complete VST3, Steinberg 47/47 PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198013374)
-- [P005 Windows VST3 build artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198013374/artifacts/14829946498) — a temporary engineering zip, **not a release**
-- [P005 DSP tests, Windows and Linux](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198012444), 4/4 CTest groups
+- **Verified Windows Actions:** [P005 complete VST3, Steinberg 47/47 PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889548)
+- [P005 Windows VST3 build artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889548/artifacts/14829987368) — a temporary engineering zip, **not a release**
+- [P005 DSP tests, Windows and Linux](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889541), 5/5 CTest groups
 - [P005 synthetic dry and processed WAV comparisons](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45197686369/artifacts/14828402907)
+- An additional **all-nine concurrent DSP regression** checks no callback allocations, exact dry, finite outputs, and block-size invariance.
 - [Implementation notes and acoustic limitations](docs/P005.md); [current status](STATUS.md)
 
 **Host support:** Windows x64, 32-bit floating-point audio, mono/stereo, automatable nine macros plus THERAPY and native Bypass; historical saved project states v1–v3 are readable by v4 processor/controller.

@@ -1,4 +1,5 @@
 #include "obsession.hpp"
+#include "parameter_smoothing.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -38,7 +39,7 @@ void Obsession::process(float* const* channels,unsigned count,std::size_t frames
        (count==2&&!channels[1])) return;
     const auto cap=history_.size();
     for(std::size_t n=0;n<frames;++n) {
-        smoothed_+=step_*(target_-smoothed_);
+        smoothed_=detail::smoothToward(smoothed_,target_,step_);
         const float m=smoothed_;
         const float rawL=channels[0][n], rawR=count==2?channels[1][n]:rawL;
         history_[cursor_]={safe(rawL),safe(rawR)};

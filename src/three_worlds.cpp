@@ -1,4 +1,5 @@
 #include "three_worlds.hpp"
+#include "parameter_smoothing.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -45,7 +46,7 @@ void Mania::process(float* const* audio,unsigned channels,std::size_t frames) no
     const auto invRate=static_cast<float>(1./rate_);
     const auto fast= pole(92.,rate_),slow=pole(4.,rate_);
     for(std::size_t i=0;i<frames;++i) {
-        smoothed_+=step_*(amount_-smoothed_);
+        smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
@@ -111,7 +112,7 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
     const auto cooldown=static_cast<unsigned>(rate_*0.030);
     const float invRate=static_cast<float>(1./rate_);
     for(std::size_t i=0;i<frames;++i) {
-        smoothed_+=step_*(amount_-smoothed_);
+        smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         // Smooth onset boost; P006 reported a marginal 20% PANIC response
         // on clean synth bass. Preserve both endpoints and audio smoothing.
         const float m=smoothed_*(1.5f-0.5f*smoothed_);
@@ -205,7 +206,7 @@ void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames
         return sample;
     };
     for(std::size_t i=0;i<frames;++i) {
-        smoothed_+=step_*(amount_-smoothed_);
+        smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];

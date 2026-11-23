@@ -1,4 +1,5 @@
 #include "spectral_worlds.hpp"
+#include "parameter_smoothing.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -50,7 +51,7 @@ void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frame
     const float grain=static_cast<float>(rate_*0.057);
     const float lag=2.0f*grain+5.f;
     for(std::size_t i=0;i<frames;++i) {
-        smoothed_+=step_*(amount_-smoothed_);
+        smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
@@ -110,7 +111,7 @@ void Dissociation::process(float* const* io,unsigned channels,std::size_t frames
     if(!valid(io,channels)||state_[0].frozen.empty())return;
     const float a=coeff(280.,rate_),b=coeff(1650.,rate_);
     for(std::size_t i=0;i<frames;++i) {
-        smoothed_+=step_*(amount_-smoothed_);
+        smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
@@ -178,7 +179,7 @@ void Hallucination::process(float* const* io,unsigned channels,std::size_t frame
     const float a=coeff(550.,rate_),b=coeff(1600.,rate_);
     const float invRate=static_cast<float>(1./rate_);
     for(std::size_t i=0;i<frames;++i) {
-        smoothed_+=step_*(amount_-smoothed_);
+        smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];

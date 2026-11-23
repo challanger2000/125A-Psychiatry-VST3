@@ -1,4 +1,5 @@
 #include "depression.hpp"
+#include "parameter_smoothing.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -43,7 +44,7 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
     if(!channels||!channels[0]||(count!=1&&count!=2)||
         (count==2&&!channels[1])||state_[0].delay[0].empty()) return;
     for(std::size_t n=0;n<frames;++n) {
-        smoothed_+=step_*(target_-smoothed_);
+        smoothed_=detail::smoothToward(smoothed_,target_,step_);
         // P006 measured 20%-macro effect below the onset threshold on
         // clean bass/atmosphere. A smooth concave curve makes the first
         // third musically perceptible without shifting the 0% or 100% ends.

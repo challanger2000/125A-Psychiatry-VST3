@@ -1,4 +1,5 @@
 #include "paranoia.hpp"
+#include "parameter_smoothing.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -106,8 +107,8 @@ void Paranoia::process(float* const* channels, unsigned channelCount,
     for (std::size_t i = 0; i < frames; ++i) {
         const float inL = safeSample(channels[0][i]);
         const float inR = channelCount == 2 ? safeSample(channels[1][i]) : inL;
-        smoothedAmount_ += coefficient * (settings_.amount - smoothedAmount_);
-        smoothedTherapy_ += coefficient * (settings_.therapy - smoothedTherapy_);
+        smoothedAmount_ = detail::smoothToward(smoothedAmount_, settings_.amount, coefficient);
+        smoothedTherapy_ = detail::smoothToward(smoothedTherapy_, settings_.therapy, coefficient);
         const float m = smoothedAmount_;
 
         // Keep independent input history, preserving the previous audio needed by reverse events.

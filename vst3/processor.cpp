@@ -1,4 +1,5 @@
 #include "processor.h"
+#include "parameter_smoothing.hpp"
 #include "ids.h"
 
 #include "base/source/fstreamer.h"
@@ -212,7 +213,7 @@ bool Processor::processSpan(Vst::ProcessData& data,
             psychosis_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                                static_cast<std::size_t>(size));
             for(int32 i=0;i<size;++i) {
-                wetSmoothed_+=wetStep_*(1.f-therapyAmount_-wetSmoothed_);
+                wetSmoothed_=psychiatry::detail::smoothToward(wetSmoothed_,1.f-therapyAmount_,wetStep_);
                 const float w=std::clamp(wetSmoothed_,0.f,1.f);
                 for(int32 ch=0;ch<input.numChannels;++ch) {
                     const auto c=static_cast<std::size_t>(ch);

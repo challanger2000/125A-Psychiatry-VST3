@@ -9,9 +9,9 @@ using namespace psychiatry::vst3;
 
 BEGIN_FACTORY_DEF("125A", "https://github.com", "")
     DEF_CLASS2(INLINE_UID_FROM_FUID(kProcessorCID), PClassInfo::kManyInstances,
-               kVstAudioEffectClass, "125A PSYCHIATRY P002", Vst::kDistributable,
-               "Fx", "0.2.0", kVstVersionString, Processor::createInstance)
+               kVstAudioEffectClass, "125A PSYCHIATRY", Vst::kDistributable,
+               "Fx", "0.3.0", kVstVersionString, Processor::createInstance)
     DEF_CLASS2(INLINE_UID_FROM_FUID(kControllerCID), PClassInfo::kManyInstances,
                kVstComponentControllerClass, "125A PSYCHIATRY Controller", 0,
-               "", "0.2.0", kVstVersionString, Controller::createInstance)
+               "", "0.3.0", kVstVersionString, Controller::createInstance)
 END_FACTORY

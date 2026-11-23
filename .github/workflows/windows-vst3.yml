@@ -1,9 +1,13 @@
-name: P002 Windows VST3 Prototype
+name: P003 Windows Compound FX VST3
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: vst3-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   windows-vst3:
@@ -46,7 +50,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P002-Windows-VST3-UNVALIDATED
+          name: 125A-PSYCHIATRY-P003-Windows-VST3-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

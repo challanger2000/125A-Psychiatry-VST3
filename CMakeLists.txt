@@ -27,6 +27,9 @@ add_executable(test_dark_macros tests/test_dark_macros.cpp)
 target_link_libraries(test_dark_macros PRIVATE psychiatry_audio)
 add_test(NAME P003_DarkMacros COMMAND test_dark_macros)
 
+add_executable(render_dark_macros tools/render_dark_macros.cpp)
+target_link_libraries(render_dark_macros PRIVATE psychiatry_audio)
+
 add_executable(render_paranoia tools/render_paranoia.cpp)
 target_link_libraries(render_paranoia PRIVATE psychiatry_audio)
 

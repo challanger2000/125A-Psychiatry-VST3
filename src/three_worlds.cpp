@@ -169,7 +169,12 @@ void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames
             const float shaped=0.60f*l+0.75f*folded+0.42f*h+
                 0.28f*m*im;
             s.antialias+=smoothPole*(shaped-s.antialias);
-            const float transformed=0.72f*s.antialias;
+            // P006: the previous default generated +8.25 dB on
+            // voice-like input and +6.05 dB on atmosphere at 85%, despite
+            // staying below full-scale. Map output gain independently
+            // from distortion strength to avoid loudness bias.
+            const float automaticGain=1.f/(1.f+1.30f*m*m);
+            const float transformed=0.72f*automaticGain*s.antialias;
             if(m>0.f) audio[ch][i]=x+m*(transformed-x);
         }
     }

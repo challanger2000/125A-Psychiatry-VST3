@@ -393,6 +393,11 @@ void testHighBandAliasing(const std::string& dir) {
                 maxSample=std::max(maxSample,std::abs(static_cast<double>(v)));
             std::printf("P012 SPECTRAL src=%.0fHz fx=%-13s folded=%.0fHz rel=%+.2fdBc main=%.6f alias=%.6f\n",
                 inputHz,effect<0?"DRY":kMacroNames[effect],aliasHz,db,fundamental,alias);
+            // This guard compares the measurable third-harmonic foldback
+            // against our P012 pre-oversampling baseline (-18.85/-20.33).
+            // It does NOT certify all sources or all alias harmonics.
+            if(effect==8)check(db<=-28.0,
+                "P012 PSYCHOSIS third-harmonic alias suppression insufficient");
             if(csv.good())csv<<"narrowband,"<<(effect<0?"DRY":kMacroNames[effect])
                 <<","<<inputHz<<","<<aliasHz<<","<<fundamental<<","
                 <<alias<<","<<db<<",,,, "<<maxSample<<"\n";

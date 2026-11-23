@@ -136,7 +136,31 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
 }
 
 void Psychosis::prepare(double sr) noexcept {
-    rate_=rate(sr);step_=pole(16.,rate_);reset();
+    rate_=rate(sr);
+    step_=pole(16.,rate_);
+    // P012 anti-aliasing: true 2x filtered upsample/decimate. A 6th-order
+    // Butterworth IIR with a cutoff at ~0.41 of the original rate is used
+    // twice (before nonlinear processing AND before downsampling).
+    // Coefficients are computed ONLY during prepare(), never in process().
+    // The three stable SOS Q values are the sixth-order Butterworth poles.
+    constexpr std::array<double,3> q{
+        0.5176380902050415,0.7071067811865476,1.9318516525781366};
+    constexpr double omega=6.2831853071795864769*0.205;
+    const double sine=std::sin(omega),cosine=std::cos(omega);
+    for(std::size_t k=0;k<3;++k) {
+        const double alpha=sine/(2.*q[k]);
+        const double a0=1.+alpha;
+        oversampleCoeffs_[k].b0=
+            static_cast<float>((1.-cosine)/(2.*a0));
+        oversampleCoeffs_[k].b1=
+            static_cast<float>((1.-cosine)/a0);
+        oversampleCoeffs_[k].b2=oversampleCoeffs_[k].b0;
+        oversampleCoeffs_[k].a1=
+            static_cast<float>(-2.*cosine/a0);
+        oversampleCoeffs_[k].a2=
+            static_cast<float>((1.-alpha)/a0);
+    }
+    reset();
 }
 void Psychosis::reset() noexcept {
     state_={};smoothed_=amount_;
@@ -147,9 +171,13 @@ void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames
     const float lowPole=pole(170.,rate_);
     const float midPole=pole(2050.,rate_);
     const float envPole=pole(20.,rate_);
-    // The anti-alias filter here is only a preliminary output smoothing
-    // step, NOT an oversampled production-quality wavefolder.
-    const float smoothPole=pole(std::min(12000.0,rate_*0.30),rate_);
+    // P012: prefiltered 2x nonlinear wet branch with a separate lowpass
+    // decimator. Filter state is per-instance and fully preallocated.
+    const auto filtering=[this](std::array<Biquad,3>& stages,float sample) noexcept {
+        for(std::size_t section=0;section<stages.size();++section)
+            sample=stages[section].process(sample,oversampleCoeffs_[section]);
+        return sample;
+    };
     for(std::size_t i=0;i<frames;++i) {
         smoothed_+=step_*(amount_-smoothed_);
         const float m=smoothed_;
@@ -164,21 +192,30 @@ void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames
             const float high=x-s.lowMid;
             s.driveEnvelope+=envPole*(std::abs(x)-s.driveEnvelope);
             const float dynamic=0.2f*std::clamp(s.driveEnvelope,0.f,1.f);
-            // Three non-identical nonlinear branches and controlled band sum.
-            const float l=std::tanh(low*(1.f+4.f*m+dynamic));
-            const float mm=std::tanh(mid*(1.f+12.f*m+dynamic));
-            const float h=std::tanh(high*(1.f+6.f*m+dynamic));
-            const float folded=fold(mm,(m>0.25f)?(m-0.25f)*0.92f:0.f);
-            const float im=std::tanh((mid*high)*8.f*m);
-            const float shaped=0.60f*l+0.75f*folded+0.42f*h+
-                0.28f*m*im;
-            s.antialias+=smoothPole*(shaped-s.antialias);
-            // P006: the previous default generated +8.25 dB on
-            // voice-like input and +6.05 dB on atmosphere at 85%, despite
-            // staying below full-scale. Map output gain independently
-            // from distortion strength to avoid loudness bias.
+            // Two streamed oversamples per input frame: [2*x, 0] in
+            // each of three prefiltered bands. An IIR reconstruction stage
+            // suppresses the 33-kHz image of a 15-kHz source BEFORE the
+            // nonlinear shapers see it; the output IIR suppresses harmonics
+            // above the real host Nyquist BEFORE 2:1 decimation.
+            // No history arrays resize or allocate within an audio callback.
+            float decimated=0.f;
+            for(int os=0;os<2;++os) {
+                const float inLow=filtering(s.up[0],os==0?2.f*low:0.f);
+                const float inMid=filtering(s.up[1],os==0?2.f*mid:0.f);
+                const float inHigh=filtering(s.up[2],os==0?2.f*high:0.f);
+                const float l=std::tanh(inLow*(1.f+4.f*m+dynamic));
+                const float mm=std::tanh(inMid*(1.f+12.f*m+dynamic));
+                const float h=std::tanh(inHigh*(1.f+6.f*m+dynamic));
+                const float folded=fold(mm,(m>0.25f)?(m-0.25f)*0.92f:0.f);
+                const float im=std::tanh((inMid*inHigh)*8.f*m);
+                const float shaped=0.60f*l+0.75f*folded+0.42f*h+
+                    0.28f*m*im;
+                const float filtered=filtering(s.down,shaped);
+                if(os==0)decimated=filtered;
+            }
+            // Preserve the calibrated wet-only gain structure from P006.
             const float automaticGain=1.f/(1.f+1.30f*m*m);
-            const float transformed=0.72f*automaticGain*s.antialias;
+            const float transformed=0.72f*automaticGain*decimated;
             if(m>0.f) audio[ch][i]=x+m*(transformed-x);
         }
     }

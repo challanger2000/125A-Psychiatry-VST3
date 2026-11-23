@@ -2,6 +2,15 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.3 — P013 measured MANIA and DEPRESSION anti-aliasing (2026-11-23)
+
+- Added reusable `src/oversample2x.hpp` sixth-order Butterworth wet-only oversampling for the two nonlinear shapers, preserving the existing plugin contract and state.
+- **MANIA:** 15-kHz source alias at 3 kHz improved from −20.22 to **−57.32 dBc**. **DEPRESSION:** from −20.47 to **−59.03 dBc**. 14-kHz tests similarly improved to −61.72 and −73.31 dBc. Explicit **−50 dBc** CI gates now protect both on both tones; PSYCHOSIS −45 dBc remains.
+- [Real Windows VST3 run 45285249372](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249372): **47/47 Steinberg PASS**, VST3 state 1/1, actual 180-row audio/45 wet-only comparisons, sample-accurate automation and negative placebo test PASS.
+- [Windows/Linux DSP 45285249438](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249438): 6/6 tests per platform, 120-case audit **0 flags and 0 safety-level violations**. [Win32 EditorHost 45285249313](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249313): PASS.
+- P013 full-chain CPU on its CI host: 0.0526× realtime (1.25-second 48-kHz stereo block series); no guaranteed host-performance claim.
+- **Still open:** PANIC high-frequency alias (~−31.87 dBc), other untested effects, group delay and transient behavior, realistic musical recordings, final photographic historical GUI and Studio Pro sign-off.
+
 ## 0.9.2 — P012 measured PSYCHOSIS oversampling (2026-11-23)
 
 - Discovered unwanted folded 3rd-harmonic aliases using **actual VST3 Processor::process**: 15-kHz tone aliased to 3 kHz at **−18.85 dBc** under PSYCHOSIS 100%; 14 kHz folded to 6 kHz at **−20.33 dBc**.

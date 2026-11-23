@@ -4,6 +4,7 @@
 #include "paranoia.hpp"
 #include "depression.hpp"
 #include "obsession.hpp"
+#include "three_worlds.hpp"
 
 #include <array>
 #include <vector>
@@ -28,14 +29,20 @@ public:
     Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override;
 
 private:
-    // P003 serial macro topology: oppressive timbre => paranoid reverse =>
-    // repetitive fixation. Shared THERAPY mixed once at the end, not per macro.
+    // P004 compound topology: six independent engines. THERAPY once at end.
+    // Ordering is preliminary, subject to musical audition and revision.
     psychiatry::Depression depression_{};
     psychiatry::Paranoia paranoia_{};
     psychiatry::Obsession obsession_{};
+    psychiatry::Mania mania_{};
+    psychiatry::Panic panic_{};
+    psychiatry::Psychosis psychosis_{};
     psychiatry::Paranoia::Settings paranoiaSettings_{};
     float depressionAmount_=0.f;
     float obsessionAmount_=0.f;
+    float maniaAmount_=0.f;
+    float panicAmount_=0.f;
+    float psychosisAmount_=0.f;
     float therapyAmount_=0.f;
     float wetSmoothed_=1.f;
     float wetStep_=0.001f;

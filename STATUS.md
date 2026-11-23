@@ -1,15 +1,15 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-23**. Latest verified gate: **P013 MANIA + DEPRESSION measured anti-aliasing / factory v0.9.3**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-23**. Latest verified gate: **P014 PANIC measured anti-aliasing / factory v0.9.4**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `37988d988b8180eb28c99d5f53d51e4d0ff67e2a` on **main** (P013 two-times filtered MANIA + DEPRESSION wet-only saturation, -50 dBc folded-alias regression, factory v0.9.3).
-- **Windows/MSVC x64 real VST3 workflow:** [run 45285249372](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249372), **SUCCESS**.
+- **Source commit tested:** `0fdf15bc45e1acc86b74653423709fd99004d9f6` on **main** (P014 wet-only 2× filtered PANIC excitation/saturation, real VST3 -45 dBc narrowband alias gate, factory v0.9.4).
+- **Windows/MSVC x64 real VST3 workflow:** [run 45287094009](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094009), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P013 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249372/artifacts/14870953327): `125A-PSYCHIATRY-P013-Filtered-Mania-Depression-NOT-FINAL` (7-day retention, expires 2026-11-30).
-- **Windows + Linux standalone audio workflow:** [run 45285249438](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45285249438), **SUCCESS**.
+  - [P014 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094009/artifacts/14871169475): `125A-PSYCHIATRY-P014-Panic-AntiAlias-NOT-FINAL` (7-day retention, expires 2026-11-30).
+- **Windows + Linux standalone audio workflow:** [run 45287094101](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094101), **SUCCESS**.
   - **6/6 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
   - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues. **P010 adds a separate 180-case test of the actual VST3 processor, not merely standalone DSP**.
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
@@ -25,8 +25,30 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 `createView(kEditor)` now constructs `VSTGUI::VST3Editor`, rather than returning null and falling back to host generic controls.
 - **Official Steinberg EditorHost GUI interaction PASSED:** [run 45269301923](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923). An actual Win32 GUI was created, a mouse click on LOSS OF CONTROL changed nine effect values and the CRT image (482 sampled pixels differed, RGB delta 81,702), and the subsequent DE language switch retained a working editor. [Three run screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923/artifacts/14864592486) were visually inspected. **This is still not Studio Pro or an audio listening test.**
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
-- VST3 factory version now **0.9.3**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+- VST3 factory version now **0.9.4**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
+
+## P014 — PANIC oversampling and actual-VST3 alias regression
+
+**Verified tested code:** `0fdf15bc45e1acc86b74653423709fd99004d9f6` on `main`; factory **v0.9.4**. The official [Windows VST3/Steinberg workflow 45287094009](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094009) is **SUCCESS**: **47/47 Steinberg tests**, v1–v4 state test 1/1, actual-processor audio test 1/1 and 180 measurement rows exported.
+
+The P013 alias audit identified a remaining **PANIC** third-harmonic foldback, about **−31.87 dBc** for a 15-kHz tone (48-kHz host, folded energy at 3 kHz). P014 introduces the same proven **per-instance, zero-allocation 2× interpolator + sixth-order Butterworth anti-alias decimator** around PANIC's *wet-only excitation and tanh saturation*. Existing trigger, impulse, envelope, siren, MIDI/audio parameter IDs, global THERAPY and dry bypass remain unchanged.
+
+| Actual Windows-VST3 sine probe, PANIC 100%, THERAPY 0% | Before P014 | After P014 | Improvement |
+|---|---:|---:|---:|
+| 15 kHz → 3 kHz folded third harmonic | −31.87 dBc | **−69.35 dBc** | **37.48 dB** |
+| 14 kHz → 6 kHz folded third harmonic | −31.86 dBc | **−73.41 dBc** | **41.55 dB** |
+
+- P014 regression now **rejects PANIC greater than −45 dBc** in both single-tone probes. Older **MANIA/DEPRESSION −50 dBc** and **PSYCHOSIS −45 dBc** thresholds stay active; all pass on the final build.
+- **Actual-processor audio**: nine macros 0% = bit-identical Dry, 100% = matching dedicated wet DSP without a separate original Dry mixer, 45/45 full-Wet comparisons, THERAPY 100% exact Dry, THERAPY 50% half Dry/half Wet, sample-accurate MANIA automation, explicit gain-only placebo rejection, and 180 source/macro/intensity rows **PASS**.
+- **Windows/Linux DSP**, [run 45287094101](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094101), **SUCCESS**: 6/6 CTests per OS, 120-case audit **0 review flags and 0 safety-level violations**.
+- **Actual official Steinberg Win32 EditorHost**, [GUI run 45287093826](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287093826), **SUCCESS** after the P014 DSP change.
+- **Reference CI CPU**: at all nine macros 100%, **0.0864 s** for 1.25 s 48-kHz stereo audio (**0.0691× realtime**), maximum sampled callback **0.4413 ms**. The prior P013 run was **0.0526×** on a different ephemeral CI machine; do not infer the user's Studio Pro CPU from this.
+- [P014 actual-VST3 180-row CSV, stereo WAV examples and alias/CPU CSV](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094009/artifacts/14872417653), [Windows VST3 development bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094009/artifacts/14871169475), both expiring 2026-11-30.
+
+**Still not finished:** multi-tone alias and intermodulation tests at 44.1/48/96 kHz, other worlds' spectral artifacts, transient/phase and delay response of the Butterworth chain, critical listening with actual recorded guitars/drums/voice, long-session realtime/CPU tests in Studio Pro, and rights-cleared finished historical GUI assets. **No user test requested.**
+
+[Detailed P014 engineering notes](docs/P014.md).
 
 ## P013 — wet-only alias suppression now also proven in MANIA + DEPRESSION
 
@@ -145,11 +167,11 @@ The major new evidence is **actual audio passing through `psychiatry::vst3::Proc
 - **LOSS OF CONTROL and DE/EN toggles are implemented**, but their physical click-to-audio behavior in Studio Pro has not yet been user-verified.
 - **No real Studio Pro listening test or project save/reopen, no user listening acceptance, no captured real musical/vocal audio comparison.** P010 proves significant transformations using generated bass, drum, guitar-like, voice-like and atmosphere *proxies*, not recordings.
 - **No production high-fidelity assurance** for wavefolder aliasing, spectral/Hilbert sidebands, grain clicks, transient smoothing, long automation and long-session CPU behavior. The VST3 47/47 tests do not validate subjective quality.
-- No release installer or final VST3 product. P013 corrects two additional folded-harmonic artifacts; release and musical acceptance are still NO-GO.
+- No release installer or final VST3 product. P014 corrects a further narrowband PANIC alias; release and musical acceptance are still NO-GO.
 
 ## Next engineering gates
 
-1. **Next audio acceptance:** PANIC aliasing and other untested nonlinear worlds; multi-tone / 44.1/96-kHz spectra, transient/phase/latency benchmarks, recorded bass/guitar/drums/vocal comparisons and musically weak FX revisions. Real DAW testing **at the end** per project policy.
+1. **Next audio acceptance:** multi-tone, 44.1/48/96-kHz alias/intermodulation measurements of all nine worlds, phase/latency and transient benchmarks, real recorded bass/guitar/drums/vocals, and revisions where musical quality is poor. Real DAW testing **at the end** per project policy.
 2. **Next final art phase:** establish rights-cleared original historic-clinic photographic motifs and richer worn-instrument styling for the already functioning monochrome CRT, keeping UI rendering off the audio thread; retain motion-off accessibility and bilingual labels.
 3. **Final release QA:** actual Windows Studio Pro audible/protected realtime validation, project recall/automation/installer verification, final release readiness only on proof.
 

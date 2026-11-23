@@ -2,6 +2,14 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.4 — P014 measured PANIC alias reduction (2026-11-23)
+
+- Oversampled PANIC's actual wet-only excitation/tanh nonlinear branch with the reusable 2× streamed sixth-order Butterworth interpolator and decimator. Existing trigger and transient/impulse behavior preserved; 0% Dry, 100% wet and inverse THERAPY unchanged.
+- Actual Windows-VST3 15-kHz→3-kHz folded alias improved from **−31.87 to −69.35 dBc** (**37.48 dB**); 14-kHz→6-kHz from **−31.86 to −73.41 dBc** (**41.55 dB**). Strict **−45 dBc PANIC alias threshold** added for both probes.
+- [Windows 45287094009](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094009): **SUCCESS**, Steinberg **47/47**, full-Wet 45/45, 180 audio measurements, inverse THERAPY, gain-placebo negative, sample-accurate automation; [Windows/Linux 45287094101](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094101) DSP suite 6/6 each OS, 0/120 flags; [Win32 EditorHost 45287093826](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287093826) GUI PASS.
+- All nine FX at 100% processed 1.25 seconds of audio in **0.0864 s (0.0691× realtime)** on this specific CI runner. The new oversampling can change phase/group delay; no real DAW CPU or listening claims.
+- Remain NO-GO: full-spectrum/multi-tone 44.1/48/96-kHz alias tests, realistic audio/phase and transient quality, finished historical GUI and Studio Pro final tests.
+
 ## 0.9.3 — P013 measured MANIA and DEPRESSION anti-aliasing (2026-11-23)
 
 - Added reusable `src/oversample2x.hpp` sixth-order Butterworth wet-only oversampling for the two nonlinear shapers, preserving the existing plugin contract and state.

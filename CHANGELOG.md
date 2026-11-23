@@ -2,6 +2,12 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## P007 — provisional VSTGUI checkpoint (factory version remains 0.6.0; 2026-11-23)
+- Added real VSTGUI 4 editor using a bundled source-controlled .uidesc. Includes 9 macro knobs, THERAPY, Bypass and bound numeric parameter displays; no bitmap third-party assets.
+- Windows CI compiled the GUI-enabled VST3, passed Steinberg 47/47 and actual SDK state test 1/1, confirmed all control tags packaged.
+- Studio Pro editor-open and hearing test not yet performed; first user testing remains deferred.
+- Historical animated diagnostic-monitor UI, image licenses, LOSS OF CONTROL and DE/EN still outstanding.
+
 ## 0.6.0 — P006 (2026-11-23)
 - P006 objective 120-case synthetic audio quality/CPU audit and CSV artifact.
 - Original reference measurements revealed excess gain in MANIA (clipping and >+9 dB), weak DEPRESSION/PANIC onset, and excess PSYCHOSIS gain. Applied corrective DSP mappings and compensation.

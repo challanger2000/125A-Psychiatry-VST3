@@ -2,7 +2,7 @@
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **Current engineering checkpoint: P006 / version 0.6.0, Windows x64 VST3.** All nine FX macro engines compile, automate and save their states. The latest Windows VST3 build passes **47/47 Steinberg validator checks** and a dedicated VST3 legacy-state test. Automated DSP checks pass on Windows and Linux. **This is still a sound-design prototype, not a finished product.** There is no custom GUI and no real DAW listening sign-off yet.
+> **Current engineering checkpoint: P007 preliminary VSTGUI (factory version 0.6.0), Windows x64 VST3.** Nine FX engines, automatable parameters and a dedicated dark VSTGUI with ten knobs (nine FX plus THERAPY), numeric readouts and Bypass are present. Latest Windows build passes **47/47 Steinberg checks**, legacy-state test **1/1**, plus packaged GUI binding verification. **Not a finished product and no real DAW GUI-open/listening sign-off yet.**
 
 ## Nine equally important effect worlds
 
@@ -22,7 +22,7 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 
 **THERAPY / THERAPIE** is an inverted global Dry/Wet: 0% is fully processed; 100% is completely dry. VST3-native Bypass is also available.
 
-**LOSS OF CONTROL / KONTROLLVERLUST** (randomization of the nine FX macros while THERAPY remains unchanged) and **DE/EN switching** are planned, **not implemented**. The current prototype uses the host's generic VST3 parameter editor.
+**LOSS OF CONTROL / KONTROLLVERLUST** (randomization of the nine FX macros while THERAPY remains unchanged) and **DE/EN switching** are planned, **not implemented**. The current prototype now has a **provisional functional VSTGUI editor**, not the final historic one.
 
 ## P006 verified build and audio-quality gate
 
@@ -34,6 +34,17 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 - [Always-current project status](STATUS.md).
 
 The 120 audit cases use **synthetic** bass, drum, voice-like and atmosphere proxies. No claim is made that automated measurements prove musical quality, that the plugin reproduces psychiatric symptoms, or that project recall works in a real Studio Pro session.
+
+## P007 provisional GUI for first eventual user test
+
+- [Verified P007 Windows GUI build (Actions run)](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45212735622)
+- [P007 Windows VST3 preview artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45212735622/artifacts/14836343370) — engineering build only; **do not begin user testing yet**.
+- Resource: [resource/psychiatry.uidesc](resource/psychiatry.uidesc) — a temporary 680×550 dark VSTGUI, nine real macro knobs plus THERAPY and Bypass.
+- VST3 editor interface: [vst3/controller.cpp](vst3/controller.cpp) uses official VSTGUI 4's VST3Editor; controls attach to host automatable parameter IDs.
+- The Windows build checks the packaged UI definition and all eleven control bindings. The editor has **not yet been visually inspected inside Studio Pro**.
+- LOSS OF CONTROL and DE/EN remain unimplemented and are **not misrepresented as working GUI buttons**.
+
+**User acceptance rule:** Do not ask the user to test with only the host's generic knobs; at minimum a functional provisional VSTGUI must be present.
 
 ## Historical visual direction
 
@@ -54,6 +65,6 @@ ctest --test-dir build -C Release --output-on-failure
 
 See [docs/P002.md](docs/P002.md) for the Windows Steinberg SDK build setup.
 
-**Release is NO-GO:** no finished GUI, no LOSS OF CONTROL, no DE/EN UI, no historic image license package, no real Studio Pro audible/project recall sign-off, no completed high-fidelity spectral/aliasing and CPU acceptance. A green build is never a substitute for listening.
+**Release is NO-GO:** no finished historical GUI, no LOSS OF CONTROL, no DE/EN UI, no historic image license package, no real Studio Pro audible/project recall sign-off, no completed high-fidelity spectral/aliasing and CPU acceptance. A green build is never a substitute for listening.
 
 © 125A. Final license to be determined before redistribution.

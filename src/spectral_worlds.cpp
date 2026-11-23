@@ -179,18 +179,24 @@ void Hallucination::process(float* const* io,unsigned channels,std::size_t frame
             const float raw=io[ch][i],x=sane(raw);
             const auto write=s.analyticWrite;
             s.analytic[write]=x;
-            // 17-tap Hamming-windowed FIR Hilbert approximation. Frequency
-            // shift is *input-derived*, not a voice sample generator.
+            // P006: compute the eight fixed Hilbert taps once at compile time,
+            // rather than 8 cos() calls PER SAMPLE and per channel on the
+            // realtime audio thread. Same Hamming-windowed 17-tap FIR response.
+            // Reference: 2 / (pi*k) * (0.54 + 0.46*cos(pi*k/8)).
+            constexpr std::array<int,8> offsets{-7,-5,-3,-1,1,3,5,7};
+            constexpr std::array<float,8> taps{
+                -0.010460155335f,-0.046341542172f,
+                -0.151947214432f,-0.614328266812f,
+                 0.614328266812f, 0.151947214432f,
+                 0.046341542172f, 0.010460155335f
+            };
             const auto center=(write+17-8)%17;
             const float real=s.analytic[center];
             float quadrature=0.f;
-            for(int k=-7;k<=7;k+=2) {
-                if(k==0)continue;
-                const float win=0.54f+0.46f*
-                    std::cos(3.14159265359f*static_cast<float>(k)/8.f);
-                const float tap=2.f/(3.14159265359f*static_cast<float>(k))*win;
+            for(std::size_t tap=0;tap<taps.size();++tap) {
+                const int k=offsets[tap];
                 const auto index=(center+17-static_cast<std::size_t>(k+17)%17)%17;
-                quadrature+=tap*s.analytic[index];
+                quadrature+=taps[tap]*s.analytic[index];
             }
             const float shifted=real*std::cos(kTau*s.phase)-
                                 quadrature*std::sin(kTau*s.phase);

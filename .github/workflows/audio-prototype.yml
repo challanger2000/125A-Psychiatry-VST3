@@ -1,4 +1,4 @@
-name: P005 Nine-World DSP Tests and Audio Comparisons
+name: P006 Nine-World Quality and CPU Audit
 
 on:
   push:
@@ -46,11 +46,18 @@ jobs:
         shell: pwsh
         run: |
           & "./build/Release/render_spectral_worlds.exe" "artifacts/P005"
+      - name: Objective 120-case quality and CPU audit
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          & "./build/Release/audit_p006.exe" > "artifacts/P006_quality_audit.csv"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Content "artifacts/P006_quality_audit.csv" | Select-Object -First 4
       - name: Publish example WAV pair (not a plugin)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: P005-Nine-Macro-Audio-Probes-WAV
-          path: artifacts/*.wav
+          name: P006-Nine-Macro-Audio-and-Quality-Audit
+          path: artifacts/*
           if-no-files-found: error
           retention-days: 7

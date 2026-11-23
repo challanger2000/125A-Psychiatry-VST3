@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(PsychiatryAudioPrototype VERSION 0.5.0 LANGUAGES CXX)
+project(PsychiatryAudioPrototype VERSION 0.6.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -49,6 +49,13 @@ target_link_libraries(render_spectral_worlds PRIVATE psychiatry_audio)
 add_executable(test_full_chain tests/test_full_chain.cpp)
 target_link_libraries(test_full_chain PRIVATE psychiatry_audio)
 add_test(NAME P005_AllNineConcurrent_NoHeap COMMAND test_full_chain)
+
+# P006 objective metrics for synthetic bass/drums/voice-like/atmosphere source proxies.
+add_executable(audit_p006 tools/audit_p006.cpp)
+target_link_libraries(audit_p006 PRIVATE psychiatry_audio)
+
+add_executable(test_hilbert_coefficients tests/test_hilbert_coefficients.cpp)
+add_test(NAME P006_HilbertCoefficientRegression COMMAND test_hilbert_coefficients)
 
 add_executable(render_paranoia tools/render_paranoia.cpp)
 target_link_libraries(render_paranoia PRIVATE psychiatry_audio)

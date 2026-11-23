@@ -34,7 +34,7 @@ jobs:
         run: ctest --test-dir build-vst3 -C Release -R "^P006_VST3LegacyState$" --output-on-failure
       - name: Build real VST3 audio path metrology executable
         run: cmake --build build-vst3 --config Release --target test_vst3_audio_path --parallel 4
-      - name: P010 real VST3 audio: null tests, gain-placebo controls and THERAPY
+      - name: P010 real VST3 audio null tests, gain-placebo controls and THERAPY
         run: ctest --test-dir build-vst3 -C Release -R "^P010_ActualVST3AudioWetDry$" --output-on-failure
       - name: Check packaged VSTGUI definition and all parameter bindings
         shell: pwsh

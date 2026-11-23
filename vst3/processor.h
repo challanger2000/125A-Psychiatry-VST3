@@ -2,6 +2,11 @@
 
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "paranoia.hpp"
+#include "depression.hpp"
+#include "obsession.hpp"
+
+#include <array>
+#include <vector>
 
 namespace psychiatry::vst3 {
 class Processor final : public Steinberg::Vst::AudioEffect {
@@ -23,10 +28,21 @@ public:
     Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override;
 
 private:
-    psychiatry::Paranoia paranoia_;
-    psychiatry::Paranoia::Settings settings_{};
+    // P003 serial macro topology: oppressive timbre => paranoid reverse =>
+    // repetitive fixation. Shared THERAPY mixed once at the end, not per macro.
+    psychiatry::Depression depression_{};
+    psychiatry::Paranoia paranoia_{};
+    psychiatry::Obsession obsession_{};
+    psychiatry::Paranoia::Settings paranoiaSettings_{};
+    float depressionAmount_=0.f;
+    float obsessionAmount_=0.f;
+    float therapyAmount_=0.f;
+    float wetSmoothed_=1.f;
+    float wetStep_=0.001f;
     bool bypass_=false;
     bool prepared_=false;
+    std::array<std::vector<float>,2> original_{};
+
     void apply(Steinberg::Vst::ParamID id, Steinberg::Vst::ParamValue value) noexcept;
     bool processSpan(Steinberg::Vst::ProcessData& data,
                      Steinberg::int32 offset, Steinberg::int32 frames) noexcept;

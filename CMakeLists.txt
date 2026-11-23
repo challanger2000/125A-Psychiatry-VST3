@@ -46,6 +46,10 @@ add_test(NAME P005_SpectralWorlds COMMAND test_spectral_worlds)
 add_executable(render_spectral_worlds tools/render_spectral_worlds.cpp)
 target_link_libraries(render_spectral_worlds PRIVATE psychiatry_audio)
 
+add_executable(test_full_chain tests/test_full_chain.cpp)
+target_link_libraries(test_full_chain PRIVATE psychiatry_audio)
+add_test(NAME P005_AllNineConcurrent_NoHeap COMMAND test_full_chain)
+
 add_executable(render_paranoia tools/render_paranoia.cpp)
 target_link_libraries(render_paranoia PRIVATE psychiatry_audio)
 

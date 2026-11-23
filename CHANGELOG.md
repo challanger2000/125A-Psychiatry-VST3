@@ -2,6 +2,11 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.5 — P016 (2026-11-24)
+
+- Preserve raw finite samples at PARANOIA/THERAPY exact endpoints; restore the selected RNG seed at reset.
+- [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707) and [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465506): SUCCESS. 144 phase and 24 impulse measurements; exact THERAPY half-sum tested. Worst observed cancellation −23.55 dB; phase correction remains open. No release or Studio Pro sign-off.
+
 ## P015 — actual VST3 multirate and two-tone alias audit (2026-11-24; factory remains 0.9.4)
 
 - Real `Processor::process` now probes **44.1/48/96 kHz** with 14+15-kHz two-tone input. All nine macro 0% Dry and inverse THERAPY 100% Dry endpoints are bit-identical at each rate; all 27 full-Wet outputs are finite and below 4.0 peak.

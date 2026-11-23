@@ -1,15 +1,15 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-23**. Latest verified gate: **P015 multi-rate/two-tone real-VST3 audit / factory unchanged v0.9.4**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified gate: **P016 exact endpoints/reset and phase/transient audit / factory v0.9.5**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `a806b9980877ff327547f27532fab111add2cc92` on **main** (P015 real-VST3 multi-rate, two-tone intermodulation and -45 dB input-referenced folded-product guard; PANIC P014 DSP retained, factory v0.9.4).
-- **Windows/MSVC x64 real VST3 workflow:** [run 45288772417](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45288772417), **SUCCESS**.
+- **Source commit tested:** `de2fbe43c9752d0aecd1d0eea464416d52c49646` on **main** (P016 exact dry/wet endpoints, seeded reset, phase/impulse metrology; factory v0.9.5)..
+- **Windows/MSVC x64 real VST3 workflow:** [run 45290465707](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P015 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45288772417/artifacts/14873013103): `125A-PSYCHIATRY-P015-Multirate-Probe-NOT-FINAL` (7-day retention, expires 2026-11-30).
-- **Windows + Linux standalone audio workflow:** [run 45288772568](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45288772568), **SUCCESS**.
+  - [P016 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707/artifacts/14873847457): `125A-PSYCHIATRY-P016-Phase-Transient-NOT-FINAL` (7-day retention, expires 2026-11-30).
+- **Windows + Linux standalone audio workflow:** [run 45290465506](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465506), **SUCCESS**.
   - **6/6 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
   - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues. **P010 adds a separate 180-case test of the actual VST3 processor, not merely standalone DSP**.
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
@@ -25,15 +25,17 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 `createView(kEditor)` now constructs `VSTGUI::VST3Editor`, rather than returning null and falling back to host generic controls.
 - **Official Steinberg EditorHost GUI interaction PASSED:** [run 45269301923](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923). An actual Win32 GUI was created, a mouse click on LOSS OF CONTROL changed nine effect values and the CRT image (482 sampled pixels differed, RGB delta 81,702), and the subsequent DE language switch retained a working editor. [Three run screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923/artifacts/14864592486) were visually inspected. **This is still not Studio Pro or an audio listening test.**
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
-- VST3 factory version now **0.9.4**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+- VST3 factory version now **0.9.5**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P016 — exact endpoints, repeatable reset and phase/transient audit (CI pending)
+## P016 — verified exact endpoints, reset and phase/transient audit
 
-- PARANOIA now preserves incoming finite floats at exact dry endpoints; its per-instance RNG resets to its selected seed for repeatable stop/start rendering.
-- THERAPY uses exact assignments at Dry and Wet endpoints rather than redundant subtract/add arithmetic.
-- New actual VST3 extended-headroom/tiny-float dry regression and 144 channel-specific phase and 24 impulse measurements at 44.1/48/96 kHz for DEPRESSION/MANIA/PANIC/PSYCHOSIS. This is stimulus-specific phase metrology, not an LTI transfer function.
-- Source factory version 0.9.5; P015 remains latest verified until the P016 Windows/DSP tests pass.
+**Windows/MSVC run [45290465707](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707) SUCCESS; Windows/Linux DSP run [45290465506](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465506) SUCCESS**, tested `de2fbe43c9752d0aecd1d0eea464416d52c49646`, factory **0.9.5**. Existing single-tone/two-tone, actual processor wet/dry, state and allocation gates remain passing.
+
+- PARANOIA no longer substitutes sanitized samples at 0%/dry. Both tiny finite floats and >16.0 input samples pass unchanged at exact endpoints. RNG reset restores the original seed, reproducing the event schedule. THERAPY uses direct exact Dry/Wet endpoints.
+- 144 per-channel six-tone phase observations and 24 impulse observations across 44.1/48/96 kHz. No pre-impulse audio, finite impulse outputs, initial peaks below unity; MANIA/PANIC/PSYCHOSIS peak 3 samples after input onset, DEPRESSION at sample 0.
+- **Open audio quality defect:** 50% THERAPY cancellation relative to a coherent half-sum reaches −23.55 dB at PSYCHOSIS/96 kHz/16 kHz, −19.34 dB at PANIC/44.1 kHz/8 kHz, and −14.79 dB at PSYCHOSIS/48 kHz/8 kHz. The half-sum itself is mathematically correct; wet-only causal oversampling phase is a plausible contributor, not an excuse to ignore the audible loss. This is a diagnostic result, **not a phase pass**.
+- [Metrics and audio](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707/artifacts/14874226720) · [development bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707/artifacts/14873847457). Remaining: isolate filter-induced versus creative phase, improve unwanted cancellation without violating dry/wet contracts, musical source acceptance, final GUI, long-session stress and Studio Pro recall.
 
 ## P015 — verified 44.1 / 48 / 96 kHz and two-tone intermodulation
 

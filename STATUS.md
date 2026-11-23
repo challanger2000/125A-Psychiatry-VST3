@@ -1,15 +1,15 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-23**. Latest audited Windows build: **P007 preliminary VSTGUI / VST3 factory v0.6.0**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-23**. Latest audited Windows build: **P008 bilingual functional VSTGUI / VST3 factory v0.8.0**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `d39f3faa68b101531954463d4100fe8f8a2237ba` (P007 temporary VSTGUI, VST3 factory currently 0.6.0).
-- **Windows/MSVC x64 real VST3 workflow:** [run 45212735622](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45212735622), **SUCCESS**.
+- **Source commit tested:** `a799f56bf1c1697f9b3b27e23fef3d08b246c4e4` on **main** (P008 verified bilingual GUI, grouped randomizer, percentage displays).
+- **Windows/MSVC x64 real VST3 workflow:** [run 45262697238](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P006 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45212735622/artifacts/14836343370): `125A-PSYCHIATRY-P007-Preview-VSTGUI-NOT-FINAL` (7-day retention, expires 2026-11-30).
-- **Windows + Linux standalone audio workflow:** [run 45207296078](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45207296078), **SUCCESS**.
+  - [P008 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238/artifacts/14861920364): `125A-PSYCHIATRY-P008-GUI-Bilingual-NOT-FINAL` (7-day retention, expires 2026-11-30).
+- **Windows + Linux standalone audio workflow:** [run 45262697261](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697261), **SUCCESS**.
   - **6/6 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
   - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues.
   - [Quality audit CSV and synthetic WAV archive](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45207296078/artifacts/14834208034); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
@@ -21,19 +21,21 @@ Updated: **2026-11-23**. Latest audited Windows build: **P007 preliminary VSTGUI
 
 Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA → DISSOCIATION → OBSESSION → HALLUCINATION → PSYCHOSIS → **one global inverse THERAPY Dry/Wet mix**.
 
-- **P007 verified temporary GUI:** actual Steinberg **VSTGUI** editor backed by `resource/psychiatry.uidesc`, displayed as a dark 680×550 preliminary front panel. Nine bound knobs, one bound THERAPY knob, numeric displays and bound native Bypass checkbox. The XML and all eleven control bindings were verified packaged **inside the .vst3 bundle** on Windows Actions.
+- **P008 verified temporary GUI:** actual Steinberg **VSTGUI**, dark 680×570 panel, dual English/German templates, nine real FX knobs plus THERAPY, Bypass, LOSS OF CONTROL, numeric percent values and DE/EN button. Both XML layouts and all host parameter tags are bundled inside the Windows `.vst3`.
 - VST3 `createView(kEditor)` now constructs `VSTGUI::VST3Editor`, rather than returning null and falling back to host generic controls.
-- **No physical Windows DAW editor-open test yet**. CMake compilation + XML/packaging verification do not substitute for observing a GUI actually open in Studio Pro.
+- **Official Steinberg EditorHost Win32 test passed:** [run 45262697188](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697188). The actual VST3 GUI window opened, and [the captured image](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697188/artifacts/14861312737) was inspected. **This is not Studio Pro or a test of actual audio/UI clicking.**
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
-- VST3 factory version now **0.6.0**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+- VST3 factory version now **0.8.0**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
-## P007 preliminary VSTGUI: user test prerequisite
+## P008 — implemented controls and real Windows evidence
 
-- The first user test is **not requested until a real VSTGUI is available and internally verified**. Do not ask the user to assess the effect using Studio Pro's generic parameter view.
-- Implemented a preliminary VSTGUI with a consistently sized nine-knob grid, one inverted THERAPY control, readable values and Bypass. The temporary look is dark metal/clinical-inspired, not the definitive historic reactive monitor.
-- No inert LOSS OF CONTROL button has been exposed; the interface deliberately marks the planned feature as not available, and DE/EN switching remains a later product task.
-- [Verified P007 Windows build](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45212735622): 47/47 Steinberg checks; VST3 state-regression 1/1; exact GUI XML resource and all eleven tags packaged in the Windows VST3.
-- This check **does not** claim an editor-on-screen test in Studio Pro; user audition remains deferred.
+- **LOSS OF CONTROL** is active in both VSTGUI templates. A momentary button on UI tag `9000` changes **exactly the nine macro ParamIDs 100–108**, not THERAPY (200), Bypass (999), project state format, or audio callbacks. There is an 18% per-world chance of turning off; otherwise it selects 12–78% effect amount.
+- The actual VST3 controller calls `beginEdit/setParamNormalized/performEdit/endEdit` for all nine macro IDs, with `startGroupEdit/finishGroupEdit` for hosts supporting IComponentHandler2. A simulated host spy regression verifies 9×3 notifications and grouped undo.
+- **EN/DE** uses two `.uidesc` templates and a momentary language button on private tag `9001`. This preference persists in **controller-only UI state** (`PSYU`), independent of processor project state v4; earlier projects default to English.
+- **Percent readouts** use actual 0–100% values. Visual screenshot review caught cramped rows, light buttons with poor contrast and missing THERAPY pointer; corrected and re-tested.
+- **Windows official validation:** [run 45262697238](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238) **SUCCESS**, 47/47 official validator, 1/1 VST3 controller/legacy-state regression and packaged both bilingual GUIs.
+- **Runtime Win32 proof:** [Steinberg EditorHost run 45262697188](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697188) **SUCCESS**, actual GUI window with HWND and captured screenshot; manually inspected. Does NOT prove operation within Studio Pro.
+- [Detailed engineering notes](docs/P008.md). The first user test is **not requested yet**.
 
 ## Actual changes in P006
 
@@ -49,15 +51,15 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 ## Still not implemented / NO-GO
 
 - **A temporary VSTGUI exists, but no final historic psychiatric equipment design, dynamic monochrome photo/video monitor, approved image rights or asset provenance.**
-- **LOSS OF CONTROL** randomizes nine macro parameters but has **not been coded**. **DE/EN UI language toggle not coded**.
+- **LOSS OF CONTROL and DE/EN toggles are implemented**, but their physical click-to-audio behavior in Studio Pro has not yet been user-verified.
 - **No real Studio Pro listening test or project save/reopen, no user listening acceptance, no real musical/vocal audio comparison.** The audit uses generated *proxies*, not recorded bass, guitar, drums and speech.
 - **No production high-fidelity assurance** for wavefolder aliasing, spectral/Hilbert sidebands, grain clicks, transient smoothing, long automation and long-session CPU behavior. The VST3 47/47 tests do not validate subjective quality.
-- No release installer or final VST3 product. Do not call P007 or P006 a finished product.
+- No release installer or final VST3 product. Do not call P008 a finished product.
 
 ## Next engineering gates
 
 1. **Next audio acceptance:** source-specific recordings (bass, guitar, drums, vocals, atmospheres), properly level-matched listening, anti-alias/spectral/CPU investigation and revision of weak FX where necessary. Real DAW testing **at the end** per project policy.
-2. **P008 final custom GUI:** dark historical psychiatric examination apparatus, nine thematic image pools, responsive small damaged monochrome monitor, no work in audio callback, accessibility/reduced motion, verified asset licensing, DE/EN labels, LOSS OF CONTROL.
+2. **Final custom GUI phase:** dark historical psychiatric examination apparatus, nine thematic image pools, responsive small damaged monochrome monitor, no work in audio callback, accessibility/reduced motion, verified asset licensing, DE/EN labels, LOSS OF CONTROL.
 3. **P009 final QA:** actual Windows Studio Pro audible/protected realtime validation, project recall/automation/installer verification, final release readiness only on proof.
 
 ## Project rules

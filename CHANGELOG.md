@@ -2,6 +2,14 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.8.0 — P008 (2026-11-23)
+- Implemented real LOSS OF CONTROL GUI button: 9 host-automatable VST3 parameter edits, optional grouped undo, no THERAPY or Bypass mutation.
+- Added mock DAW host check for each begin/perform/end edit and group boundaries; two successive presses yield changing macro values.
+- Functional DE/EN layouts and UI-only persistent language preference, no change to the v4 DSP state or stable ParamIDs.
+- Screenshot-driven GUI correction: spacious nine-knob layout, hardware-style dark buttons, readable percent displays, THERAPY pointer.
+- Windows official Steinberg VST3 API validator 47/47; controller/host-state regression 1/1; actual VST3 editor opened in Steinberg EditorHost Win32 runtime. Latest P008 CI details in [STATUS.md](STATUS.md).
+- Historical reactive CRT photos, critical listening, aliasing/CPU acceptance and Studio Pro project QA still outstanding.
+
 ## P007 — provisional VSTGUI checkpoint (factory version remains 0.6.0; 2026-11-23)
 - Added real VSTGUI 4 editor using a bundled source-controlled .uidesc. Includes 9 macro knobs, THERAPY, Bypass and bound numeric parameter displays; no bitmap third-party assets.
 - Windows CI compiled the GUI-enabled VST3, passed Steinberg 47/47 and actual SDK state test 1/1, confirmed all control tags packaged.

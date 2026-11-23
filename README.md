@@ -2,7 +2,7 @@
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **Current engineering checkpoint: P007 preliminary VSTGUI (factory version 0.6.0), Windows x64 VST3.** Nine FX engines, automatable parameters and a dedicated dark VSTGUI with ten knobs (nine FX plus THERAPY), numeric readouts and Bypass are present. Latest Windows build passes **47/47 Steinberg checks**, legacy-state test **1/1**, plus packaged GUI binding verification. **Not a finished product and no real DAW GUI-open/listening sign-off yet.**
+> **Current engineering checkpoint: P008 / v0.8.0**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, **LOSS OF CONTROL randomizer** and switchable **DE/EN VSTGUI**. Latest build: **47/47 Steinberg validator PASS**, mock-host/controller-state 1/1 PASS, official **Steinberg EditorHost opened the actual Win32 GUI**. **Not the finished historical GUI and not yet musically signed off in Studio Pro.**
 
 ## Nine equally important effect worlds
 
@@ -22,7 +22,7 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 
 **THERAPY / THERAPIE** is an inverted global Dry/Wet: 0% is fully processed; 100% is completely dry. VST3-native Bypass is also available.
 
-**LOSS OF CONTROL / KONTROLLVERLUST** (randomization of the nine FX macros while THERAPY remains unchanged) and **DE/EN switching** are planned, **not implemented**. The current prototype now has a **provisional functional VSTGUI editor**, not the final historic one.
+**LOSS OF CONTROL / KONTROLLVERLUST** now changes the nine host-automatable macro settings as a single grouped automation gesture where supported. It never modifies THERAPY or Bypass. The **DE/EN toggle** switches between two actual UI templates and saves the language independently of sound state. This is a **functional provisional VSTGUI**, not the final historic visual concept.
 
 ## P006 verified build and audio-quality gate
 
@@ -35,16 +35,17 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 
 The 120 audit cases use **synthetic** bass, drum, voice-like and atmosphere proxies. No claim is made that automated measurements prove musical quality, that the plugin reproduces psychiatric symptoms, or that project recall works in a real Studio Pro session.
 
-## P007 provisional GUI for first eventual user test
+## P008 — Verified provisional bilingual VSTGUI
 
-- [Verified P007 Windows GUI build (Actions run)](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45212735622)
-- [P007 Windows VST3 preview artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45212735622/artifacts/14836343370) — engineering build only; **do not begin user testing yet**.
-- Resource: [resource/psychiatry.uidesc](resource/psychiatry.uidesc) — a temporary 680×550 dark VSTGUI, nine real macro knobs plus THERAPY and Bypass.
-- VST3 editor interface: [vst3/controller.cpp](vst3/controller.cpp) uses official VSTGUI 4's VST3Editor; controls attach to host automatable parameter IDs.
-- The Windows build checks the packaged UI definition and all eleven control bindings. The editor has **not yet been visually inspected inside Studio Pro**.
-- LOSS OF CONTROL and DE/EN remain unimplemented and are **not misrepresented as working GUI buttons**.
+- [Official Windows VST3 build (47/47 Steinberg PASS)](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238).
+- [P008 Windows development VST3 artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697238/artifacts/14861920364) — **NOT FINAL; user testing is not requested yet**.
+- [Official Steinberg EditorHost runtime smoke run](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697188) — **PASS**: actual Windows window `Editor` opened with the bundled `.vst3`.
+- [Windows EditorHost screenshot artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697188/artifacts/14861312737). Screenshot was reviewed: button contrast, macro spacing, indicator visibility and 0–100% labels are now corrected in P008.
+- [Windows/Linux DSP suite](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45262697261) — **PASS**, no change to sound engine.
+- All eleven host controls are real; randomization uses nine VST3 begin/perform/end edits in one grouped host gesture when available. German and English controls are implemented; language preference is saved separately from the DSP's stable v4 project format.
+- [P008 technical notes](docs/P008.md), [historic P007 checkpoint](docs/P007.md) and [current status](STATUS.md).
 
-**User acceptance rule:** Do not ask the user to test with only the host's generic knobs; at minimum a functional provisional VSTGUI must be present.
+**The first user test remains deferred until the remaining engineering quality and final release checks.** A successful EditorHost window does not replace a Studio Pro test.
 
 ## Historical visual direction
 
@@ -65,6 +66,6 @@ ctest --test-dir build -C Release --output-on-failure
 
 See [docs/P002.md](docs/P002.md) for the Windows Steinberg SDK build setup.
 
-**Release is NO-GO:** no finished historical GUI, no LOSS OF CONTROL, no DE/EN UI, no historic image license package, no real Studio Pro audible/project recall sign-off, no completed high-fidelity spectral/aliasing and CPU acceptance. A green build is never a substitute for listening.
+**Release is NO-GO:** no finished historical GUI, no historic image license package, no real Studio Pro audible/project recall sign-off, no completed high-fidelity spectral/aliasing and CPU acceptance. A green build is never a substitute for listening.
 
 © 125A. Final license to be determined before redistribution.

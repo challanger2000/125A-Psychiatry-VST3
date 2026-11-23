@@ -199,15 +199,16 @@ int main(){
                 const bool weak=(m.delta < 0.10 && amount>=0.50f);
                 const bool weakOnset=(m.delta < 0.025 && amount<=0.20f);
                 const bool hot=(peakDb>0.);
-                // P006 reference input is <0 dBFS. A processed signal above
-                // digital full scale or a gratuitous >6 dB level increase is
-                // a regression, not an artistic "extreme" effect.
-                if(hot || gain>6.0)++unsafeLevels;
+                const bool overGain=(gain>6.0);
+                // A reference input below 0 dBFS must not clip, and strong
+                // nonlinearity must not accidentally double or triple level.
+                if(hot || overGain)++unsafeLevels;
                 const char* review=quiet?"WARN_LOW_LEVEL":
                                    weak?"WARN_LOW_DELTA":
                                    weakOnset?"WARN_WEAK_ONSET":
-                                   hot?"WARN_OVER_0DBFS":"MEASURED";
-                if(quiet||weak||weakOnset||hot) {
+                                   hot?"WARN_OVER_0DBFS":
+                                   overGain?"WARN_HIGH_GAIN":"MEASURED";
+                if(quiet||weak||weakOnset||hot||overGain) {
                     ++warnings;
                     std::fprintf(stderr,
                         "P006 REVIEW: %s %s at %.2f => gain=%+.2f dB, "

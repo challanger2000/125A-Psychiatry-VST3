@@ -28,6 +28,13 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.4**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P015 — multi-rate and intermodulation audit (code under CI verification)
+
+- New actual-Processor test at **44.1, 48 and 96 kHz**, with 14+15-kHz two-tone input, verifies every macro's **0% exact Dry** and inverted **THERAPY=100% exact Dry**, full-Wet finite samples and safe peak bounds at all three host rates.
+- Two-tone third-order frequencies 42/43/44/45 kHz are explicitly classified as **folded aliases at 44.1/48 kHz**, but **in-band products at 96 kHz**. Four nonlinear worlds (DEPRESSION/MANIA/PANIC/PSYCHOSIS) export 48 diagnostic product lines and 27 macro/rate peak lines.
+- These new multitone spectral data are *measurements*, **not yet pass/fail alias certifications**. The existing P012–P014 hard single-tone gates remain. No plugin DSP, VST3 IDs or user audio state has been changed.
+- **Verification status:** pending a successful Windows Actions run of this commit; P014 remains latest verified audio build until then.
+
 ## P014 — PANIC oversampling and actual-VST3 alias regression
 
 **Verified tested code:** `0fdf15bc45e1acc86b74653423709fd99004d9f6` on `main`; factory **v0.9.4**. The official [Windows VST3/Steinberg workflow 45287094009](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45287094009) is **SUCCESS**: **47/47 Steinberg tests**, v1–v4 state test 1/1, actual-processor audio test 1/1 and 180 measurement rows exported.

@@ -105,22 +105,22 @@ void writeState(ResizableMemoryIBStream& state,int macro,float amount,
     state.rewind();
 }
 Stereo render(const Stereo& dry,int macro,float amount,
-              float therapy=0.f,bool bypass=false,bool inplace=false) {
+              float therapy=0.f,bool bypass=false,bool inplace=false,double sampleRate=kRate) {
     Processor p;
     check(p.initialize(nullptr)==kResultOk,"real VST3 initialize");
     Vst::ProcessSetup setup{};
     setup.processMode=Vst::kRealtime;
     setup.symbolicSampleSize=Vst::kSample32;
     setup.maxSamplesPerBlock=kBlock;
-    setup.sampleRate=kRate;
+    setup.sampleRate=sampleRate;
     check(p.setupProcessing(setup)==kResultOk,"real VST3 setupProcessing");
     ResizableMemoryIBStream state;
     writeState(state,macro,amount,therapy,bypass);
     check(p.setState(&state)==kResultOk,"real VST3 component state");
     check(p.setActive(true)==kResultOk,"real VST3 setActive");
     Stereo out(dry.size());
-    for(int start=0;start<kFrames;start+=kBlock){
-        const int n=std::min(kBlock,kFrames-start);
+    for(std::size_t start=0;start<dry.size();start+=kBlock){
+        const int n=static_cast<int>(std::min<std::size_t>(kBlock,dry.size()-start));
         auto* p0=const_cast<float*>(dry.l.data())+start;
         auto* p1=const_cast<float*>(dry.r.data())+start;
         if(inplace){
@@ -350,9 +350,9 @@ void testAutomation(){
 // 15 kHz at 48 kHz makes third-harmonic foldback land at exactly 3 kHz.
 // This reports narrowband harmonic artifacts and does not claim to be
 // a complete anti-alias specification or a listening test.
-double toneMagnitude(const Stereo& signal,double hz,int from=12000,int length=48000) {
+double toneMagnitude(const Stereo& signal,double hz,int from=12000,int length=48000,double sampleRate=kRate) {
     double co=0.,si=0.;
-    const auto omega=2.*kPi*hz/kRate;
+    const auto omega=2.*kPi*hz/sampleRate;
     for(int n=0;n<length;++n) {
         const auto pos=static_cast<std::size_t>(from+n);
         const double sample=.5*(static_cast<double>(signal.l[pos])+signal.r[pos]);
@@ -472,6 +472,86 @@ void testHighBandAliasing(const std::string& dir) {
            "P012 nine-at-zero must be bit-perfect dry");
     }
 }
+// P015: exercise the actual VST3 callback at 44.1/48/96 kHz, including
+// bit-identical macro/THERAPY endpoints and high-band two-tone intermodulation.
+// Do not call 96-kHz third harmonics "aliases": 42/45 kHz are below Nyquist.
+// This is a diagnostic baseline; only verified spectral limits become guards.
+void testMultirateIntermod(const std::string& dir) {
+    std::ofstream csv;
+    if(!dir.empty()) {
+        csv.open(dir+"/P015_multirate_intermod_metrics.csv");
+        check(csv.good(),"P015 multirate CSV open");
+        csv<<"rate_hz,effect,probe,frequency_hz,reference_amp,measured_amp,relative_dbc,peak\n";
+    }
+    constexpr std::array<int,4> highProducts{42000,45000,43000,44000};
+    constexpr std::array<const char*,4> labels{
+        "3x14k","3x15k","2x14k+15k","2x15k+14k"};
+    for(const int sr:{44100,48000,96000}) {
+        // Exactly one second after warm-up gives integer-cycle bins at
+        // 14/15 kHz and at every monitored two-tone product frequency.
+        const int warm=12000;
+        Stereo input(static_cast<std::size_t>(warm+sr));
+        for(std::size_t n=0;n<input.size();++n) {
+            const double t=static_cast<double>(n)/sr;
+            const float v=0.175f*(tone(14000.,t)+tone(15000.,t));
+            input.l[n]=v;
+            input.r[n]=v;
+        }
+        const double amp14=toneMagnitude(input,14000.,warm,sr,sr);
+        const double amp15=toneMagnitude(input,15000.,warm,sr,sr);
+        const double reference=std::hypot(amp14,amp15);
+        check(amp14>.17 && amp15>.17,"P015 source fundamentals invalid");
+        for(int fx=0;fx<9;++fx) {
+            // The 0% and global THERAPY=100% invariants are verified
+            // for EVERY macro at EACH host sample rate, not just at 48k.
+            const Stereo zero=render(input,fx,0.f,0.f,false,false,sr);
+            check(identical(input,zero),"P015 0% macro not exact Dry");
+            const Stereo therapy=render(input,fx,1.f,1.f,false,false,sr);
+            check(identical(input,therapy),"P015 THERAPY=100% not exact Dry");
+            const Stereo wet=render(input,fx,1.f,0.f,false,false,sr);
+            double peak=0.;
+            for(std::size_t n=0;n<wet.size();++n) {
+                check(std::isfinite(wet.l[n]) && std::isfinite(wet.r[n]),
+                      "P015 nonfinite high-rate VST3 sample");
+                peak=std::max({peak,std::abs(static_cast<double>(wet.l[n])),
+                                   std::abs(static_cast<double>(wet.r[n]))});
+            }
+            check(peak<4.,"P015 uncontrolled peak in two-tone high-band");
+            if(csv.good())csv<<sr<<","<<kMacroNames[fx]
+                <<",wet_peak,0,"<<reference<<",,,"<<peak<<"\n";
+            if(fx!=0 && fx!=3 && fx!=4 && fx!=8)continue;
+            // Two-tone excitation reveals intermodulation lines missed by
+            // the P012-P014 isolated single-tone third-harmonic probes.
+            for(std::size_t k=0;k<highProducts.size();++k) {
+                const double product=highProducts[k];
+                // At 96 kHz these frequencies are REAL third-order products,
+                // not folded aliases. At 44.1/48 kHz they fold into baseband.
+                const double inspected=sr==96000?product:std::abs(product-sr);
+                const double measured=toneMagnitude(wet,inspected,warm,sr,sr);
+                const double ratio=20.*std::log10(std::max(measured,1.e-15)/
+                                                  std::max(reference,1.e-15));
+                check(std::isfinite(ratio),"P015 spectral measurement nonfinite");
+                if(csv.good())csv<<sr<<","<<kMacroNames[fx]<<","
+                    <<(sr==96000?"inband_":"folded_")<<labels[k]<<","
+                    <<inspected<<","<<reference<<","<<measured<<","
+                    <<ratio<<","<<peak<<"\n";
+                std::printf("P015 rate=%d fx=%s product=%s frequency=%.0fHz rel=%+.2fdBc\n",
+                            sr,kMacroNames[fx],labels[k],inspected,ratio);
+                // Avoid unearned pass/fail targets for new intermodulation
+                // lines until they have a measured Windows baseline.
+            }
+        }
+        // Prove the reference pair itself contains no spur at the first
+        // alias location, so numerical FFT/window leakage is not mistaken
+        // for real signal generation. This line is 2100/6000 Hz.
+        if(sr!=96000) {
+            const double drySpur=toneMagnitude(input,std::abs(42000-sr),
+                                                warm,sr,sr);
+            check(drySpur<reference*1.e-4,
+                  "P015 multi-tone negative control contains folded spur");
+        }
+    }
+}
 } // namespace
 int main(int argc,char** argv){
     std::ofstream csv;
@@ -484,6 +564,7 @@ int main(int argc,char** argv){
     }
     testAutomation();
     testHighBandAliasing(exportWav?std::string(argv[1]):std::string{});
+    testMultirateIntermod(exportWav?std::string(argv[1]):std::string{});
     int substantial=0,weak=0;
     for(unsigned input=0;input<kInputs.size();++input){
         const Stereo dry=source(input);

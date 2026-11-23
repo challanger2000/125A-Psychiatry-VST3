@@ -1,4 +1,4 @@
-name: P014 Windows VST3 PANIC Aliasing Audit
+name: P015 Windows VST3 Multirate and Intermod Audit
 
 on:
   push:
@@ -111,20 +111,26 @@ jobs:
           if (-not (Test-Path "artifacts/P012_alias_and_cpu_metrics.csv")) {
             throw "P012 missing actual VST3 alias and CPU report"
           }
+          $intermod = @(Import-Csv "artifacts/P015_multirate_intermod_metrics.csv")
+          if ($intermod.Count -ne 75) {
+            throw "P015 expected 27 wet-peak rows plus 48 high-band product rows, got $($intermod.Count)"
+          }
+          Write-Host "P015 multi-rate and intermod measurements:" $intermod.Count
           Write-Host "P010 actual VST3 audio measurements:" $rows.Count
       - name: Attach P010 actual-processor audio metrology (not a release)
         uses: actions/upload-artifact@v4
         with:
-          name: P012-Real-VST3-Aliasing-CPU-WetDry-Metrics
+          name: P015-Real-VST3-Multirate-Intermod-and-WetDry-Metrics
           path: |
             artifacts/P010_*
             artifacts/P012_*
+            artifacts/P015_*
           if-no-files-found: error
           retention-days: 7
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P014-Panic-AntiAlias-NOT-FINAL
+          name: 125A-PSYCHIATRY-P015-Multirate-Probe-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

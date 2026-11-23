@@ -2,7 +2,7 @@
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **Current engineering checkpoint: P010 actual-VST3 audio verification / factory v0.9.0**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Not the final photographic GUI and not yet approved in Studio Pro.**
+> **Current engineering checkpoint: P011 measured gain correction / factory v0.9.1**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Not the final photographic GUI and not yet approved in Studio Pro.**
 
 ## Nine equally important effect worlds
 
@@ -23,6 +23,17 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 **THERAPY / THERAPIE** is an inverted global Dry/Wet: 0% is fully processed; 100% is completely dry. VST3-native Bypass is also available.
 
 **LOSS OF CONTROL / KONTROLLVERLUST** now changes the nine host-automatable macro settings as a single grouped automation gesture where supported. It never modifies THERAPY or Bypass. The **DE/EN toggle** switches between two actual UI templates and saves the language independently of sound state. This is a **functional provisional VSTGUI**, not the final historic visual concept.
+
+## P011 — Corrected wet-only gain staging, measured
+
+- [P011 Windows x64 VST3 and actual-audio metrology](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45280035654): **PASS**; Steinberg 47/47, real audio null/mix/automation and pure-wet reference 1/1, 180-row report.
+- [Latest per-effect measured audio + CSV](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45280035654/artifacts/14867663887) and [P011 Windows development plugin](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45280035654/artifacts/14867439147).
+- Fixed measured excessive full-Wet attenuation in **DISSOCIATION** (synthetic drums −11.12 → **−6.02 dB**) and **HALLUCINATION** (synth bass −7.46 → **−3.11 dB**) and reduced **PANIC** gain (voice-like +4.47 → **+2.53 dB**). Gain-only compensation is confined to the **processed Wet branch**, never a hidden Dry blend.
+- A new regression makes **−8 to +6 dB full-Wet RMS** an acceptance range for all 45 synthetic source/macro combinations. All pass, as do 0% exact Dry, 100% exact native DSP Wet, THERAPY reverse Dry/Wet and anti-placebo negative tests.
+- [120-case DSP regression](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45280035612): Windows/Linux success, **0 review flags and 0 level violations**. [Windows Steinberg EditorHost GUI smoke](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45280035498): success.
+- These tests use generated audio references. **Real-recording listening, anti-aliasing analysis, final historical graphics and Studio Pro acceptance are still pending.**
+
+[P011 technical report](docs/P011.md).
 
 ## P010 — Effect audibility and 0%/100% endpoint verification through the real VST3
 

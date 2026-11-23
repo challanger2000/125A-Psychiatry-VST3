@@ -2,6 +2,14 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.1 — P011 measurable wet-only gain staging (2026-11-23)
+
+- Corrected sound level only **inside the effected branch** of DISSOCIATION (gradual 1 + 0.80 m² makeup), HALLUCINATION (1 + 0.65 m² makeup) and PANIC (1 / (1 + 0.25 m²) attenuation), preserving 0% Dry and 100% processed Wet semantics.
+- Actual VST3 measurements: DISSOCIATION on synthetic drums −11.12→−6.02 dB; HALLUCINATION on synthetic bass −7.46→−3.11 dB; PANIC on voice-like source +4.47→+2.53 dB.
+- Strengthened 180-row actual-VST3 metrology: **45/45 full-Wet** combinations now fail if any RMS gain differs more than −8.0/+6.0 dB from Dry. Maintains pure-Wet DSP reference, sample-accurate automation and gain-placebo negative controls.
+- [Windows VST3 45280035654](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45280035654) **SUCCESS**, 47/47 Steinberg; [Windows/Linux DSP and P006 120-case audit 45280035612](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45280035612) **SUCCESS**, 0 warnings/0 level violations; [GUI run 45280035498](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45280035498) **SUCCESS**.
+- Pure-Wet/0-Dry endpoint and VST3 component IDs, automation IDs and project-state v4 remain unchanged; no real-source musical acceptance claimed.
+
 ## P010 — real VST3 audio metrology (2026-11-23; plugin factory remains 0.9.0)
 
 - Introduced `tests/test_vst3_audio_path.cpp`, compiling the actual Windows VST3 Processor into a host-style audio rendering executable. No parallel fake DSP abstraction.

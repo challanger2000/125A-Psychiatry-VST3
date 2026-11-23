@@ -31,7 +31,6 @@ bool advance(Lane& lane, int32 blockFrames) noexcept {
         lane.index=lane.count;
         return false;
     }
-    // Host can deliver points at the block end for final state changes.
     lane.nextOffset=std::clamp(offset,0,blockFrames);
     lane.nextValue=value;
     return true;
@@ -40,10 +39,11 @@ bool advance(Lane& lane, int32 blockFrames) noexcept {
 
 Processor::Processor() {
     setControllerClass(kControllerCID);
-    settings_.amount=0.f;
-    settings_.therapy=0.f;
-    settings_.trigger=psychiatry::Paranoia::Trigger::Hybrid;
-    settings_.pattern=psychiatry::Paranoia::Pattern::Every;
+    paranoiaSettings_.amount=0.f;
+    // Internal PARANOIA mixer is kept fully wet. THERAPY is a single final mix.
+    paranoiaSettings_.therapy=0.f;
+    paranoiaSettings_.trigger=psychiatry::Paranoia::Trigger::Hybrid;
+    paranoiaSettings_.pattern=psychiatry::Paranoia::Pattern::Every;
 }
 
 tresult PLUGIN_API Processor::initialize(FUnknown* context) {
@@ -74,34 +74,50 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
         return kResultFalse;
     const auto result=AudioEffect::setupProcessing(setup);
     if(result==kResultOk) {
-        // No memory allocated by process(). setupProcessing is not an audio callback.
+        depression_.prepare(setup.sampleRate);
         paranoia_.prepare(setup.sampleRate);
-        paranoia_.setSettings(settings_);
+        obsession_.prepare(setup.sampleRate);
+        depression_.setAmount(depressionAmount_);
+        paranoia_.setSettings(paranoiaSettings_);
+        obsession_.setAmount(obsessionAmount_);
+        for(auto& channel:original_)
+            channel.assign(static_cast<std::size_t>(setup.maxSamplesPerBlock),0.f);
+        wetStep_=static_cast<float>(1.-std::exp(-1./(0.012*setup.sampleRate)));
+        wetSmoothed_=1.f-therapyAmount_;
         prepared_=true;
     }
     return result;
 }
 
 tresult PLUGIN_API Processor::setActive(TBool state) {
-    if(state && prepared_) paranoia_.reset();
+    if(state && prepared_) {
+        depression_.reset();
+        paranoia_.reset();
+        obsession_.reset();
+        wetSmoothed_=1.f-therapyAmount_;
+    }
     return AudioEffect::setActive(state);
 }
 
 tresult PLUGIN_API Processor::canProcessSampleSize(int32 symbolic) {
-    // Explicitly 32-bit, until the 64-bit host path receives audio tests.
     return symbolic==Vst::kSample32 ? kResultTrue : kResultFalse;
 }
 
 void Processor::apply(Vst::ParamID id,Vst::ParamValue value) noexcept {
-    const auto v=normalized(value);
-    if(id==kParanoia) {
-        settings_.amount=static_cast<float>(v);
-        paranoia_.setSettings(settings_);
+    const float v=static_cast<float>(normalized(value));
+    if(id==kDepression) {
+        depressionAmount_=v;
+        depression_.setAmount(v);
+    } else if(id==kParanoia) {
+        paranoiaSettings_.amount=v;
+        paranoia_.setSettings(paranoiaSettings_);
+    } else if(id==kObsession) {
+        obsessionAmount_=v;
+        obsession_.setAmount(v);
     } else if(id==kTherapy) {
-        settings_.therapy=static_cast<float>(v);
-        paranoia_.setSettings(settings_);
+        therapyAmount_=v;
     } else if(id==kBypass) {
-        bypass_=v>=0.5;
+        bypass_=v>=0.5f;
     }
 }
 
@@ -111,49 +127,74 @@ bool Processor::processSpan(Vst::ProcessData& data,
     if(data.numInputs<1||data.numOutputs<1||!data.inputs||!data.outputs) return false;
     auto& input=data.inputs[0];
     auto& output=data.outputs[0];
-    if(!input.channelBuffers32||!output.channelBuffers32 ||
-       (input.numChannels!=1 && input.numChannels!=2) ||
+    if(!input.channelBuffers32||!output.channelBuffers32||
+       (input.numChannels!=1 && input.numChannels!=2)||
        input.numChannels!=output.numChannels) return false;
 
-    std::array<float*,2> ptrs{};
-    for(int32 ch=0; ch<input.numChannels; ++ch) {
-        float* src=input.channelBuffers32[ch];
-        float* dst=output.channelBuffers32[ch];
-        if(!src||!dst) return false;
-        src+=offset;
-        dst+=offset;
-        if(src!=dst) std::memmove(dst,src,static_cast<std::size_t>(frames)*sizeof(float));
-        ptrs[static_cast<std::size_t>(ch)]=dst;
+    std::array<float*,2> src{},dst{};
+    for(int32 ch=0;ch<input.numChannels;++ch) {
+        src[static_cast<std::size_t>(ch)]=input.channelBuffers32[ch];
+        dst[static_cast<std::size_t>(ch)]=output.channelBuffers32[ch];
+        if(!src[static_cast<std::size_t>(ch)]||!dst[static_cast<std::size_t>(ch)])
+            return false;
     }
-    output.silenceFlags=0; // Reverb/reverse tails may survive flagged-silent input.
-    if(!bypass_) paranoia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
-                                   static_cast<std::size_t>(frames));
+    if(original_[0].empty()) return false;
+
+    // Chunk in setupProcessing-sized slices. All scratch storage is reserved
+    // before audio starts; processSpan and DSP effects never resize or lock.
+    for(int32 pos=0;pos<frames;) {
+        const auto size=static_cast<int32>(std::min<std::size_t>(
+            static_cast<std::size_t>(frames-pos),original_[0].size()));
+        std::array<float*,2> ptrs{};
+        for(int32 ch=0;ch<input.numChannels;++ch) {
+            const auto c=static_cast<std::size_t>(ch);
+            const auto* from=src[c]+offset+pos;
+            auto* to=dst[c]+offset+pos;
+            std::memcpy(original_[c].data(),from,static_cast<std::size_t>(size)*sizeof(float));
+            if(from!=to) std::memmove(to,from,static_cast<std::size_t>(size)*sizeof(float));
+            ptrs[c]=to;
+        }
+        if(!bypass_) {
+            // Fixed order yields designed interaction; individual macro
+            // processors each return exact dry at zero amount.
+            depression_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+                                static_cast<std::size_t>(size));
+            paranoia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+                              static_cast<std::size_t>(size));
+            obsession_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+                               static_cast<std::size_t>(size));
+            for(int32 i=0;i<size;++i) {
+                wetSmoothed_+=wetStep_*(1.f-therapyAmount_-wetSmoothed_);
+                const float w=std::clamp(wetSmoothed_,0.f,1.f);
+                for(int32 ch=0;ch<input.numChannels;++ch) {
+                    const auto c=static_cast<std::size_t>(ch);
+                    const float dry=original_[c][static_cast<std::size_t>(i)];
+                    const float wet=ptrs[c][i];
+                    ptrs[c][i]=dry+w*(wet-dry);
+                }
+            }
+        }
+        pos+=size;
+    }
+    output.silenceFlags=0; // Old buffers can yield audible reverb after silent input.
     return true;
 }
 
 tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
     if(data.numSamples<0) return kResultFalse;
-
-    // Host automation can change at multiple sample offsets in one audio block.
-    // Bounded stack-only lanes; no vector growth/heap allocation in callback.
     std::array<Lane,32> lanes{};
     int32 count=0;
     if(data.inputParameterChanges) {
         const int32 total=data.inputParameterChanges->getParameterCount();
-        if(total>static_cast<int32>(lanes.size())) return kResultFalse; // fail visibly, never silently drop automation
+        if(total>static_cast<int32>(lanes.size())) return kResultFalse;
         for(int32 k=0;k<total;++k) {
             auto* q=data.inputParameterChanges->getParameterData(k);
             if(!q||q->getPointCount()==0) continue;
-            Lane lane;
-            lane.queue=q;
-            lane.count=q->getPointCount();
+            Lane lane;lane.queue=q;lane.count=q->getPointCount();
             if(!advance(lane,data.numSamples)) continue;
             lanes[static_cast<std::size_t>(count++)]=lane;
         }
     }
-
-    // Apply all events at offset zero, then process until each next event.
-    // Disabled processing still applies automation so project state stays current.
     int32 pos=0;
     for(;;) {
         bool changed=false;
@@ -186,15 +227,30 @@ tresult PLUGIN_API Processor::setState(IBStream* state) {
     if(!state) return kResultFalse;
     IBStreamer s(state,kLittleEndian);
     int32 magic=0,version=0,bypass=0;
-    float amount=0.f,therapy=0.f;
-    if(!s.readInt32(magic)||!s.readInt32(version)||magic!=kStateMagic ||
-       version!=kStateVersion||!s.readFloat(amount)||!s.readFloat(therapy)||
-       !s.readInt32(bypass)||!std::isfinite(amount)||!std::isfinite(therapy))
-        return kResultFalse;
-    settings_.amount=static_cast<float>(normalized(amount));
-    settings_.therapy=static_cast<float>(normalized(therapy));
+    float depression=0.f, paranoia=0.f, obsession=0.f, therapy=0.f;
+    if(!s.readInt32(magic)||!s.readInt32(version)||magic!=kStateMagic||
+       (version!=1 && version!=kStateVersion)) return kResultFalse;
+    if(version==1) {
+        // Exact P002 layout: paranoia, therapy, bypass. New macros remain zero.
+        if(!s.readFloat(paranoia)||!s.readFloat(therapy)||!s.readInt32(bypass))
+            return kResultFalse;
+    } else {
+        if(!s.readFloat(depression)||!s.readFloat(paranoia)||
+           !s.readFloat(obsession)||!s.readFloat(therapy)||
+           !s.readInt32(bypass)) return kResultFalse;
+    }
+    if(!std::isfinite(depression)||!std::isfinite(paranoia)||
+       !std::isfinite(obsession)||!std::isfinite(therapy)) return kResultFalse;
+
+    depressionAmount_=static_cast<float>(normalized(depression));
+    paranoiaSettings_.amount=static_cast<float>(normalized(paranoia));
+    obsessionAmount_=static_cast<float>(normalized(obsession));
+    therapyAmount_=static_cast<float>(normalized(therapy));
     bypass_=(bypass!=0);
-    paranoia_.setSettings(settings_);
+    depression_.setAmount(depressionAmount_);
+    paranoia_.setSettings(paranoiaSettings_);
+    obsession_.setAmount(obsessionAmount_);
+    wetSmoothed_=1.f-therapyAmount_;
     return kResultOk;
 }
 
@@ -202,7 +258,10 @@ tresult PLUGIN_API Processor::getState(IBStream* state) {
     if(!state) return kResultFalse;
     IBStreamer s(state,kLittleEndian);
     if(!s.writeInt32(kStateMagic)||!s.writeInt32(kStateVersion)||
-       !s.writeFloat(settings_.amount)||!s.writeFloat(settings_.therapy)||
+       !s.writeFloat(depressionAmount_)||
+       !s.writeFloat(paranoiaSettings_.amount)||
+       !s.writeFloat(obsessionAmount_)||
+       !s.writeFloat(therapyAmount_)||
        !s.writeInt32(bypass_ ? 1 : 0)) return kResultFalse;
     return kResultOk;
 }

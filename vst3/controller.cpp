@@ -157,7 +157,6 @@ public:
     explicit DiagnosticMonitor(Controller* controller)
         : VSTGUI::CView(VSTGUI::CRect(0,0,288,325)), controller_(controller) {
         setWantsIdle(true);
-        VSTGUI::CView::idleRate=24;
     }
     void onIdle() override {
         bool changed=false;
@@ -187,7 +186,7 @@ public:
         };
         auto stroke=[&](double x1,double y1,double x2,double y2,const CColor& color,double thickness=1.){
             dc->setFrameColor(color);dc->setLineWidth(thickness);
-            dc->drawLine(CPoint(x(x1),y(y1)),CPoint(x2),CPoint(y2)));
+            dc->drawLine(CPoint(x(x1),y(y1)),CPoint(x(x2),y(y2)));
         };
         fill(0,0,1,1,black);
         fill(.035,.035,.965,.962,dark);

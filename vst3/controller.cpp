@@ -2,12 +2,14 @@
 #include "ids.h"
 
 #include "base/source/fstreamer.h"
+#include "pluginterfaces/base/ustring.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdio>
 
 namespace psychiatry::vst3 {
 using namespace Steinberg;
@@ -106,6 +108,22 @@ tresult PLUGIN_API Controller::setState(IBStream* state) {
        !stream.readInt32(lang)||(lang!=0&&lang!=1))return kResultFalse;
     germanUi_=(lang==1);
     return kResultOk;
+}
+
+tresult PLUGIN_API Controller::getParamStringByValue(
+    Steinberg::Vst::ParamID id,
+    Steinberg::Vst::ParamValue normalized,
+    Steinberg::Vst::String128 text) {
+    if(((id>=kDepression && id<=kPsychosis) || id==kTherapy)
+       && text && std::isfinite(normalized)) {
+        const int percent=static_cast<int>(std::lround(
+            100.0*std::clamp(normalized,0.0,1.0)));
+        char buffer[20]{};
+        std::snprintf(buffer,sizeof(buffer),"%d %%",percent);
+        Steinberg::UString(text,128).fromAscii(buffer);
+        return kResultOk;
+    }
+    return EditControllerEx1::getParamStringByValue(id,normalized,text);
 }
 
 void Controller::triggerLossOfControl() {

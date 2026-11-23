@@ -232,6 +232,14 @@ int main(){
         CHECK(controller.setComponentHandler(nullptr)==kResultOk);
         spy->release();
     }
+    // UI readouts display meaningful percentages, not raw 0.0000..1.0000.
+    {
+        Vst::String128 label{};
+        CHECK(controller.getParamStringByValue(kDepression,0.37,label)==kResultOk);
+        CHECK(label[0]=='3' && label[1]=='7' && label[2]==' ' && label[3]=='%');
+        CHECK(controller.getParamStringByValue(kTherapy,1.0,label)==kResultOk);
+        CHECK(label[0]=='1' && label[1]=='0' && label[2]=='0' && label[3]==' ' && label[4]=='%');
+    }
     // Controller-only UI state roundtrip: language preference is persisted
     // independently of the processor's stable 52-byte v4 audio state.
     {

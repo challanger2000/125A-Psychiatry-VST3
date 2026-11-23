@@ -84,4 +84,15 @@ if(PSYCHIATRY_BUILD_VST3)
       "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_link_libraries(PsychiatryPrototype PRIVATE psychiatry_audio sdk)
   smtg_target_configure_version_file(PsychiatryPrototype)
+
+  # Exercise processor and controller state decoding against the genuine
+  # Steinberg SDK interfaces (legacy v1-v4, malformed/NaN/future states).
+  add_executable(test_vst3_recall
+      tests/test_vst3_recall.cpp
+      vst3/processor.cpp
+      vst3/controller.cpp)
+  target_include_directories(test_vst3_recall PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_link_libraries(test_vst3_recall PRIVATE psychiatry_audio sdk)
+  add_test(NAME P006_VST3LegacyState COMMAND test_vst3_recall)
 endif()

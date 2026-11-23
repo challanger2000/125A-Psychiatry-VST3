@@ -86,6 +86,9 @@ void Controller::triggerLossOfControl() {
     // compound serial chain on the first randomization).
     std::uniform_real_distribution<double> amount(0.12,0.78);
     std::uniform_real_distribution<double> chance(0.0,1.0);
+    // If the host implements IComponentHandler2, group the nine related
+    // parameter edits into a single automation/undo timestamp.
+    startGroupEdit();
     for(const auto id:kMacroIds) {
         const double value=chance(random_)<0.18 ? 0.0 : amount(random_);
         beginEdit(id);
@@ -93,6 +96,7 @@ void Controller::triggerLossOfControl() {
         performEdit(id,value);
         endEdit(id);
     }
+    finishGroupEdit();
 }
 
 // This is a host-embedded editor, not a stand-alone UI.

@@ -14,6 +14,9 @@
 #include <cstdlib>
 #include <limits>
 #include <set>
+#include <vector>
+#include <atomic>
+#include "pluginterfaces/vst/ivsteditcontroller.h"
 
 #define CHECK(x) do {if(!(x)){std::fprintf(stderr,"P006 state FAIL %s:%d %s\n",__FILE__,__LINE__,#x);std::abort();}}while(0)
 using namespace psychiatry::vst3;
@@ -23,6 +26,48 @@ using namespace Steinberg;
 // Provide only the module-handle symbol expected by VSTGUI support.
 // The real plugin bundle receives its module handle from Steinberg's DLL entry.
 void* moduleHandle = nullptr;
+
+// Minimal host spy: verifies that UI randomization is reported to the real
+// Steinberg IComponentHandler interfaces, with one grouped edit and nine
+// begin/perform/end cycles. It does not pretend to be a DAW.
+struct HandlerSpy final : Vst::IComponentHandler, Vst::IComponentHandler2 {
+    std::atomic<uint32> refs{1};
+    struct E {char type; Vst::ParamID id; double value;};
+    std::vector<E> events;
+    int groupStarts=0,groupFinishes=0;
+    tresult PLUGIN_API queryInterface(const TUID iid,void** out) override {
+        if(!out)return kInvalidArgument;
+        *out=nullptr;
+        if(FUnknownPrivate::iidEqual(iid,FUnknown::iid)||
+           FUnknownPrivate::iidEqual(iid,Vst::IComponentHandler::iid)) {
+            *out=static_cast<Vst::IComponentHandler*>(this);
+        } else if(FUnknownPrivate::iidEqual(iid,Vst::IComponentHandler2::iid)) {
+            *out=static_cast<Vst::IComponentHandler2*>(this);
+        } else return kNoInterface;
+        addRef();
+        return kResultOk;
+    }
+    uint32 PLUGIN_API addRef() override {return ++refs;}
+    uint32 PLUGIN_API release() override {
+        auto count=--refs;
+        if(count==0)delete this;
+        return count;
+    }
+    tresult PLUGIN_API beginEdit(Vst::ParamID id) override {
+        events.push_back({'B',id,0.});return kResultOk;
+    }
+    tresult PLUGIN_API performEdit(Vst::ParamID id,Vst::ParamValue value) override {
+        events.push_back({'P',id,value});return kResultOk;
+    }
+    tresult PLUGIN_API endEdit(Vst::ParamID id) override {
+        events.push_back({'E',id,0.});return kResultOk;
+    }
+    tresult PLUGIN_API restartComponent(int32) override {return kResultOk;}
+    tresult PLUGIN_API setDirty(TBool) override {return kResultOk;}
+    tresult PLUGIN_API requestOpenEditor(FIDString) override {return kResultOk;}
+    tresult PLUGIN_API startGroupEdit() override {++groupStarts;return kResultOk;}
+    tresult PLUGIN_API finishGroupEdit() override {++groupFinishes;return kResultOk;}
+};
 
 static void writeLegacy(ResizableMemoryIBStream& memory,int version,bool invalid=false){
     IBStreamer stream(&memory,kLittleEndian);
@@ -151,7 +196,19 @@ int main(){
         CHECK(controller.setComponentState(&state)==kResultOk);
         const auto therapyBefore=controller.getParamNormalized(kTherapy);
         const auto bypassBefore=controller.getParamNormalized(kBypass);
+        auto* spy=new HandlerSpy;
+        CHECK(controller.setComponentHandler(spy)==kResultOk);
         controller.triggerLossOfControl();
+        CHECK(spy->groupStarts==1 && spy->groupFinishes==1);
+        CHECK(spy->events.size()==27);
+        for(std::size_t i=0;i<9;++i) {
+            CHECK(spy->events[i*3].type=='B' && spy->events[i*3+1].type=='P' &&
+                  spy->events[i*3+2].type=='E');
+            CHECK(spy->events[i*3].id==params[i]);
+            CHECK(spy->events[i*3+1].id==params[i]);
+            CHECK(spy->events[i*3+2].id==params[i]);
+            CHECK(spy->events[i*3+1].value==controller.getParamNormalized(params[i]));
+        }
         std::array<double,9> firstValues{};
         for(std::size_t i=0;i<9;++i) {
             const double value=controller.getParamNormalized(params[i]);
@@ -170,6 +227,10 @@ int main(){
         CHECK(different); // consecutive presses must not repeat every knob
         CHECK(controller.getParamNormalized(kTherapy)==therapyBefore);
         CHECK(controller.getParamNormalized(kBypass)==bypassBefore);
+        CHECK(spy->groupStarts==2 && spy->groupFinishes==2);
+        CHECK(spy->events.size()==54);
+        CHECK(controller.setComponentHandler(nullptr)==kResultOk);
+        spy->release();
     }
     CHECK(controller.terminate()==kResultOk);
     CHECK(component.terminate()==kResultOk);

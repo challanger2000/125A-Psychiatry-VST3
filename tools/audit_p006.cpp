@@ -196,11 +196,20 @@ int main(){
                 // Warning flags are diagnostics, not a subjective quality grade.
                 const bool quiet=(gain < -12.0 && amount>=0.50f);
                 const bool weak=(m.delta < 0.10 && amount>=0.50f);
+                const bool weakOnset=(m.delta < 0.025 && amount<=0.20f);
                 const bool hot=(peakDb>0.);
                 const char* review=quiet?"WARN_LOW_LEVEL":
                                    weak?"WARN_LOW_DELTA":
+                                   weakOnset?"WARN_WEAK_ONSET":
                                    hot?"WARN_OVER_0DBFS":"MEASURED";
-                if(quiet||weak||hot)++warnings;
+                if(quiet||weak||weakOnset||hot) {
+                    ++warnings;
+                    std::fprintf(stderr,
+                        "P006 REVIEW: %s %s at %.2f => gain=%+.2f dB, "
+                        "delta=%.4f, peak=%+.2f dBFS [%s]\n",
+                        types[input],names[effect],
+                        static_cast<double>(amount),gain,m.delta,peakDb,review);
+                }
                 std::cout<<types[input]<<","<<names[effect]<<","
                          <<std::fixed<<std::setprecision(4)<<amount<<","
                          <<gain<<","<<peakDb<<","<<m.delta<<","

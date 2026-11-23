@@ -100,4 +100,15 @@ if(PSYCHIATRY_BUILD_VST3)
       "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_link_libraries(test_vst3_recall PRIVATE psychiatry_audio sdk vstgui_support)
   add_test(NAME P006_VST3LegacyState COMMAND test_vst3_recall)
+
+  # P010: process real stereo input through the actual Processor::process()
+  # call with the same serialized VST3 macro state/THERAPY used by DAWs.
+  # Reject zero-effect placebo, pure-gain false positives and bad endpoints.
+  add_executable(test_vst3_audio_path
+      tests/test_vst3_audio_path.cpp
+      vst3/processor.cpp)
+  target_include_directories(test_vst3_audio_path PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_link_libraries(test_vst3_audio_path PRIVATE psychiatry_audio sdk)
+  add_test(NAME P010_ActualVST3AudioWetDry COMMAND test_vst3_audio_path)
 endif()

@@ -32,6 +32,10 @@ jobs:
         run: cmake --build build-vst3 --config Release --target test_vst3_recall --parallel 4
       - name: Validate legacy project states v1-v4 with real VST3 processor/controller
         run: ctest --test-dir build-vst3 -C Release -R "^P006_VST3LegacyState$" --output-on-failure
+      - name: Build real VST3 audio path metrology executable
+        run: cmake --build build-vst3 --config Release --target test_vst3_audio_path --parallel 4
+      - name: P010 real VST3 audio: null tests, gain-placebo controls and THERAPY
+        run: ctest --test-dir build-vst3 -C Release -R "^P010_ActualVST3AudioWetDry$" --output-on-failure
       - name: Check packaged VSTGUI definition and all parameter bindings
         shell: pwsh
         run: |
@@ -93,6 +97,21 @@ jobs:
             Write-Host "Staged VST3:" $chosen.FullName
           }
           Get-ChildItem artifacts -Recurse | Select-Object FullName,Length
+      - name: Export real VST3 per-macro audio comparisons and metrology CSV
+        shell: pwsh
+        run: |
+          & "./build-vst3/Release/test_vst3_audio_path.exe" "artifacts"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $rows = @(Import-Csv "artifacts/P010_actual_vst3_audio_metrics.csv")
+          if ($rows.Count -ne 180) { throw "Expected 5 sources x 9 macros x 4 positions = 180 measured real VST3 audio rows" }
+          Write-Host "P010 actual VST3 audio measurements:" $rows.Count
+      - name: Attach P010 actual-processor audio metrology (not a release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: P010-Actual-VST3-Per-Macro-WetDry-Metrics-WAV
+          path: artifacts/P010_*
+          if-no-files-found: error
+          retention-days: 7
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:

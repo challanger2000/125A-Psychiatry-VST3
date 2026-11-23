@@ -87,10 +87,18 @@ void Mania::process(float* const* audio,unsigned channels,std::size_t frames) no
 }
 
 void Panic::prepare(double sr) noexcept {
-    rate_=rate(sr);step_=pole(15.,rate_);reset();
+    rate_=rate(sr);step_=pole(15.,rate_);
+    for(auto& c:state_)c.saturation.prepare();
+    reset();
 }
 void Panic::reset() noexcept {
-    state_={};
+    // Do not overwrite the prepared biquad coefficients when resetting.
+    for(auto& c:state_){
+        c.fast=c.slow=c.phase=c.envelope=0.f;
+        c.last=c.slowHigh=0.f;
+        c.cooldown=0;
+        c.saturation.reset();
+    }
     state_[0].rng=0xCA125A11u;state_[1].rng=0x8BA92AE7u;
     smoothed_=amount_;impulseCount_=0;
 }
@@ -134,8 +142,15 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
             const float siren=std::sin(kTau*s.phase);
             const float pulse=s.envelope*(0.65f*siren+0.12f*noise);
             const float tremor=0.80f + 0.20f*std::sin(kTau*s.phase*0.037f);
-            const float wet=std::tanh(x*(1.f+0.25f*m)+
-                0.85f*m*pulse+0.4f*m*piercing);
+            // P014: protect the fast transient/electric shaper from
+            // third-harmonic foldback. Oversample ONLY the wet excitation
+            // and saturator, then use a separately filtered decimator.
+            // This introduces no additional original/Dry signal at 100%.
+            const float excitation=x*(1.f+0.25f*m)+
+                0.85f*m*pulse+0.4f*m*piercing;
+            const float wet=s.saturation.process(excitation,[](float up) noexcept {
+                return std::tanh(up);
+            });
             // P011: energetic electric transients should not win a blind
             // level comparison simply by being ~+4.5 dB louder on voice.
             // Smooth macro-dependent wet-only trim, unity at 0%.

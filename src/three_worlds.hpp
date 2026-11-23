@@ -39,6 +39,7 @@ private:
         float last=0.f,slowHigh=0.f;
         std::uint32_t rng=0xB54CA515u;
         unsigned cooldown=0;
+        detail::Oversample2x saturation{};
     };
     std::array<Channel,2> state_{};
     float amount_=0.f,smoothed_=0.f,step_=0.001f;

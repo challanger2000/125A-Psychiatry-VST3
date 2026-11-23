@@ -402,6 +402,10 @@ void testHighBandAliasing(const std::string& dir) {
             // substantially suppress the exact tested 3rd-harmonic fold.
             if(effect==0||effect==3)check(db<=-50.0,
                 "P013 DEPRESSION/MANIA folded-harmonic alias above -50 dBc");
+            // P014: the same real-VST3 3rd-harmonic stress probe protects
+            // PANIC's new nonlinear wet-only oversampling.
+            if(effect==4)check(db<=-45.0,
+                "P014 PANIC folded-harmonic alias above -45 dBc");
             if(csv.good())csv<<"narrowband,"<<(effect<0?"DRY":kMacroNames[effect])
                 <<","<<inputHz<<","<<aliasHz<<","<<fundamental<<","
                 <<alias<<","<<db<<",,,, "<<maxSample<<"\n";

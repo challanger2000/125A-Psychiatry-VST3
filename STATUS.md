@@ -28,6 +28,10 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.5**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P017 — exact automation convergence (CI pending)
+
+Source factory v0.9.6. All nine macro and THERAPY parameter smoothers now reach exact 0/1 after a negligible residual or float precision stall; the prior recurrence could leave an indefinitely nonzero effect after an automated return to 0. Existing settled amounts and effect algorithms are unchanged. The real VST3 test exercises 54 automated wet-to-dry transitions at 44.1/48/96 kHz, including tiny and above-unity finite input values. P016 remains latest verified until Windows CI passes. Phase cancellation remains an explicit blocker.
+
 ## P016 — verified exact endpoints, reset and phase/transient audit
 
 **Windows/MSVC run [45290465707](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707) SUCCESS; Windows/Linux DSP run [45290465506](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465506) SUCCESS**, tested `de2fbe43c9752d0aecd1d0eea464416d52c49646`, factory **0.9.5**. Existing single-tone/two-tone, actual processor wet/dry, state and allocation gates remain passing.

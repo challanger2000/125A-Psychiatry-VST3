@@ -652,6 +652,73 @@ void testExtendedDry() {
         check(identical(x,render(x,fx,1.f,1.f)),"P016 finite headroom THERAPY exact Dry");
     }
 }
+// P017: exact endpoint convergence after REAL VST3 automation, not
+// simply setting the state before activation. Verify 0/100% after the
+// intentional smoothing interval without resetting the processor.
+void testAutomatedEndpoints() {
+    for(int sr:{44100,48000,96000}) {
+        for(int fx=0;fx<9;++fx) {
+            for(bool global:{false,true}) {
+                Processor p;
+                check(p.initialize(nullptr)==kResultOk,"P017 initialize");
+                Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,kBlock,static_cast<double>(sr)};
+                check(p.setupProcessing(setup)==kResultOk,"P017 setup");
+                ResizableMemoryIBStream state;writeState(state,fx,1.f,0.f,false);
+                check(p.setState(&state)==kResultOk,"P017 state");
+                check(p.setActive(true)==kResultOk,"P017 activate");
+                const int automationAt=sr/3;
+                const int settledAt=automationAt+sr/2;
+                const int end=settledAt+sr/20;
+                bool wetBefore=false;
+                std::size_t exact=0;
+                std::array<float,kBlock> a{},b{},x{},y{};
+                for(int start=0;start<end;start+=kBlock) {
+                    const int frames=std::min(kBlock,end-start);
+                    for(int n=0;n<frames;++n) {
+                        const int t=start+n;
+                        a[n]=.31f*tone(123.,static_cast<double>(t)/sr);
+                        b[n]=.29f*tone(357.,static_cast<double>(t)/sr);
+                        if(t>=settledAt && t%211==0){a[n]=1.e-30f;b[n]=-1.e-30f;}
+                        if(t==settledAt+31){a[n]=20.f;b[n]=-20.f;}
+                    }
+                    Vst::ParameterChanges changes(1);
+                    if(start<=automationAt && automationAt<start+frames) {
+                        int32 index=0,point=0;
+                        auto* q=changes.addParameterData(global?kTherapy:kMacroIds[fx],index);
+                        check(q&&q->addPoint(automationAt-start,global?1.:0.,point)==kResultTrue,
+                              "P017 endpoint automation point");
+                    }
+                    float* ins[]{a.data(),b.data()},*outs[]{x.data(),y.data()};
+                    Vst::AudioBusBuffers bi{},bo{};
+                    bi.numChannels=2;bo.numChannels=2;bi.channelBuffers32=ins;bo.channelBuffers32=outs;
+                    Vst::ProcessData data{};
+                    data.processMode=Vst::kRealtime;data.symbolicSampleSize=Vst::kSample32;
+                    data.numSamples=frames;data.numInputs=1;data.numOutputs=1;
+                    data.inputs=&bi;data.outputs=&bo;data.inputParameterChanges=&changes;
+                    check(p.process(data)==kResultOk,"P017 process");
+                    for(int n=0;n<frames;++n) {
+                        const int t=start+n;
+                        check(std::isfinite(x[n])&&std::isfinite(y[n]),"P017 nonfinite");
+                        if(t<automationAt&&(std::abs(x[n]-a[n])>1.e-4f||
+                                            std::abs(y[n]-b[n])>1.e-4f))wetBefore=true;
+                        if(t>=settledAt) {
+                            if(x[n]!=a[n]||y[n]!=b[n])
+                                std::fprintf(stderr,"P017 endpoint mismatch rate=%d fx=%s control=%s t=%d dry=%g wet=%g\n",
+                                             sr,kMacroNames[fx],global?"THERAPY":"macro",t,a[n],x[n]);
+                            check(x[n]==a[n]&&y[n]==b[n],"P017 automated endpoint not exact dry");
+                            ++exact;
+                        }
+                    }
+                }
+                check(wetBefore&&exact>0,"P017 test did not exercise wet and dry");
+                check(p.setActive(false)==kResultOk,"P017 deactivate");
+                check(p.terminate()==kResultOk,"P017 terminate");
+                std::printf("P017 AUTOMATION PASS rate=%d fx=%s control=%s exact_frames=%zu\n",
+                            sr,kMacroNames[fx],global?"THERAPY":"macro",exact);
+            }
+        }
+    }
+}
 } // namespace
 int main(int argc,char** argv){
     std::ofstream csv;
@@ -666,6 +733,7 @@ int main(int argc,char** argv){
     testHighBandAliasing(exportWav?std::string(argv[1]):std::string{});
     testMultirateIntermod(exportWav?std::string(argv[1]):std::string{});
     testExtendedDry();
+    testAutomatedEndpoints();
     testPhaseAndTransients(exportWav?std::string(argv[1]):std::string{});
     int substantial=0,weak=0;
     for(unsigned input=0;input<kInputs.size();++input){

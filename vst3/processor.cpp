@@ -69,8 +69,8 @@ tresult PLUGIN_API Processor::setBusArrangements(Vst::SpeakerArrangement* inputs
 }
 
 tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
-    if(!std::isfinite(setup.sampleRate) || setup.sampleRate<8000.0 ||
-       setup.sampleRate>384000.0 || setup.maxSamplesPerBlock<=0)
+    if(!std::isfinite(setup.sampleRate) || setup.sampleRate<1000.0 ||
+       setup.sampleRate>2000000.0 || setup.maxSamplesPerBlock<=0)
         return kResultFalse;
     const auto result=AudioEffect::setupProcessing(setup);
     if(result==kResultOk) {

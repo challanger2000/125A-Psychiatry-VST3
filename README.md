@@ -1,70 +1,59 @@
 # 125A PSYCHIATRY
 
-**Experimental Dark Multi-FX for Gothic, Darkwave, EBM, Industrial and Cinematic Horror Sound Design.**
+**Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **P005 prototype · Windows x64 VST3 · 2026-11-23. All nine DSP macro worlds are compiled, DAW-automatable, and pass 47/47 Steinberg validator checks. This is still not the finished product: the psychiatric diagnostic GUI, LOSS OF CONTROL, DE/EN switching, listening/CPU acceptance and Studio Pro final verification remain outstanding.** See [STATUS.md](STATUS.md).
+> **Current engineering checkpoint: P006 / version 0.6.0, Windows x64 VST3.** All nine FX macro engines compile, automate and save their states. The latest Windows VST3 build passes **47/47 Steinberg validator checks** and a dedicated VST3 legacy-state test. Automated DSP checks pass on Windows and Linux. **This is still a sound-design prototype, not a finished product.** There is no custom GUI and no real DAW listening sign-off yet.
 
-
-## Vision
-Nine **equal-priority** multi-algorithm sound worlds, one macro per world. Each knob progressively morphs a *curated compound effect* rather than one ordinary processor. The goal is extreme **and usable** sound design with a reactive historical diagnostic-monitor GUI.
+## Nine equally important effect worlds
 
 | EN | DE | Character |
 |---|---|---|
-| DEPRESSION | DEPRESSION | Compressed, suffocating dark decay |
-| PARANOIA | PARANOIA | Unpredictable reverse and spatial afterimages |
-| SCHIZOPHRENIA | SCHIZOPHRENIE | Contradictory fractured sound layers |
-| MANIA | MANIE | Escalating restless modulation |
-| PANIC | PANIK | Electric jolts and controlled shock transients |
-| DISSOCIATION | DISSOZIATION | Granular and spectral time fragmentation |
-| OBSESSION | ZWANG | Repeating, collapsing micro-loops |
-| HALLUCINATION | HALLUZINATION | Phantom harmonics and spectral ghosts |
-| PSYCHOSIS | PSYCHOSE | Powerful *localized* distortion world |
+| DEPRESSION | DEPRESSION | Suffocating dynamics, dark filters and decaying room |
+| PARANOIA | PARANOIA | Event-driven reversals, unsettling moving feedback |
+| SCHIZOPHRENIA | SCHIZOPHRENIE | Diverging grain-pitched voices and spectral clashes |
+| MANIA | MANIE | Accelerating rhythmic modulation and restless movement |
+| PANIC | PANIK | Input-triggered jolts, metallic resonances and tremor |
+| DISSOCIATION | DISSOZIATION | Reverse-grain memory and time-smearing |
+| OBSESSION | ZWANG | Micro-loop fixation, stutter and digital decay |
+| HALLUCINATION | HALLUZINATION | Input-derived ghost harmonics and frequency shifting |
+| PSYCHOSIS | PSYCHOSE | One dedicated multimode nonlinear/industrial sound world |
 
-**All nine** effects have dedicated C++ DSP and are exposed as automatable VST3 parameters (the native host generic editor is used for now). `THERAPY` is an inverted global Dry/Wet (0% wet; 100% dry); native Bypass is also supported.
+Distortion is **not** the central effect of the entire product. Each macro contains a distinctive compound audio chain. **0% = neutral**. Multiple macros can act on the same audio simultaneously.
 
-**LOSS OF CONTROL / KONTROLLVERLUST** randomization is a firm design requirement but **not implemented yet**. The custom horror GUI and the DE/EN switch are likewise still planned.
+**THERAPY / THERAPIE** is an inverted global Dry/Wet: 0% is fully processed; 100% is completely dry. VST3-native Bypass is also available.
 
-**This is an early DSP quality prototype, not a claim of nine fully refined, release-quality effects.**
+**LOSS OF CONTROL / KONTROLLVERLUST** (randomization of the nine FX macros while THERAPY remains unchanged) and **DE/EN switching** are planned, **not implemented**. The current prototype uses the host's generic VST3 parameter editor.
 
-## P001: PARANOIA audio-only prototype
-Based on an **original** past-audio reverser design inspired by Freakshow Industries Backmask's event-driven approach, combined with nonlinear feedback and stereo diffusion.
+## P006 verified build and audio-quality gate
 
-- C++17 core: [src/paranoia.hpp](src/paranoia.hpp), [src/paranoia.cpp](src/paranoia.cpp)
-- Dedicated [sound-design notes and test methods](docs/P001.md)
-- [CTest audio DSP checks](tests/test_paranoia.cpp) for dry passthrough, trigger logic, exact output, finite processing and buffer-size invariance
-- [WAV test probe renderer](tools/render_paranoia.cpp) with 5-second dry/wet examples generated in CI
-- [Windows/Ubuntu GitHub Actions](.github/workflows/audio-prototype.yml) to build and run the tests
+- [Windows P006 version 0.6.0 VST3 build](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45207296557) — **Steinberg validator 47/47 PASS**, plus the v1–v4 state regression **PASS**.
+- [Windows P006 VST3 development artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45207296557/artifacts/14834272974) — temporary ZIP, **NOT a finished release**.
+- [P006 DSP test run on Windows/Linux](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45207296078) — **6/6 CTest groups passed**, separately from the VST3 SDK checks.
+- [P006 quality report CSV + WAV comparison package](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45207296078/artifacts/14834208034) — 120 synthetic source/macro/intensity combinations; **0 reported review flags and 0 measured safety-level violations** under the defined audit thresholds.
+- [Technical P006 findings, fixes, test limitations and next gate](docs/P006.md).
+- [Always-current project status](STATUS.md).
 
-### Compile and test
+The 120 audit cases use **synthetic** bass, drum, voice-like and atmosphere proxies. No claim is made that automated measurements prove musical quality, that the plugin reproduces psychiatric symptoms, or that project recall works in a real Studio Pro session.
+
+## Historical visual direction
+
+The eventual GUI should resemble a disturbing old clinical diagnostic instrument: worn metal, analog meters, institutional imagery, documentary-style monochrome photographs and a damaged black-and-white monitor. **Each macro drives a corresponding visual world**, and active macros may mix those behaviors. Imagery must be licensed, historically appropriate and respectful of real patients. The audiovisual display must remain outside the real-time audio callback and offer reduced-motion controls. **No historical images or custom GUI are bundled yet.**
+
+## Development
+
+- Windows x64 VST3, C++17, Visual Studio 2022, Steinberg VST3 SDK 3.8.1 pinned at commit `3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96`.
+- **One branch: `main`. Stable class IDs and parameter IDs across versions. VST3 project state v4 restores earlier v1/v2/v3 layouts; dedicated SDK-facing regression checks exist.
+- The audio engine is in `src/`; VST3 integration in `vst3/`; standalone tests in `tests/`; repeatable metrics and WAV examples in `tools/`; engineering history in `docs/`.
+- To run standalone DSP checks locally:
+
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The P001 CI checks verify only the standalone audio prototype. **P005 now builds and passes the Steinberg VST3 validator 47/47**, but listening tests on real audio sources and host recall tests in an actual DAW are still separate release gates.
+See [docs/P002.md](docs/P002.md) for the Windows Steinberg SDK build setup.
 
-## P005 Windows nine-macro VST3 prototype
+**Release is NO-GO:** no finished GUI, no LOSS OF CONTROL, no DE/EN UI, no historic image license package, no real Studio Pro audible/project recall sign-off, no completed high-fidelity spectral/aliasing and CPU acceptance. A green build is never a substitute for listening.
 
-- **Verified Windows Actions:** [P005 complete VST3, Steinberg 47/47 PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889548)
-- [P005 Windows VST3 build artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889548/artifacts/14829987368) — a temporary engineering zip, **not a release**
-- [P005 DSP tests, Windows and Linux](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198889541), 5/5 CTest groups
-- [P005 synthetic dry and processed WAV comparisons](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45197686369/artifacts/14828402907)
-- An additional **all-nine concurrent DSP regression** checks no callback allocations, exact dry, finite outputs, and block-size invariance.
-- [Implementation notes and acoustic limitations](docs/P005.md); [current status](STATUS.md)
-
-**Host support:** Windows x64, 32-bit floating-point audio, mono/stereo, automatable nine macros plus THERAPY and native Bypass; historical saved project states v1–v3 are readable by v4 processor/controller.
-
-**No custom GUI yet:** the host displays all supported knobs through its generic VST3 parameter editor. No historical photo assets are bundled. The VST3 SDK API validator passing **does not** establish Studio Pro audio quality or release readiness.
-
-## Historical visual concept
-An old diagnostic display with dynamic monochrome historical asylum interiors and equipment. Each macro drives corresponding image transformations; source and license records for all assets are required before bundling. No third-party pictures ship now.
-
-## Project references
-- [Full nine-macro specification](docs/SPEC.md)
-- [Current verified status and next steps](STATUS.md)
-
-## Engineering rules
-Target: **Windows x64 VST3**, C++ / Steinberg SDK, Visual Studio 2022. Use only `main`. Keep the repository current and do not confuse CI/validator green checks with finished, audible DSP.
-
-© 125A. Licensing to be confirmed before redistribution.
+© 125A. Final license to be determined before redistribution.

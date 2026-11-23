@@ -68,7 +68,7 @@ if(PSYCHIATRY_BUILD_VST3)
   if(NOT EXISTS "${PSYCHIATRY_VST3_SDK_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "Steinberg SDK not found at ${PSYCHIATRY_VST3_SDK_DIR}; see docs/P002.md")
   endif()
-  set(SMTG_ENABLE_VSTGUI_SUPPORT OFF CACHE BOOL "" FORCE)
+  set(SMTG_ENABLE_VSTGUI_SUPPORT ON CACHE BOOL "" FORCE)
   set(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(SMTG_CREATE_PLUGIN_LINK OFF CACHE BOOL "" FORCE)
   add_subdirectory("${PSYCHIATRY_VST3_SDK_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/steinberg-sdk")
@@ -78,11 +78,16 @@ if(PSYCHIATRY_BUILD_VST3)
       vst3/processor.h vst3/processor.cpp
       vst3/controller.h vst3/controller.cpp
       vst3/entry.cpp
+      resource/psychiatry.uidesc
   )
   target_compile_features(PsychiatryPrototype PRIVATE cxx_std_17)
   target_include_directories(PsychiatryPrototype PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_link_libraries(PsychiatryPrototype PRIVATE psychiatry_audio sdk)
+  target_link_libraries(PsychiatryPrototype PRIVATE psychiatry_audio sdk vstgui_support)
+  # The actual .uidesc MUST be staged inside the built Windows VST3 bundle.
+  # It is not enough to include the file in the CMake source list alone.
+  smtg_target_add_plugin_resources(PsychiatryPrototype
+      RESOURCES resource/psychiatry.uidesc)
   smtg_target_configure_version_file(PsychiatryPrototype)
 
   # Exercise processor and controller state decoding against the genuine
@@ -93,6 +98,6 @@ if(PSYCHIATRY_BUILD_VST3)
       vst3/controller.cpp)
   target_include_directories(test_vst3_recall PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_link_libraries(test_vst3_recall PRIVATE psychiatry_audio sdk)
+  target_link_libraries(test_vst3_recall PRIVATE psychiatry_audio sdk vstgui_support)
   add_test(NAME P006_VST3LegacyState COMMAND test_vst3_recall)
 endif()

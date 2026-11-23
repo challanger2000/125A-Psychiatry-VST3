@@ -62,6 +62,10 @@ int main(){
     Controller controller;
     CHECK(component.initialize(nullptr)==kResultOk);
     CHECK(controller.initialize(nullptr)==kResultOk);
+    // The host must receive a real IPlugView, not the generic fallback.
+    auto* editor=controller.createView(Vst::ViewType::kEditor);
+    CHECK(editor!=nullptr);
+    editor->release();
 
     constexpr std::array<Vst::ParamID,10> params{
         kDepression,kParanoia,kSchizophrenia,kMania,kPanic,

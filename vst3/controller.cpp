@@ -2,6 +2,8 @@
 #include "ids.h"
 
 #include "base/source/fstreamer.h"
+#include "vstgui/plugin-bindings/vst3editor.h"
+#include "pluginterfaces/vst/ivsteditcontroller.h"
 
 #include <algorithm>
 #include <cmath>
@@ -70,8 +72,13 @@ tresult PLUGIN_API Controller::setComponentState(IBStream* state) {
     return kResultOk;
 }
 
-IPlugView* PLUGIN_API Controller::createView(FIDString) {
-    // Host's generic parameter UI while the nine macros undergo sound quality review.
+IPlugView* PLUGIN_API Controller::createView(FIDString name) {
+    // Minimal 125A front panel for the FIRST DAW acceptance test.
+    // VSTGUI's VST3Editor performs normal beginEdit/performEdit/endEdit
+    // and host-to-control parameter synchronization automatically.
+    // No image decoding/GUI rendering is done in the audio callback.
+    if(FIDStringsEqual(name,Steinberg::Vst::ViewType::kEditor))
+        return new VSTGUI::VST3Editor(this,"view","psychiatry.uidesc");
     return nullptr;
 }
 } // namespace psychiatry::vst3

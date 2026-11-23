@@ -1,4 +1,4 @@
-name: P006 Windows Nine-Macro VST3
+name: P007 Windows Provisional VSTGUI
 
 on:
   push:
@@ -25,13 +25,33 @@ jobs:
       - name: Configure MSVC 2022 x64
         shell: pwsh
         run: |
-          cmake -S . -B build-vst3 -G "Visual Studio 17 2022" -A x64 -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
+          cmake -S . -B build-vst3 -G "Visual Studio 17 2022" -A x64 -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=ON -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
       - name: Build real Windows VST3
         run: cmake --build build-vst3 --config Release --target PsychiatryPrototype --parallel 4
       - name: Build actual VST3 state regression harness
         run: cmake --build build-vst3 --config Release --target test_vst3_recall --parallel 4
       - name: Validate legacy project states v1-v4 with real VST3 processor/controller
         run: ctest --test-dir build-vst3 -C Release -R "^P006_VST3LegacyState$" --output-on-failure
+      - name: Check packaged VSTGUI definition and all parameter bindings
+        shell: pwsh
+        run: |
+          $resource = @(Get-ChildItem -Path "build-vst3" -Recurse -File -Filter "psychiatry.uidesc")
+          if ($resource.Count -eq 0) { throw "VSTGUI .uidesc missing from Windows build output" }
+          $bundled = @($resource | Where-Object { $_.FullName -match "\\.vst3[\\/]" })
+          if ($bundled.Count -eq 0) { throw "VSTGUI XML exists, but not within a .vst3 bundle" }
+          [xml]$ui = Get-Content -LiteralPath $bundled[0].FullName -Raw
+          $controls = @($ui.SelectNodes("//view[@control-tag]"))
+          $tags = @($controls | ForEach-Object { $_.GetAttribute("control-tag") })
+          $must = @("DEPRESSION","PARANOIA","SCHIZOPHRENIA","MANIA","PANIC",
+                    "DISSOCIATION","OBSESSION","HALLUCINATION","PSYCHOSIS",
+                    "THERAPY","BYPASS")
+          foreach ($tag in $must) {
+            if ($tag -notin $tags) { throw "GUI missing host control: $tag" }
+          }
+          if (@($ui.SelectNodes("//view[@class='CKnob']")).Count -lt 10) {
+            throw "Expected ten real VSTGUI rotary controls"
+          }
+          Write-Host "Verified XML and packaged GUI parameter controls:" ($must -join ", ")
       - name: Verify bundle and stage artifact
         shell: pwsh
         run: |
@@ -54,7 +74,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P006-Windows-VST3-NOT-FINAL
+          name: 125A-PSYCHIATRY-P007-Preview-VSTGUI-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

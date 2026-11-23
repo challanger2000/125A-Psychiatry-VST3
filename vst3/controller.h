@@ -15,7 +15,12 @@ public:
     // UI-thread action. Changes the same nine real host-automatable macro IDs.
     // Never modifies the global THERAPY mix, Bypass, or the audio callback.
     void triggerLossOfControl();
+    bool isGermanUi() const noexcept {return germanUi_;}
+    void setGermanUi(bool german) noexcept {germanUi_=german;}
+    Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override;
+    Steinberg::tresult PLUGIN_API setState(Steinberg::IBStream* state) override;
 private:
+    bool germanUi_=false;
     std::mt19937 random_{std::random_device{}()};
 };
 } // namespace psychiatry::vst3

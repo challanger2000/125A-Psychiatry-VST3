@@ -232,6 +232,25 @@ int main(){
         CHECK(controller.setComponentHandler(nullptr)==kResultOk);
         spy->release();
     }
+    // Controller-only UI state roundtrip: language preference is persisted
+    // independently of the processor's stable 52-byte v4 audio state.
+    {
+        ResizableMemoryIBStream saved;
+        CHECK(!controller.isGermanUi());
+        controller.setGermanUi(true);
+        CHECK(controller.getState(&saved)==kResultOk);
+        controller.setGermanUi(false);
+        saved.rewind();
+        CHECK(controller.setState(&saved)==kResultOk);
+        CHECK(controller.isGermanUi());
+        controller.setGermanUi(false);
+        ResizableMemoryIBStream savedEn;
+        CHECK(controller.getState(&savedEn)==kResultOk);
+        controller.setGermanUi(true);
+        savedEn.rewind();
+        CHECK(controller.setState(&savedEn)==kResultOk);
+        CHECK(!controller.isGermanUi());
+    }
     CHECK(controller.terminate()==kResultOk);
     CHECK(component.terminate()==kResultOk);
     std::puts("P006 VST3 state PASS: versions 1,2,3,4; controller/processor sync; truncation, NaN and future versions rejected");

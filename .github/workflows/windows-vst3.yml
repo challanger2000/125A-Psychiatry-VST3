@@ -1,4 +1,4 @@
-name: P008 Windows VSTGUI LOSS OF CONTROL
+name: P008 Windows VSTGUI Randomizer + DE EN
 
 on:
   push:
@@ -52,10 +52,16 @@ jobs:
             throw "Expected ten real VSTGUI rotary controls"
           }
           $randomize = @($ui.SelectNodes("//view[@class='CTextButton' and @control-tag='LOSS_OF_CONTROL' and @kick-style='true']"))
-          if ($randomize.Count -ne 1) { throw "LOSS OF CONTROL must be a working momentary button" }
+          if ($randomize.Count -ne 2) { throw "LOSS OF CONTROL must be available in both UI languages" }
           $randomTag = @($ui.SelectNodes("//control-tag[@name='LOSS_OF_CONTROL' and @tag='9000']"))
           if ($randomTag.Count -ne 1) { throw "Randomization UI-only tag not registered" }
-          Write-Host "Verified XML and packaged GUI parameter controls:" ($must -join ", ")
+          $views = @($ui.SelectNodes("//template[@name='view' or @name='view_de']"))
+          if ($views.Count -ne 2) { throw "Expected English and German VSTGUI templates" }
+          $language = @($ui.SelectNodes("//view[@class='CTextButton' and @control-tag='UI_LANGUAGE' and @kick-style='true']"))
+          if ($language.Count -ne 2) { throw "Language selector must be present in both templates" }
+          $uiLanguageTag = @($ui.SelectNodes("//control-tag[@name='UI_LANGUAGE' and @tag='9001']"))
+          if ($uiLanguageTag.Count -ne 1) { throw "UI-only language tag missing" }
+          Write-Host "Verified English/German GUI and packaged parameter controls:" ($must -join ", ")
       - name: Verify bundle and stage artifact
         shell: pwsh
         run: |
@@ -78,7 +84,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P008-VSTGUI-Randomizer-NOT-FINAL
+          name: 125A-PSYCHIATRY-P008-GUI-Bilingual-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

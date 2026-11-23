@@ -13,6 +13,9 @@ namespace psychiatry::vst3 {
 using namespace Steinberg;
 namespace {
 constexpr Steinberg::int32 kLossOfControlUiTag=9000;
+constexpr Steinberg::int32 kLanguageUiTag=9001;
+constexpr Steinberg::int32 kLanguageStateMagic=0x50535955; // 'PSYU'
+constexpr Steinberg::int32 kLanguageStateVersion=1;
 // Exactly the nine sound-macro IDs: order is independent of DSP serial routing.
 constexpr std::array<Steinberg::Vst::ParamID,9> kMacroIds{
     kDepression,kParanoia,kSchizophrenia,kMania,kPanic,
@@ -80,6 +83,31 @@ tresult PLUGIN_API Controller::setComponentState(IBStream* state) {
     return kResultOk;
 }
 
+// Controller-only UI state; independent from processor project state v4.
+// Empty state means an older version which saved no UI preferences.
+tresult PLUGIN_API Controller::getState(IBStream* state) {
+    if(!state)return kResultFalse;
+    IBStreamer stream(state,kLittleEndian);
+    if(!stream.writeInt32(kLanguageStateMagic)||
+       !stream.writeInt32(kLanguageStateVersion)||
+       !stream.writeInt32(germanUi_?1:0))return kResultFalse;
+    return kResultOk;
+}
+tresult PLUGIN_API Controller::setState(IBStream* state) {
+    if(!state)return kResultFalse;
+    IBStreamer stream(state,kLittleEndian);
+    int32 magic=0,version=0,lang=0;
+    if(!stream.readInt32(magic)) {
+        germanUi_=false; // empty legacy controller state
+        return kResultOk;
+    }
+    if(magic!=kLanguageStateMagic||
+       !stream.readInt32(version)||version!=kLanguageStateVersion||
+       !stream.readInt32(lang)||(lang!=0&&lang!=1))return kResultFalse;
+    germanUi_=(lang==1);
+    return kResultOk;
+}
+
 void Controller::triggerLossOfControl() {
     // Run exclusively on VSTGUI's UI callback thread. Randomize useful ranges
     // instead of maximum values for all nine effects (avoids overloading the
@@ -104,9 +132,17 @@ void Controller::triggerLossOfControl() {
 class PsychiatryEditor final : public VSTGUI::VST3Editor {
 public:
     explicit PsychiatryEditor(Controller* parent)
-        : VSTGUI::VST3Editor(parent,"view","psychiatry.uidesc"), parent_(parent) {}
+        : VSTGUI::VST3Editor(parent,parent->isGermanUi()?"view_de":"view","psychiatry.uidesc"), parent_(parent) {}
 protected:
     void valueChanged(VSTGUI::CControl* control) override {
+        if(control && control->getTag()==kLanguageUiTag) {
+            if(control->getValueNormalized()>0.5f) {
+                const bool german=!parent_->isGermanUi();
+                if(exchangeView(german?"view_de":"view"))
+                    parent_->setGermanUi(german);
+            }
+            return;
+        }
         if(control && control->getTag()==kLossOfControlUiTag) {
             // VSTGUI CTextButton with kick-style sends pressed and released
             // values. Trigger once on press only, not twice per click.

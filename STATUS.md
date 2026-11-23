@@ -28,6 +28,13 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.4**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P016 — exact endpoints, repeatable reset and phase/transient audit (CI pending)
+
+- PARANOIA now preserves incoming finite floats at exact dry endpoints; its per-instance RNG resets to its selected seed for repeatable stop/start rendering.
+- THERAPY uses exact assignments at Dry and Wet endpoints rather than redundant subtract/add arithmetic.
+- New actual VST3 extended-headroom/tiny-float dry regression and 144 channel-specific phase and 24 impulse measurements at 44.1/48/96 kHz for DEPRESSION/MANIA/PANIC/PSYCHOSIS. This is stimulus-specific phase metrology, not an LTI transfer function.
+- Source factory version 0.9.5; P015 remains latest verified until the P016 Windows/DSP tests pass.
+
 ## P015 — verified 44.1 / 48 / 96 kHz and two-tone intermodulation
 
 **Verified test-only source commit:** `a806b9980877ff327547f27532fab111add2cc92`, **main**, Windows/MSVC workflow [45288772417](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45288772417) **SUCCESS**; factory **v0.9.4 unchanged**, VST3 IDs and state v4 unchanged. [Standalone Windows+Linux run 45288772568](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45288772568): **SUCCESS**. This is not a release or Studio Pro audition.

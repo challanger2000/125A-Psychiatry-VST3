@@ -558,6 +558,100 @@ void testMultirateIntermod(const std::string& dir) {
         }
     }
 }
+// P016: stimulus-specific phase and transient measurements of actual
+// nonlinear, time-varying effects. Do not interpret as LTI transfer curves.
+std::array<double,2> projection(const std::vector<float>& x,double hz,
+                                 int start,int count,int sr) {
+    double re=0.,im=0.;
+    for(int n=0;n<count;++n) {
+        const double theta=2.*kPi*hz*(start+n)/sr;
+        const double s=x[static_cast<std::size_t>(start+n)];
+        re+=s*std::cos(theta);im-=s*std::sin(theta);
+    }
+    return {2.*re/count,2.*im/count};
+}
+void testPhaseAndTransients(const std::string& dir) {
+    std::ofstream phase,transient;
+    if(!dir.empty()) {
+        phase.open(dir+"/P016_phase_metrics.csv");
+        transient.open(dir+"/P016_transient_metrics.csv");
+        check(phase.good()&&transient.good(),"P016 CSV open");
+        phase<<"rate_hz,effect,channel,frequency_hz,wet_gain_db,phase_deg,half_mix_gain_db,coherent_sum_loss_db\n";
+        transient<<"rate_hz,effect,channel,first_peak_sample_offset,peak_20ms,energy_2ms,energy_20ms,energy_tail\n";
+    }
+    constexpr std::array<double,6> frequencies{100.,1000.,4000.,8000.,12000.,16000.};
+    for(int sr:{44100,48000,96000}) {
+        const int warm=sr/4;
+        Stereo signal(static_cast<std::size_t>(warm+sr));
+        for(std::size_t n=0;n<signal.size();++n) {
+            double v=0.;
+            for(double hz:frequencies)v+=.025*tone(hz,static_cast<double>(n)/sr);
+            signal.l[n]=static_cast<float>(v);signal.r[n]=static_cast<float>(v);
+        }
+        Stereo pulse(static_cast<std::size_t>(sr));
+        const int onset=sr/4;
+        pulse.l[onset]=.25f;pulse.r[onset]=-.25f;
+        for(int fx:{0,3,4,8}) {
+            const Stereo wet=render(signal,fx,1.f,0.f,false,false,sr);
+            const Stereo half=render(signal,fx,1.f,.5f,false,false,sr);
+            const Stereo imp=render(pulse,fx,1.f,0.f,false,false,sr);
+            for(int c=0;c<2;++c) {
+                const auto& d=c?signal.r:signal.l;
+                const auto& w=c?wet.r:wet.l;
+                const auto& h=c?half.r:half.l;
+                const auto& z=c?imp.r:imp.l;
+                double maxMixError=0.;
+                for(std::size_t n=0;n<d.size();++n) {
+                    check(std::isfinite(w[n])&&std::isfinite(h[n]),"P016 nonfinite phase probe");
+                    maxMixError=std::max(maxMixError,
+                        std::abs(static_cast<double>(h[n])-.5*(d[n]+static_cast<double>(w[n]))));
+                }
+                check(maxMixError<5.e-6,"P016 actual THERAPY half mix mismatch");
+                for(double hz:frequencies) {
+                    const auto D=projection(d,hz,warm,sr,sr);
+                    const auto W=projection(w,hz,warm,sr,sr);
+                    const auto H=projection(h,hz,warm,sr,sr);
+                    const double da=std::hypot(D[0],D[1]),wa=std::hypot(W[0],W[1]);
+                    const double ha=std::hypot(H[0],H[1]);
+                    const double gain=20.*std::log10(std::max(wa,1.e-15)/da);
+                    const double angle=std::atan2(W[1]*D[0]-W[0]*D[1],
+                                                  W[0]*D[0]+W[1]*D[1])*180./kPi;
+                    const double halfGain=20.*std::log10(std::max(ha,1.e-15)/da);
+                    const double loss=20.*std::log10(std::max(ha,1.e-15)/(.5*(da+wa)));
+                    if(phase.good())phase<<sr<<","<<kMacroNames[fx]<<","<<c<<","<<hz<<","<<gain<<","<<angle<<","<<halfGain<<","<<loss<<"\n";
+                    std::printf("P016 PHASE rate=%d fx=%s ch=%d hz=%.0f wet=%+.2f angle=%+.1f half=%+.2f cancellation=%+.2f dB\n",
+                                sr,kMacroNames[fx],c,hz,gain,angle,halfGain,loss);
+                }
+                double peak=0.,early=0.,window=0.,tail=0.;
+                int offset=0;
+                const int n2=sr*2/1000,n20=sr*20/1000;
+                for(int n=0;n<static_cast<int>(z.size());++n) {
+                    const double v=z[static_cast<std::size_t>(n)];
+                    check(std::isfinite(v),"P016 nonfinite impulse output");
+                    if(n<onset)check(v==0.,"P016 unexpected output before impulse");
+                    else if(n<onset+n20) {
+                        if(std::abs(v)>peak){peak=std::abs(v);offset=n-onset;}
+                        window+=v*v;
+                        if(n<onset+n2)early+=v*v;
+                    } else tail+=v*v;
+                }
+                check(peak>1.e-5 && peak<1.,"P016 impulse missing or uncontrolled peak");
+                if(transient.good())transient<<sr<<","<<kMacroNames[fx]<<","<<c<<","<<offset<<","<<peak<<","<<early<<","<<window<<","<<tail<<"\n";
+                std::printf("P016 IMPULSE rate=%d fx=%s ch=%d peak_offset=%d peak=%.6f energy2ms=%.6f energy20ms=%.6f tail=%.6f\n",
+                            sr,kMacroNames[fx],c,offset,peak,early,window,tail);
+            }
+        }
+    }
+}
+void testExtendedDry() {
+    Stereo x(8);
+    x.l={0.f,1.e-30f,-1.e-30f,20.f,-20.f,.25f,-.25f,0.f};
+    x.r=x.l;
+    for(int fx=0;fx<9;++fx) {
+        check(identical(x,render(x,fx,0.f)),"P016 finite headroom 0% exact Dry");
+        check(identical(x,render(x,fx,1.f,1.f)),"P016 finite headroom THERAPY exact Dry");
+    }
+}
 } // namespace
 int main(int argc,char** argv){
     std::ofstream csv;
@@ -571,6 +665,8 @@ int main(int argc,char** argv){
     testAutomation();
     testHighBandAliasing(exportWav?std::string(argv[1]):std::string{});
     testMultirateIntermod(exportWav?std::string(argv[1]):std::string{});
+    testExtendedDry();
+    testPhaseAndTransients(exportWav?std::string(argv[1]):std::string{});
     int substantial=0,weak=0;
     for(unsigned input=0;input<kInputs.size();++input){
         const Stereo dry=source(input);

@@ -1,4 +1,4 @@
-name: P015 Windows VST3 Multirate and Intermod Audit
+name: P016 Windows VST3 Phase Transient and Dry Audit
 
 on:
   push:
@@ -115,22 +115,29 @@ jobs:
           if ($intermod.Count -ne 75) {
             throw "P015 expected 27 wet-peak rows plus 48 high-band product rows, got $($intermod.Count)"
           }
+          $phase = @(Import-Csv "artifacts/P016_phase_metrics.csv")
+          $transient = @(Import-Csv "artifacts/P016_transient_metrics.csv")
+          if ($phase.Count -ne 144 -or $transient.Count -ne 24) {
+            throw "P016 expected 144 phase rows and 24 transient rows"
+          }
+          Write-Host "P016 phase/transient metrics:" $phase.Count $transient.Count
           Write-Host "P015 multi-rate and intermod measurements:" $intermod.Count
           Write-Host "P010 actual VST3 audio measurements:" $rows.Count
       - name: Attach P010 actual-processor audio metrology (not a release)
         uses: actions/upload-artifact@v4
         with:
-          name: P015-Real-VST3-Multirate-Intermod-and-WetDry-Metrics
+          name: P016-Real-VST3-Phase-Transient-and-WetDry-Metrics
           path: |
             artifacts/P010_*
             artifacts/P012_*
             artifacts/P015_*
+            artifacts/P016_*
           if-no-files-found: error
           retention-days: 7
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P015-Multirate-Probe-NOT-FINAL
+          name: 125A-PSYCHIATRY-P016-Phase-Transient-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

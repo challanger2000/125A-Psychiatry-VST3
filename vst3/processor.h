@@ -5,6 +5,7 @@
 #include "depression.hpp"
 #include "obsession.hpp"
 #include "three_worlds.hpp"
+#include "spectral_worlds.hpp"
 
 #include <array>
 #include <vector>
@@ -29,7 +30,7 @@ public:
     Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override;
 
 private:
-    // P004 compound topology: six independent engines. THERAPY once at end.
+    // P005 nine-world audio prototype; THERAPY applied once at the very end.
     // Ordering is preliminary, subject to musical audition and revision.
     psychiatry::Depression depression_{};
     psychiatry::Paranoia paranoia_{};
@@ -37,12 +38,18 @@ private:
     psychiatry::Mania mania_{};
     psychiatry::Panic panic_{};
     psychiatry::Psychosis psychosis_{};
+    psychiatry::Schizophrenia schizophrenia_{};
+    psychiatry::Dissociation dissociation_{};
+    psychiatry::Hallucination hallucination_{};
     psychiatry::Paranoia::Settings paranoiaSettings_{};
     float depressionAmount_=0.f;
     float obsessionAmount_=0.f;
     float maniaAmount_=0.f;
     float panicAmount_=0.f;
     float psychosisAmount_=0.f;
+    float schizophreniaAmount_=0.f;
+    float dissociationAmount_=0.f;
+    float hallucinationAmount_=0.f;
     float therapyAmount_=0.f;
     float wetSmoothed_=1.f;
     float wetStep_=0.001f;

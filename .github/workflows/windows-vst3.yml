@@ -1,4 +1,4 @@
-name: P004 Windows Six-Macro VST3
+name: P005 Windows Nine-Macro VST3
 
 on:
   push:
@@ -50,7 +50,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P004-Windows-VST3-NOT-FINAL
+          name: 125A-PSYCHIATRY-P005-Windows-VST3-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

@@ -80,12 +80,18 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
         mania_.prepare(setup.sampleRate);
         panic_.prepare(setup.sampleRate);
         psychosis_.prepare(setup.sampleRate);
+        schizophrenia_.prepare(setup.sampleRate);
+        dissociation_.prepare(setup.sampleRate);
+        hallucination_.prepare(setup.sampleRate);
         depression_.setAmount(depressionAmount_);
         paranoia_.setSettings(paranoiaSettings_);
         obsession_.setAmount(obsessionAmount_);
         mania_.setAmount(maniaAmount_);
         panic_.setAmount(panicAmount_);
         psychosis_.setAmount(psychosisAmount_);
+        schizophrenia_.setAmount(schizophreniaAmount_);
+        dissociation_.setAmount(dissociationAmount_);
+        hallucination_.setAmount(hallucinationAmount_);
         for(auto& channel:original_)
             channel.assign(static_cast<std::size_t>(setup.maxSamplesPerBlock),0.f);
         wetStep_=static_cast<float>(1.-std::exp(-1./(0.012*setup.sampleRate)));
@@ -103,6 +109,9 @@ tresult PLUGIN_API Processor::setActive(TBool state) {
         mania_.reset();
         panic_.reset();
         psychosis_.reset();
+        schizophrenia_.reset();
+        dissociation_.reset();
+        hallucination_.reset();
         wetSmoothed_=1.f-therapyAmount_;
     }
     return AudioEffect::setActive(state);
@@ -132,6 +141,15 @@ void Processor::apply(Vst::ParamID id,Vst::ParamValue value) noexcept {
     } else if(id==kPsychosis) {
         psychosisAmount_=v;
         psychosis_.setAmount(v);
+    } else if(id==kSchizophrenia) {
+        schizophreniaAmount_=v;
+        schizophrenia_.setAmount(v);
+    } else if(id==kDissociation) {
+        dissociationAmount_=v;
+        dissociation_.setAmount(v);
+    } else if(id==kHallucination) {
+        hallucinationAmount_=v;
+        hallucination_.setAmount(v);
     } else if(id==kTherapy) {
         therapyAmount_=v;
     } else if(id==kBypass) {
@@ -177,14 +195,20 @@ bool Processor::processSpan(Vst::ProcessData& data,
             // processors each return exact dry at zero amount.
             depression_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                                 static_cast<std::size_t>(size));
+            schizophrenia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+                                    static_cast<std::size_t>(size));
             mania_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                            static_cast<std::size_t>(size));
             panic_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                            static_cast<std::size_t>(size));
             paranoia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                               static_cast<std::size_t>(size));
+            dissociation_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+                                  static_cast<std::size_t>(size));
             obsession_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                                static_cast<std::size_t>(size));
+            hallucination_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+                                   static_cast<std::size_t>(size));
             psychosis_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                                static_cast<std::size_t>(size));
             for(int32 i=0;i<size;++i) {
@@ -251,57 +275,74 @@ tresult PLUGIN_API Processor::setState(IBStream* state) {
     if(!state) return kResultFalse;
     IBStreamer s(state,kLittleEndian);
     int32 magic=0,version=0,bypass=0;
-    float d=0.f,p=0.f,m=0.f,panic=0.f,o=0.f,psychosis=0.f,therapy=0.f;
+    float d=0.f,p=0.f,schizo=0.f,m=0.f,panic=0.f,
+          diss=0.f,o=0.f,hall=0.f,psychosis=0.f,therapy=0.f;
     if(!s.readInt32(magic)||!s.readInt32(version)||
        magic!=kStateMagic || version<1 || version>kStateVersion)
         return kResultFalse;
     if(version==1) {
-        // P002 state v1: PARANOIA, THERAPY, Bypass.
+        // P002: PARANOIA / THERAPY / Bypass
         if(!s.readFloat(p)||!s.readFloat(therapy)||!s.readInt32(bypass))
             return kResultFalse;
     } else if(version==2) {
-        // P003 state v2: DEPRESSION, PARANOIA, OBSESSION, THERAPY, Bypass.
+        // P003: DEPRESSION / PARANOIA / OBSESSION / THERAPY / Bypass
         if(!s.readFloat(d)||!s.readFloat(p)||!s.readFloat(o)||
-           !s.readFloat(therapy)||!s.readInt32(bypass)) return kResultFalse;
-    } else {
-        // P004 state v3: 6 macros in stable ParamID order, THERAPY, Bypass.
+           !s.readFloat(therapy)||!s.readInt32(bypass))return kResultFalse;
+    } else if(version==3) {
+        // P004: DEPRESSION / PARANOIA / MANIA / PANIC / OBSESSION /
+        // PSYCHOSIS / THERAPY / Bypass
         if(!s.readFloat(d)||!s.readFloat(p)||!s.readFloat(m)||
            !s.readFloat(panic)||!s.readFloat(o)||!s.readFloat(psychosis)||
-           !s.readFloat(therapy)||!s.readInt32(bypass)) return kResultFalse;
+           !s.readFloat(therapy)||!s.readInt32(bypass))return kResultFalse;
+    } else {
+        // P005: all nine macro values in stable ParamID order, THERAPY, Bypass.
+        if(!s.readFloat(d)||!s.readFloat(p)||!s.readFloat(schizo)||
+           !s.readFloat(m)||!s.readFloat(panic)||!s.readFloat(diss)||
+           !s.readFloat(o)||!s.readFloat(hall)||!s.readFloat(psychosis)||
+           !s.readFloat(therapy)||!s.readInt32(bypass))return kResultFalse;
     }
-    if(!std::isfinite(d)||!std::isfinite(p)||!std::isfinite(m)||
-       !std::isfinite(panic)||!std::isfinite(o)||!std::isfinite(psychosis)||
-       !std::isfinite(therapy)) return kResultFalse;
+    const float vals[]{d,p,schizo,m,panic,diss,o,hall,psychosis,therapy};
+    for(const auto value:vals)
+        if(!std::isfinite(value))return kResultFalse;
     depressionAmount_=static_cast<float>(normalized(d));
     paranoiaSettings_.amount=static_cast<float>(normalized(p));
+    schizophreniaAmount_=static_cast<float>(normalized(schizo));
     maniaAmount_=static_cast<float>(normalized(m));
     panicAmount_=static_cast<float>(normalized(panic));
+    dissociationAmount_=static_cast<float>(normalized(diss));
     obsessionAmount_=static_cast<float>(normalized(o));
+    hallucinationAmount_=static_cast<float>(normalized(hall));
     psychosisAmount_=static_cast<float>(normalized(psychosis));
     therapyAmount_=static_cast<float>(normalized(therapy));
     bypass_=(bypass!=0);
     depression_.setAmount(depressionAmount_);
     paranoia_.setSettings(paranoiaSettings_);
+    schizophrenia_.setAmount(schizophreniaAmount_);
     mania_.setAmount(maniaAmount_);
     panic_.setAmount(panicAmount_);
+    dissociation_.setAmount(dissociationAmount_);
     obsession_.setAmount(obsessionAmount_);
+    hallucination_.setAmount(hallucinationAmount_);
     psychosis_.setAmount(psychosisAmount_);
     wetSmoothed_=1.f-therapyAmount_;
     return kResultOk;
 }
 
 tresult PLUGIN_API Processor::getState(IBStream* state) {
-    if(!state) return kResultFalse;
+    if(!state)return kResultFalse;
     IBStreamer s(state,kLittleEndian);
     if(!s.writeInt32(kStateMagic)||!s.writeInt32(kStateVersion)||
        !s.writeFloat(depressionAmount_)||
        !s.writeFloat(paranoiaSettings_.amount)||
+       !s.writeFloat(schizophreniaAmount_)||
        !s.writeFloat(maniaAmount_)||
        !s.writeFloat(panicAmount_)||
+       !s.writeFloat(dissociationAmount_)||
        !s.writeFloat(obsessionAmount_)||
+       !s.writeFloat(hallucinationAmount_)||
        !s.writeFloat(psychosisAmount_)||
        !s.writeFloat(therapyAmount_)||
-       !s.writeInt32(bypass_ ? 1 : 0)) return kResultFalse;
+       !s.writeInt32(bypass_?1:0))return kResultFalse;
     return kResultOk;
 }
 } // namespace psychiatry::vst3

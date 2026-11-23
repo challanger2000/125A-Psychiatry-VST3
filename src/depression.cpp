@@ -85,7 +85,7 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
             const float reverbMix=m*m*(0.17f+0.43f*m);
             // Controlled musical decay and level, not louder = better.
             const float transformed=body*(1.f-0.3f*m)+tail*reverbMix;
-            if(m>0.f) channels[ch][n]=original+m*(transformed-original);
+            if(m>0.f) channels[ch][n]=x+m*(transformed-x);
         }
     }
 }

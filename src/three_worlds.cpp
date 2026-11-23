@@ -28,10 +28,16 @@ float fold(float sample,float amount) noexcept {
 }
 
 void Mania::prepare(double sr) noexcept {
-    rate_=rate(sr);step_=pole(13.,rate_);reset();
+    rate_=rate(sr);step_=pole(13.,rate_);
+    for(auto& s:state_)s.saturation.prepare();
+    reset();
 }
 void Mania::reset() noexcept {
-    state_={};smoothed_=amount_;
+    for(auto& s:state_) {
+        s.phase=s.feedback=s.fast=s.slow=0.f;
+        s.saturation.reset();
+    }
+    smoothed_=amount_;
 }
 void Mania::setAmount(float a) noexcept {amount_=norm(a);}
 void Mania::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
@@ -59,8 +65,13 @@ void Mania::process(float* const* audio,unsigned channels,std::size_t frames) no
             const float hardPulse=pulse*pulse*(3.f-2.f*pulse);
             const float chopper=(1.f-m)*pulse+m*hardPulse;
             const float feedback=0.30f+0.36f*m;
-            const float driven=std::tanh((1.f+2.5f*m)*x + feedback*s.feedback);
-            s.feedback=driven;
+            // P013: 2x nonlinear ring/feedback excitation with anti-alias
+            // filtering before downsampling, with no bypass/Dry injection.
+            const float driven=s.saturation.process(x,[&](float up) noexcept {
+                const float y=std::tanh((1.f+2.5f*m)*up+feedback*s.feedback);
+                s.feedback=y;
+                return y;
+            });
             const float ring=driven*(0.4f+0.6f*oscillator);
             const float manipulated=(0.45f+0.55f*chopper)*driven+
                  (0.22f+0.30f*m)*ring;

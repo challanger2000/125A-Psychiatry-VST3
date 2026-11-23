@@ -2,6 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include "oversample2x.hpp"
 
 namespace psychiatry {
 
@@ -18,6 +19,7 @@ public:
 private:
     struct Channel {
         float phase=0.f,feedback=0.f,fast=0.f,slow=0.f;
+        detail::Oversample2x saturation{};
     };
     std::array<Channel,2> state_{};
     float amount_=0.f,smoothed_=0.f,step_=0.001f;

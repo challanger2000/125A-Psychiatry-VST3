@@ -19,7 +19,7 @@ std::size_t wrapBack(std::size_t idx, std::size_t back, std::size_t size) noexce
 } // namespace
 
 void Paranoia::prepare(double sampleRate) {
-    if (!std::isfinite(sampleRate) || sampleRate < 8000.0 || sampleRate > 384000.0)
+    if (!std::isfinite(sampleRate) || sampleRate < 1000.0 || sampleRate > 2000000.0)
         sampleRate = 48000.0;
     sampleRate_ = sampleRate;
     const auto capacity = static_cast<std::size_t>(sampleRate_ * 2.1) + 16;

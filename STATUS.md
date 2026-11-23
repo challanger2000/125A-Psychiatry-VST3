@@ -1,27 +1,35 @@
-# Project Status — 125A PSYCHIATRY
-Updated: **2026-11-23** · Current engineering checkpoint: **P001 early audio prototype**
+# 125A PSYCHIATRY — Verified Development Status
+Updated: **2026-11-23** · **P002 validated Windows VST3 prototype (NOT the final product)**
 
-## Verified this turn
-- Public repo, **main** only. Product specification is [docs/SPEC.md](docs/SPEC.md).
-- Added **original PARANOIA C++ DSP prototype** in [src/paranoia.cpp](src/paranoia.cpp) and [src/paranoia.hpp](src/paranoia.hpp). It combines past-buffer reverse events, nonlinear comb-feedback and stereo offset delays. Time/DAW-tempo-derived timing, transient/hybrid triggering and every/alternating/random event selection exist at audio-engine level.
-- Added [tests/test_paranoia.cpp](tests/test_paranoia.cpp) and [CMakeLists.txt](CMakeLists.txt). Tests check exact dry bypass, inverse THERAPY, reverse triggering, tempo division, block invariance, finite output at 192 kHz and audible-signal difference. Tests remain active with NDEBUG/Release.
-- Added [tools/render_paranoia.cpp](tools/render_paranoia.cpp) and [GitHub Actions](.github/workflows/audio-prototype.yml). CI renders 5-s stereo synthetic **dry and wet WAVs**, uploaded as temporary build artifacts. These are not a VST3.
-- Local Linux C++ build passed CTest **1/1**, using 48-kHz processed signal plus 44.1-kHz tempo and 192-kHz robustness cases. Local 5-second test render generated **109 reverse events** (not a musical approval).
-- **Windows and Ubuntu Actions both passed** at [run 45185320199](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45185320199), commit `ce54aa6e1aa105f9153953d3de66f175431fd217`. Later pushes may trigger additional runs; check current branch head when judging status.
+## Last verified tested source
+- Branch: **main** only.
+- Source commit: **`7648a57928fbefb31e052d0f581429effa82d8d7`**.
+- [Windows P002 GitHub Actions run 45189637433](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45189637433): **SUCCESS**. Build produced `PsychiatryPrototype.vst3`.
+- **Steinberg VST3 validator: 47/47 PASS, 0 FAIL** (observed in same run). It tested factory/lifecycle, bus arrangements, input processing, automation and other API contract checks. The previous rejection of two extreme samplerates was corrected.
+- A 7-day **prototype bundle** is attached to that Actions run as artifact `125A-PSYCHIATRY-P002-Windows-VST3-UNVALIDATED`. The word UNVALIDATED refers to **real DAW sound/usage not yet accepted**; the Steinberg **API validator has passed**.
+- P001 standalone DSP test workflow also passed on same commit: [P001 workflow](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45189637160).
 
-## Not yet verified or implemented
-- **No Windows VST3 plugin** has been built. No GUI, presets, images, host tempo transport, installer, project recall, actual DAW tests, or release.
-- Only **PARANOIA** is prototyped; **the other eight macros are still conceptual**. THERAPY works as an internal C++ setting; LOSS OF CONTROL and DE/EN UI are not implemented.
-- No user listening sign-off or comparison against commercial products. Automated numerical tests do **not** establish musical quality.
-- No sample image licenses cleared and no historical asset files bundled. No copied Backmask code.
-- Production realtime allocation instrumentation, full spectral quality review, anti-click automation sweeps, full multiple-instance stress and CPU budget must still be tested.
+## Functionality built
+- Genuine **Windows x64 VST3 audio effect**, built against pinned original **Steinberg VST3 SDK 3.8.1**, Git commit `3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96`.
+- **PARANOIA** is connected to the P001 DSP (time/transient-triggered previous-audio reversing, stereo divergent nonlinear feedback, safe crossfade envelopes).
+- Automatable `PARANOIA`, reverse global Dry/Wet `THERAPY`, native `Bypass` exposed in host generic editor; other eight planned macros **not exposed and NOT implemented**.
+- Supports 1/2 channels (mono/stereo) and 32-bit float processing; VST3 state includes versioned PARANOIA, THERAPY and Bypass; reads parameter events at sample offsets.
+- A temporary Windows VST3 artifact exists; **no public release or complete product is claimed**.
 
-## Next engineering gates
-- **P001-a: evaluate whether PARANOIA is artistically distinctive** on user-provided bass, drums and voice sources. Change/replace as necessary, not just decorate with a GUI.
-- **P002: build minimal Windows x64 Steinberg VST3 wrapper**, with reliable program recall, 1/2 channel I/O, automation and safe lifecycle; keep the nine-macro design without falsely claiming unimplemented effects operate.
-- **P003: implement and listen-test the other eight compound macro effects** individually and in combinations.
-- **P004: historical diagnostic monitor**, with asset provenance and reduced-motion option, off audio thread.
-- **P005: Windows VST3 automated + actual end-of-project Studio Pro listening/recall acceptance**, packaging and release.
+## Outstanding requirements / NO-GO for final release
+- **No custom GUI or historical photo monitor yet.**
+- **No eight other macro DSP engines yet**, no LOSS OF CONTROL or DE/EN GUI.
+- **No confirmed Studio Pro session test, audible quality acceptance, project save/reopen in a real DAW, or production CPU budget test**. Steinberg's 47/47 is **not** proof that the effect sounds good.
+- Only a synthetic WAV demonstration and offline basic DSP checks exist. Audio input-specific artistically useful signal transformations still need listening tests on bass, drums, voice, field recordings and multi-effect combinations.
+- No historical photographs/licensed asset files have been selected or bundled. Rights/privacy/provenance and reduce-motion settings remain requirements.
+- Very unusual sample rates `1234.568` and `1234567.8` Hz are accepted for API compatibility and buffer allocation, but musical DSP quality at rates outside normal production ranges has **not** been evaluated.
+- No 64-bit processing path; VST3 legitimately reports 32-bit support only.
+- The GitHub artifact is temporary and not an installer; no finished user package.
+
+## Next milestones
+- **P003**: improve PARANOIA listening quality, and implement remaining **8 peer macro effects** in independent audio reference comparisons, then wire to VST3 with stable parameter IDs.
+- **P004**: build the interactive vintage diagnostic GUI and rights-cleared historic imagery, audiovisual modulation plus accessible reduced-motion option.
+- **P005**: production stress/latency/automation/recall, full Windows VST3 validator and real Studio Pro musical acceptance at the end, then installer/release.
 
 ## Repository policy
-Only `main`. Keep status factual/current, trace actual Windows CI jobs, do not equate a successful test executable with a finished instrument or FX. Do not place personal developer account identity in the released product.
+**Only main.** Document each verified build with explicit commit and workflow URL. Do not equate automated validator passes with complete, usable sound. No personal developer account details in product GUI/installer or released metadata.

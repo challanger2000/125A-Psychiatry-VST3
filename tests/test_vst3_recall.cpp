@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
+#include <set>
 
 #define CHECK(x) do {if(!(x)){std::fprintf(stderr,"P006 state FAIL %s:%d %s\n",__FILE__,__LINE__,#x);std::abort();}}while(0)
 using namespace psychiatry::vst3;
@@ -141,6 +142,34 @@ int main(){
         CHECK(component.setState(&future)==kResultFalse);
         future.rewind();
         CHECK(controller.setComponentState(&future)==kResultFalse);
+    }
+    // The controller randomizes the nine existing macro IDs only. Legacy
+    // project values are valid, so we can check both preservation and change.
+    {
+        ResizableMemoryIBStream state;
+        writeLegacy(state,4);
+        CHECK(controller.setComponentState(&state)==kResultOk);
+        const auto therapyBefore=controller.getParamNormalized(kTherapy);
+        const auto bypassBefore=controller.getParamNormalized(kBypass);
+        controller.triggerLossOfControl();
+        std::array<double,9> firstValues{};
+        for(std::size_t i=0;i<9;++i) {
+            const double value=controller.getParamNormalized(params[i]);
+            CHECK(value>=0.0 && value<=0.78 && std::isfinite(value));
+            firstValues[i]=value;
+        }
+        CHECK(controller.getParamNormalized(kTherapy)==therapyBefore);
+        CHECK(controller.getParamNormalized(kBypass)==bypassBefore);
+        controller.triggerLossOfControl();
+        bool different=false;
+        for(std::size_t i=0;i<9;++i) {
+            const double value=controller.getParamNormalized(params[i]);
+            CHECK(value>=0.0 && value<=0.78 && std::isfinite(value));
+            if(value!=firstValues[i])different=true;
+        }
+        CHECK(different); // consecutive presses must not repeat every knob
+        CHECK(controller.getParamNormalized(kTherapy)==therapyBefore);
+        CHECK(controller.getParamNormalized(kBypass)==bypassBefore);
     }
     CHECK(controller.terminate()==kResultOk);
     CHECK(component.terminate()==kResultOk);

@@ -6,10 +6,18 @@
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace psychiatry::vst3 {
 using namespace Steinberg;
+namespace {
+constexpr Steinberg::int32 kLossOfControlUiTag=9000;
+// Exactly the nine sound-macro IDs: order is independent of DSP serial routing.
+constexpr std::array<Steinberg::Vst::ParamID,9> kMacroIds{
+    kDepression,kParanoia,kSchizophrenia,kMania,kPanic,
+    kDissociation,kObsession,kHallucination,kPsychosis};
+}
 
 tresult PLUGIN_API Controller::initialize(FUnknown* context) {
     const auto result=EditControllerEx1::initialize(context);
@@ -72,13 +80,49 @@ tresult PLUGIN_API Controller::setComponentState(IBStream* state) {
     return kResultOk;
 }
 
+void Controller::triggerLossOfControl() {
+    // Run exclusively on VSTGUI's UI callback thread. Randomize useful ranges
+    // instead of maximum values for all nine effects (avoids overloading the
+    // compound serial chain on the first randomization).
+    std::uniform_real_distribution<double> amount(0.12,0.78);
+    std::uniform_real_distribution<double> chance(0.0,1.0);
+    for(const auto id:kMacroIds) {
+        const double value=chance(random_)<0.18 ? 0.0 : amount(random_);
+        beginEdit(id);
+        setParamNormalized(id,value);
+        performEdit(id,value);
+        endEdit(id);
+    }
+}
+
+// This is a host-embedded editor, not a stand-alone UI.
+// Its private UI-only tag (9000) does not enter the VST3 parameter list.
+class PsychiatryEditor final : public VSTGUI::VST3Editor {
+public:
+    explicit PsychiatryEditor(Controller* parent)
+        : VSTGUI::VST3Editor(parent,"view","psychiatry.uidesc"), parent_(parent) {}
+protected:
+    void valueChanged(VSTGUI::CControl* control) override {
+        if(control && control->getTag()==kLossOfControlUiTag) {
+            // VSTGUI CTextButton with kick-style sends pressed and released
+            // values. Trigger once on press only, not twice per click.
+            if(control->getValueNormalized()>0.5f)
+                parent_->triggerLossOfControl();
+            return;
+        }
+        VSTGUI::VST3Editor::valueChanged(control);
+    }
+private:
+    Controller* parent_;
+};
+
 IPlugView* PLUGIN_API Controller::createView(FIDString name) {
     // Minimal 125A front panel for the FIRST DAW acceptance test.
     // VSTGUI's VST3Editor performs normal beginEdit/performEdit/endEdit
     // and host-to-control parameter synchronization automatically.
     // No image decoding/GUI rendering is done in the audio callback.
     if(FIDStringsEqual(name,Steinberg::Vst::ViewType::kEditor))
-        return new VSTGUI::VST3Editor(this,"view","psychiatry.uidesc");
+        return new PsychiatryEditor(this);
     return nullptr;
 }
 } // namespace psychiatry::vst3

@@ -14,7 +14,7 @@
   </colors>
   <template class="CViewContainer" name="view" origin="0, 0" size="680, 550" minSize="680, 550" maxSize="680, 550" background-color="Background" background-color-draw-style="filled and stroked" transparent="false" mouse-enabled="true">
     <view class="CTextLabel" origin="26, 14" size="628, 34" title="125A    P S Y C H I A T R Y" font="~ NormalFontVeryBig" font-antialias="true" font-color="Glow" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="center" mouse-enabled="false" transparent="true"/>
-    <view class="CTextLabel" origin="24, 50" size="632, 20" title="P007  |  EXPERIMENTAL AUDIO UNIT  |  9 DISTINCT SOUND WORLDS" font="~ NormalFontSmall" font-antialias="true" font-color="Muted" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="center" mouse-enabled="false" transparent="true"/>
+    <view class="CTextLabel" origin="24, 50" size="632, 20" title="P008  |  EXPERIMENTAL AUDIO UNIT  |  9 DISTINCT SOUND WORLDS" font="~ NormalFontSmall" font-antialias="true" font-color="Muted" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="center" mouse-enabled="false" transparent="true"/>
     <view class="CViewContainer" origin="28, 84" size="624, 332" background-color="Plate" background-color-draw-style="filled and stroked" transparent="false" mouse-enabled="false"/>
     <view class="CTextLabel" origin="55, 94" size="136, 18" title="DEPRESSION" font="~ NormalFontSmall" font-antialias="true" font-color="Text" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="center" mouse-enabled="false" transparent="true"/>
     <view class="CKnob" origin="95, 120" size="58, 58" control-tag="DEPRESSION" default-value="0" min-value="0" max-value="1" angle-start="135" angle-range="270" circle-drawing="false" corona-drawing="true" corona-color="Accent" corona-inset="8" corona-dash-dot="false" corona-outline="true" corona-outline-width-add="3" handle-line-width="3" handle-color="Glow" skip-handle-drawing="false" mouse-enabled="true" wheel-inc-value="0.01" zoom-factor="4" tooltip="DEPRESSION — 0 to 100%" wants-focus="true"/>
@@ -50,7 +50,7 @@
     <view class="CTextLabel" origin="236, 464" size="115, 18" title="0% = WET" font="~ NormalFontSmall" font-antialias="true" font-color="Muted" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="left" mouse-enabled="false" transparent="true"/>
     <view class="CTextLabel" origin="236, 488" size="115, 18" title="100% = DRY" font="~ NormalFontSmall" font-antialias="true" font-color="Muted" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="left" mouse-enabled="false" transparent="true"/>
     <view class="CCheckBox" origin="425, 468" size="180, 28" control-tag="BYPASS" title="BYPASS" font="~ NormalFont" fontColor="Text" font-color="Text" box-frame-color="Muted" box-fill-color="Accent" check-mark-color="Text" mouse-enabled="true" wants-focus="true" tooltip="Bypass the audio processing chain"/>
-    <view class="CTextLabel" origin="390, 504" size="245, 17" title="LOSS OF CONTROL — COMING LATER" font="~ NormalFontSmall" font-antialias="true" font-color="Muted" back-color="Background" frame-color="Background" style-no-frame="true" style-no-draw="true" text-alignment="center" mouse-enabled="false" transparent="true"/>
+    <view class="CTextButton" origin="389, 499" size="237, 26" title="LOSS OF CONTROL" control-tag="LOSS_OF_CONTROL" font="~ NormalFont" font-antialias="true" text-color="Text" text-color-highlighted="Black" frame-color="Accent" frame-color-highlighted="Glow" frame-width="1" round-radius="4" kick-style="true" mouse-enabled="true" tooltip="Randomize nine FX macros. THERAPY stays unchanged."/>
   </template>
   <control-tags>
     <control-tag name="DEPRESSION" tag="100"/>
@@ -64,5 +64,6 @@
     <control-tag name="PSYCHOSIS" tag="108"/>
     <control-tag name="THERAPY" tag="200"/>
     <control-tag name="BYPASS" tag="999"/>
+    <control-tag name="LOSS_OF_CONTROL" tag="9000"/>
   </control-tags>
 </vstgui-ui-description>

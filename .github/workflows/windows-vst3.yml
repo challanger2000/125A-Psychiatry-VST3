@@ -1,4 +1,4 @@
-name: P007 Windows Provisional VSTGUI
+name: P008 Windows VSTGUI LOSS OF CONTROL
 
 on:
   push:
@@ -51,6 +51,10 @@ jobs:
           if (@($ui.SelectNodes("//view[@class='CKnob']")).Count -lt 10) {
             throw "Expected ten real VSTGUI rotary controls"
           }
+          $randomize = @($ui.SelectNodes("//view[@class='CTextButton' and @control-tag='LOSS_OF_CONTROL' and @kick-style='true']"))
+          if ($randomize.Count -ne 1) { throw "LOSS OF CONTROL must be a working momentary button" }
+          $randomTag = @($ui.SelectNodes("//control-tag[@name='LOSS_OF_CONTROL' and @tag='9000']"))
+          if ($randomTag.Count -ne 1) { throw "Randomization UI-only tag not registered" }
           Write-Host "Verified XML and packaged GUI parameter controls:" ($must -join ", ")
       - name: Verify bundle and stage artifact
         shell: pwsh
@@ -74,7 +78,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P007-Preview-VSTGUI-NOT-FINAL
+          name: 125A-PSYCHIATRY-P008-VSTGUI-Randomizer-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

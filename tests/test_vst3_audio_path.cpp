@@ -11,6 +11,7 @@
 #include "public.sdk/source/vst/hosting/parameterchanges.h"
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -345,6 +346,119 @@ void testAutomation(){
     check(p.setActive(false)==kResultOk,"automation deactivate");
     check(p.terminate()==kResultOk,"automation terminate");
 }
+// P012: high-band single-tone alias probe on the SAME real VST3 processor.
+// 15 kHz at 48 kHz makes third-harmonic foldback land at exactly 3 kHz.
+// This reports narrowband harmonic artifacts and does not claim to be
+// a complete anti-alias specification or a listening test.
+double toneMagnitude(const Stereo& signal,double hz,int from=12000,int length=48000) {
+    double co=0.,si=0.;
+    const auto omega=2.*kPi*hz/kRate;
+    for(int n=0;n<length;++n) {
+        const auto pos=static_cast<std::size_t>(from+n);
+        const double sample=.5*(static_cast<double>(signal.l[pos])+signal.r[pos]);
+        const double angle=omega*n;
+        co+=sample*std::cos(angle);
+        si+=sample*std::sin(angle);
+    }
+    return 2.*std::hypot(co,si)/length;
+}
+void testHighBandAliasing(const std::string& dir) {
+    std::ofstream csv;
+    if(!dir.empty()) {
+        csv.open(dir+"/P012_alias_and_cpu_metrics.csv");
+        check(csv.good(),"P012 alias metrics open");
+        csv<<"probe,effect,input_hz,alias_hz,main_rms_amp,alias_rms_amp,alias_relative_dbc,seconds_processed,elapsed_seconds,x_realtime,max_abs_sample\n";
+    }
+    for(double inputHz:{14000.,15000.}) {
+        Stereo high(kFrames);
+        for(int i=0;i<kFrames;++i){
+            const float val=0.35f*tone(inputHz,static_cast<double>(i)/kRate);
+            high.l[static_cast<std::size_t>(i)]=val;
+            high.r[static_cast<std::size_t>(i)]=val;
+        }
+        const double aliasHz=std::abs(3.*inputHz-kRate);
+        const auto baseline=toneMagnitude(high,aliasHz);
+        const auto reference=toneMagnitude(high,inputHz);
+        check(reference>.30,"P012 pure reference fundamental unexpectedly weak");
+        check(baseline<reference*0.0005,
+              "P012 negative reference contains a false folded harmonic");
+        for(int effect:{-1,0,3,4,8}) {
+            const auto processed=(effect==-1)?high:render(high,effect,1.f);
+            const double fundamental=toneMagnitude(processed,inputHz);
+            const double alias=toneMagnitude(processed,aliasHz);
+            const double db=20.*std::log10(std::max(alias,1.e-15)/
+                                          std::max(fundamental,1.e-15));
+            double maxSample=0.;
+            for(const float v:processed.l)
+                maxSample=std::max(maxSample,std::abs(static_cast<double>(v)));
+            std::printf("P012 SPECTRAL src=%.0fHz fx=%-13s folded=%.0fHz rel=%+.2fdBc main=%.6f alias=%.6f\n",
+                inputHz,effect<0?"DRY":kMacroNames[effect],aliasHz,db,fundamental,alias);
+            if(csv.good())csv<<"narrowband,"<<(effect<0?"DRY":kMacroNames[effect])
+                <<","<<inputHz<<","<<aliasHz<<","<<fundamental<<","
+                <<alias<<","<<db<<",,,, "<<maxSample<<"\n";
+        }
+    }
+    // Real Windows runner CPU metrology (not a hard RT guarantee).
+    // Both all-disabled and nine-at-85%-wet paths are timed on *the same*
+    // ProcessData path as the DAW. We publish max block time as evidence.
+    const Stereo signal=source(0);
+    for(float level:{0.f,.85f,1.f}) {
+        Processor p;
+        check(p.initialize(nullptr)==kResultOk,"P012 realtime initialize");
+        Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,kBlock,kRate};
+        check(p.setupProcessing(setup)==kResultOk,"P012 realtime setup");
+        ResizableMemoryIBStream state;
+        IBStreamer sw(&state,kLittleEndian);
+        check(sw.writeInt32(kStateMagic)&&sw.writeInt32(kStateVersion),
+              "P012 nine FX state header");
+        for(int i=0;i<9;++i)check(sw.writeFloat(level),"P012 macro amount");
+        check(sw.writeFloat(0.f)&&sw.writeInt32(0),"P012 therapy and bypass");
+        state.rewind();
+        check(p.setState(&state)==kResultOk,"P012 nine FX state load");
+        check(p.setActive(true)==kResultOk,"P012 realtime activate");
+        Stereo out(kFrames);
+        double maxBlockMs=0.,peak=0.;
+        const auto started=std::chrono::steady_clock::now();
+        for(int start=0;start<kFrames;start+=kBlock) {
+            const int n=std::min(kBlock,kFrames-start);
+            float* in[2]{
+                const_cast<float*>(signal.l.data())+start,
+                const_cast<float*>(signal.r.data())+start};
+            float* output[2]{out.l.data()+start,out.r.data()+start};
+            Vst::AudioBusBuffers ins{},outs{};
+            ins.numChannels=2;ins.channelBuffers32=in;
+            outs.numChannels=2;outs.channelBuffers32=output;
+            Vst::ProcessData data{};
+            data.processMode=Vst::kRealtime;
+            data.symbolicSampleSize=Vst::kSample32;
+            data.numSamples=n;data.numInputs=1;data.numOutputs=1;
+            data.inputs=&ins;data.outputs=&outs;
+            const auto blockStart=std::chrono::steady_clock::now();
+            check(p.process(data)==kResultOk,"P012 real nine FX callback");
+            const double blockMs=std::chrono::duration<double,std::milli>(
+                std::chrono::steady_clock::now()-blockStart).count();
+            maxBlockMs=std::max(maxBlockMs,blockMs);
+            for(int i=0;i<n;++i) {
+                const double a=out.l[static_cast<std::size_t>(start+i)];
+                const double b=out.r[static_cast<std::size_t>(start+i)];
+                check(std::isfinite(a)&&std::isfinite(b),"P012 nine FX non-finite");
+                peak=std::max({peak,std::abs(a),std::abs(b)});
+            }
+        }
+        const double elapsed=std::chrono::duration<double>(
+            std::chrono::steady_clock::now()-started).count();
+        check(p.setActive(false)==kResultOk,"P012 realtime deactivate");
+        check(p.terminate()==kResultOk,"P012 realtime terminate");
+        const double rt=elapsed/(static_cast<double>(kFrames)/kRate);
+        std::printf("P012 REAL VST3 CPU nine_fx=%.2f  time=%.4fs xRealtime=%.4f max_callback_ms=%.4f peak=%.4f\n",
+                    level,elapsed,rt,maxBlockMs,peak);
+        if(csv.good())csv<<"cpu_all_nine,"<<level
+            <<",,,,,"<<(kFrames/static_cast<double>(kRate))
+            <<","<<elapsed<<","<<rt<<","<<peak<<"\n";
+        if(level==0.f)check(identical(signal,out),
+           "P012 nine-at-zero must be bit-perfect dry");
+    }
+}
 } // namespace
 int main(int argc,char** argv){
     std::ofstream csv;
@@ -356,6 +470,7 @@ int main(int argc,char** argv){
         csv<<"source,macro,amount,therapy,dry_rms,output_rms,gain_db,peak_dbfs,raw_null_ratio,gain_matched_residual,band_shape_distance\n";
     }
     testAutomation();
+    testHighBandAliasing(exportWav?std::string(argv[1]):std::string{});
     int substantial=0,weak=0;
     for(unsigned input=0;input<kInputs.size();++input){
         const Stereo dry=source(input);

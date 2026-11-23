@@ -1,4 +1,4 @@
-name: P011 Windows VST3 Audio Level Review
+name: P012 Windows VST3 Spectral and CPU Audit
 
 on:
   push:
@@ -108,12 +108,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $rows = @(Import-Csv "artifacts/P010_actual_vst3_audio_metrics.csv")
           if ($rows.Count -ne 180) { throw "Expected 5 sources x 9 macros x 4 positions = 180 measured real VST3 audio rows" }
+          if (-not (Test-Path "artifacts/P012_alias_and_cpu_metrics.csv")) {
+            throw "P012 missing actual VST3 alias and CPU report"
+          }
           Write-Host "P010 actual VST3 audio measurements:" $rows.Count
       - name: Attach P010 actual-processor audio metrology (not a release)
         uses: actions/upload-artifact@v4
         with:
           name: P010-Actual-VST3-Per-Macro-WetDry-Metrics-WAV
-          path: artifacts/P010_*
+          path: |
+            artifacts/P010_*
+            artifacts/P012_*
           if-no-files-found: error
           retention-days: 7
       - name: Attach experimental VST3 (NOT a release)

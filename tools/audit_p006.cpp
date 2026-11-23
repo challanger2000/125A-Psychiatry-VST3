@@ -174,6 +174,7 @@ int main(){
     suite.prepare(); // outside timed audio
     std::cout<<"source,effect,amount,rms_change_db,wet_peak_dbfs,delta_rms_ratio,dc_offset,peak_step,render_ms,x_realtime,review\n";
     int warnings=0;
+    int unsafeLevels=0;
     for(unsigned input=0;input<types.size();++input){
         const Stereo dry=stimulus(static_cast<int>(input));
         for(unsigned effect=0;effect<names.size();++effect){
@@ -198,6 +199,10 @@ int main(){
                 const bool weak=(m.delta < 0.10 && amount>=0.50f);
                 const bool weakOnset=(m.delta < 0.025 && amount<=0.20f);
                 const bool hot=(peakDb>0.);
+                // P006 reference input is <0 dBFS. A processed signal above
+                // digital full scale or a gratuitous >6 dB level increase is
+                // a regression, not an artistic "extreme" effect.
+                if(hot || gain>6.0)++unsafeLevels;
                 const char* review=quiet?"WARN_LOW_LEVEL":
                                    weak?"WARN_LOW_DELTA":
                                    weakOnset?"WARN_WEAK_ONSET":
@@ -220,6 +225,11 @@ int main(){
     }
     // A high warning count is intentionally NOT a failing CTest:
     // human audition must decide whether the strong transformations are useful.
-    std::fprintf(stderr,"P006 objective audit completed: %d review flags out of 120 source/macro/intensity cases\n",warnings);
+    std::fprintf(stderr,"P006 objective audit completed: %d review flags out of 120 source/macro/intensity cases; %d safety-level violations\n",
+                 warnings,unsafeLevels);
+    if(unsafeLevels>0) {
+        std::fputs("P006 FAIL: clipping or excessive gain detected by reference audit\n",stderr);
+        return 3;
+    }
     return 0;
 }

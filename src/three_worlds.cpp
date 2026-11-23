@@ -64,7 +64,13 @@ void Mania::process(float* const* audio,unsigned channels,std::size_t frames) no
             const float ring=driven*(0.4f+0.6f*oscillator);
             const float manipulated=(0.45f+0.55f*chopper)*driven+
                  (0.22f+0.30f*m)*ring;
-            if(m>0.f) audio[ch][i]=x+m*(manipulated-x);
+            // P006: isolate level from intensity. The original MANIA
+            // generated +9..10 dB RMS rise and >0 dBFS peaks on normalized
+            // sources at 85%. Reduce gain progressively as drive rises;
+            // keep pulse/ring speed and timbral changes intact.
+            const float automaticGain=1.f/(1.f+2.55f*m*m);
+            const float transformed=automaticGain*manipulated;
+            if(m>0.f) audio[ch][i]=x+m*(transformed-x);
         }
     }
 }
@@ -87,7 +93,9 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
     const float invRate=static_cast<float>(1./rate_);
     for(std::size_t i=0;i<frames;++i) {
         smoothed_+=step_*(amount_-smoothed_);
-        const float m=smoothed_;
+        // Smooth onset boost; P006 reported a marginal 20% PANIC response
+        // on clean synth bass. Preserve both endpoints and audio smoothing.
+        const float m=smoothed_*(1.5f-0.5f*smoothed_);
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
             const float raw=audio[ch][i];

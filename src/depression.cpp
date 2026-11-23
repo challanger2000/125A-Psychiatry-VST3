@@ -42,7 +42,10 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
         (count==2&&!channels[1])||state_[0].delay[0].empty()) return;
     for(std::size_t n=0;n<frames;++n) {
         smoothed_+=step_*(target_-smoothed_);
-        const float m=smoothed_;
+        // P006 measured 20%-macro effect below the onset threshold on
+        // clean bass/atmosphere. A smooth concave curve makes the first
+        // third musically perceptible without shifting the 0% or 100% ends.
+        const float m=smoothed_/(0.50f+0.50f*smoothed_);
         for(unsigned ch=0;ch<count;++ch) {
             auto& c=state_[ch];
             const float original=channels[ch][n];

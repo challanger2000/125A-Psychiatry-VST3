@@ -1,4 +1,4 @@
-name: P003 DSP Unit Tests and WAV Comparisons
+name: P004 DSP Tests and Audio Comparisons
 
 on:
   push:
@@ -36,11 +36,16 @@ jobs:
         shell: pwsh
         run: |
           & "./build/Release/render_dark_macros.exe" "artifacts/P003"
+      - name: Render MANIA, PANIC and PSYCHOSIS samples
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          & "./build/Release/render_three_worlds.exe" "artifacts/P004"
       - name: Publish example WAV pair (not a plugin)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: P003-Macro-Audio-Reference-WAV
+          name: P004-Six-Macro-Audio-Probes-WAV
           path: artifacts/*.wav
           if-no-files-found: error
           retention-days: 7

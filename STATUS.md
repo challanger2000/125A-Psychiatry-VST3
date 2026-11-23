@@ -1,34 +1,44 @@
-# 125A PSYCHIATRY — Verified Development Status
-Updated: **2026-11-23** · **P003 three-macro Windows VST3 prototype (NOT a release)**
+# 125A PSYCHIATRY — Verified Project Status
 
-## Last verified code and tests
-- **Only `main` branch**; preserve permanent factory IDs and parameter IDs.
-- Commit **`e40c2752976b08ccc78e182630af4fd6a0875eb8`** passed Windows GitHub Action [45192471302](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45192471302) with a real `PsychiatryPrototype.vst3` and **Steinberg validator 47/47 PASS**.
-- [DSP Windows + Linux workflow 45192471228](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45192471228): SUCCESS. P001 Paranoia and P003 Depression/Obsession checks passed in Release mode. P003 renderer produced 6 synthetic WAV files and the new reverb-tail decay test passed.
-- Last tested code revision additionally fixes the dark reverb feedback bound and confirms decay into silence. The next commit updates **documentation only**; no compiled DSP or VST3 source is changed.
+Updated: **2026-11-23** · Current code phase: **P005 / v0.5.0 (nine-macro Windows VST3 prototype, NOT a finished release)**
 
-## Actual functionality
-- Real Windows x64 **VST3 audio effect** built against pinned Steinberg VST3 SDK 3.8.1 (source commit `3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96`).
-- **DEPRESSION**: nonlinear dynamics, dark filtering and saturating plate-like feedback delay network.
-- **PARANOIA**: triggered past-audio reverse fragments and divergent stereo nonlinear feedback.
-- **OBSESSION**: re-captured micro-loops, retriggering, fading and degrading digital feedback.
-- All three macros are independently exposed as host-automatable controls. One inverted **THERAPY** global Dry/Wet, standard host Bypass. Processing is in defined order: DEPRESSION → PARANOIA → OBSESSION → single global mix.
-- Host state **v2** stores the three macros, THERAPY and bypass. Older **P002 state v1** (`Paranoia, Therapy, Bypass`) is read without changing the plugin class identity. Note: legacy restore logic is implemented but lacks a dedicated real-host regression test.
-- Host generic parameter editor only, no custom GUI. Full stereo and mono, 32-bit float only, no allocations within the DSP audio callback by design; production realtime tracing still required.
+## Last verified tested code
+- Source commit: **`c118854dd7fcb8806ae722c1838ba53a2d4d4bdf`** on **main only**.
+- Official Windows 2022/MSVC VST3 build and Steinberg API validator [45198013374](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198013374): **SUCCESS; 47/47 tests passed, zero failures**.
+- P005 standalone DSP workflow [45198012444](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198012444): **SUCCESS on both Windows and Linux**, all **4/4 CTest test groups**.
+- [Windows prototype artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45198013374/artifacts/14829946498) — `125A-PSYCHIATRY-P005-Windows-VST3-NOT-FINAL` (temporary artifact, 7-day retention; **not a final installer**).
+- [Nine-world synthetic WAV probe bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45197686369/artifacts/14828402907) (temporary, includes grouped examples).
 
-## Absolutely NOT complete
-- **Six of nine macro DSPs** are missing: SCHIZOPHRENIA, MANIA, PANIC, DISSOCIATION, HALLUCINATION and PSYCHOSIS. Their parameter IDs are reserved but not exposed.
-- LOSS OF CONTROL randomize and DE/EN switch are not yet implemented.
-- **No actual Studio Pro listening session** or user sound quality approval, and no production CPU/stress measurements.
-- No historical photographs/GUI; no image rights cleared, no render thread architecture.
-- No finished installer/release; build artifacts are ephemeral engineering packages. [P003 Windows VST3 prototype artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45192471302/artifacts/14827115443) and [six dry/processed WAV probes](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45192471228/artifacts/14825783048) are temporary.
-- No claim of musical excellence based on validator pass alone.
+## Implemented and present in the Windows VST3
+1. **DEPRESSION**: dynamics crush + dark filtering + saturating reverberation delay network.
+2. **PARANOIA**: transient/clock-driven reverse slices + stereo nonlinear comb feedback.
+3. **SCHIZOPHRENIA**: twin resampled/grain-pitch voices, opposing spectral motion, cross-modulation (fictional sound-world name, **not a clinical portrayal**).
+4. **MANIA**: envelope-responsive, accelerating modulation + feedback-based ring coloration.
+5. **PANIC**: transient detector, bounded tone/noise shock and restless gated/resonant body.
+6. **DISSOCIATION**: stored source-derived backwards grains + temporally displaced smear/freeze texture (not a true FFT spectral freezer).
+7. **OBSESSION**: micro-loop capture, repeats, retriggering and intentional bit-reduction.
+8. **HALLUCINATION**: FIR Hilbert approximation frequency shift, dual formant-colored branches and eerie time feedback.
+9. **PSYCHOSIS**: multi-band nonlinear shaping, wavefolding and signal interaction; **this is one distinct FX of nine, distortion is not central to all nine**.
 
-## Next verification and project gates
-1. Listen critically to DEPRESSION, PARANOIA and OBSESSION separately on bass, drums, voice and cinematic sounds; compare with dry and level-match externally.
-2. Build and test the remaining six compound DSP worlds **individually**; reject indistinct/inaudible designs. Preserve fixed order or redesign with explicit validated routing.
-3. Add reliable LOSS OF CONTROL, responsive GUI and a historically sourced visual system (rights provenance and motion safety).
-4. End-stage Studio Pro real-host recall/automation/CPU/audio validation and final Windows package.
+These are **early playable DSP algorithms, not yet user-approved sound designs**. All macros are automatable in the host's generic UI. They are processed in a defined serial path: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA → DISSOCIATION → OBSESSION → HALLUCINATION → PSYCHOSIS → once-only global THERAPY mix.
 
-## Repository maintenance
-Only `main`; update this status after each fully observed Windows + Linux run. Never confuse build/Steinberg validator pass with musical acceptance.
+- **THERAPY:** inverse global Dry/Wet (0% processed; 100% dry), state/automation; **Bypass:** native.
+- VST3 class IDs and macro parameter IDs are stable. Project state **v4** persists the nine macro values, therapy and bypass; **v1, v2, v3** old state representations are parsed to preserve earlier projects. **Actual host recall across old project files remains to be tested.**
+- Mono/stereo, 32-bit float, C++17, Steinberg VST3 SDK 3.8.1 pinned at `3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96`.
+- DSP callbacks perform **no dynamic memory allocation by design**; memory is reserved at preparation. Actual audio-thread allocation tracing and CPU testing is still required.
+
+## Outstanding / NO-GO for release
+- **No custom GUI, no historical photography, no reactive clinical video monitor, no asset license/provenance audit.**
+- **LOSS OF CONTROL randomizer not implemented; DE/EN language toggle not implemented.**
+- **No real Studio Pro/Studio One audio test, no actual project recall/reopen acceptance, no user musical quality approval**. Listening must compare bass, guitars, drums, voice, cinematic sounds, level-matched and at varying intensities.
+- Pitch/formant shifter quality, spectral approximation, anti-aliasing for nonlinear/folded processing, wet/dry phase response, extreme automation and latency/CPU budget require engineering review.
+- GitHub Actions 47/47 validator verifies API behavior, not that the nine FX are distinct or commercially competitive.
+- No finished installer, release, product screenshots, accessibility/motion settings or tested photo rights.
+
+## Next phases
+- **P006 DSP quality pass:** listening tests on real sources, measured output levels / oversampling / CPU; improve or replace weak macro algorithms rather than hiding flaws behind GUI. Verify all nine interacting and state recall v1–v4.
+- **P007 GUI:** convincing antique psychiatric diagnostic instrument, thematic photo pools per knob, controlled analog display response, flicker accessibility, off-audio-thread video renderer. Clear rights for images.
+- **P008 finish:** LOSS OF CONTROL on the actual nine host parameters; user-recognizable 125A visuals, DE/EN, actual Studio Pro end-stage audio QA and packaging.
+
+## Documentation / repository policy
+`main` only; stay precise about what is **verified**. Always update this status and relevant docs after actual changes, including tested commit and full Windows Actions run IDs. Use brand-only metadata in the released product; do not embed personal developer identity.

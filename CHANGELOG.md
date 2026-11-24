@@ -2,6 +2,11 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.10 — P022 (2026-11-24)
+
+- Monitor follows actual macro intensity, THERAPY, Bypass; truly static reduced-motion mode. Real bypass/restore screenshot proof 2340/240/2340.
+- Branded x64 bundle and upstream license notices verified. [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45306570917), [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45306570973), [GUI](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45306571192) SUCCESS. No DSP changes.
+
 ## P021 — stress verification (factory 0.9.9)
 
 - [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45305211996) and [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45305212003) passed. Six actual processor renders with dense automation, silent input, native bypass and exact compensated THERAPY; bit-identical results across buffer layouts at each of three rates. No DSP change.

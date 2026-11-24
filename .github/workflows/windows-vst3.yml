@@ -1,4 +1,4 @@
-name: P022 Windows VST3 UI and Bundle Integrity
+name: P023 Windows VST3 Tail Decay Audit
 
 on:
   push:
@@ -125,7 +125,7 @@ jobs:
       - name: Attach P010 actual-processor audio metrology (not a release)
         uses: actions/upload-artifact@v4
         with:
-          name: P022-Real-VST3-Integrity-Metrics
+          name: P023-Real-VST3-Tail-Metrics
           path: |
             artifacts/P010_*
             artifacts/P012_*
@@ -136,7 +136,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P022-UI-Bundle-NOT-FINAL
+          name: 125A-PSYCHIATRY-P023-Tail-NOT-FINAL
           path: plugin-package/
           if-no-files-found: error
           retention-days: 7

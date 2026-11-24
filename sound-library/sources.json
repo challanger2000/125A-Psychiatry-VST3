@@ -1,5 +1,12 @@
 [
   {
+    "path": "sound-library/originals/ambience/AMBUndwtr_Underwater_LOOP_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/AMBUndwtr_Underwater_LOOP_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "1159b8fc1c6303426b8c84126f5723769e4b98eb",
+    "license": "CC-BY-4.0"
+  },
+  {
     "path": "sound-library/originals/breath/HMNBrth_FemaleBreathing_OS_01.ogg",
     "source_path": "corpora/oculus-audio-pack/ogg/HMNBrth_FemaleBreathing_OS_01.ogg",
     "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
@@ -11,6 +18,20 @@
     "source_path": "corpora/oculus-audio-pack/ogg/HMNBrth_MaleBreathing_OS_01.ogg",
     "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
     "git_blob_sha1": "4ff6476254c5283919ed3f4b86fe4c64302a33c4",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/clocks/CLOCKTick_ClockCreepy_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/CLOCKTick_ClockCreepy_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "c81d98a8b1a2413bf13ff25f40be4002c6177ed9",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/clocks/CLOCKTick_ClockCreepyReverb_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/CLOCKTick_ClockCreepyReverb_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "9b34f91c5116996c72946b4475e6042031a9e882",
     "license": "CC-BY-4.0"
   },
   {
@@ -63,6 +84,13 @@
     "license": "CC-BY-4.0"
   },
   {
+    "path": "sound-library/originals/glass/GLASBrk_WindowPaneSmallBreak_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/GLASBrk_WindowPaneSmallBreak_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "33b2114687523dd0639ff8d46396e315fc3684f1",
+    "license": "CC-BY-4.0"
+  },
+  {
     "path": "sound-library/originals/machines/MACHMisc_MachineGeneric_LOOP_02.ogg",
     "source_path": "corpora/oculus-audio-pack/ogg/MACHMisc_MachineGeneric_LOOP_02.ogg",
     "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
@@ -81,6 +109,13 @@
     "source_path": "corpora/oculus-audio-pack/ogg/METLHndl_ElectricBoxOpen_OS_01.ogg",
     "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
     "git_blob_sha1": "e743d823d4ee12130841145cd9ddfeacfb72f21f",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/metal/METLImpt_HammerAnvilAmbient_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/METLImpt_HammerAnvilAmbient_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "a251afa3583c9fac7ae20c82f5f51794b5ec723d",
     "license": "CC-BY-4.0"
   },
   {

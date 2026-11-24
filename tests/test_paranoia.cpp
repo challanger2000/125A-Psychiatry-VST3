@@ -75,6 +75,7 @@ int main() {
         run(fx,l,r,137);
         const auto st=fx.stats();
         CHECK(st.triggers > 8 && st.reverseEvents > 8 && st.reversedSamples > 1000);
+        CHECK(st.acousticEvents > 0 && "P026c real acoustic sample events");
         double difference=0,energy=0;
         for(std::size_t i=0;i<n;++i){
             CHECK(std::isfinite(l[i])&&std::isfinite(r[i]));
@@ -144,6 +145,33 @@ int main() {
         fx.reset();
         auto x=original,y=original;run(fx,x,y,1024);
         CHECK(l==x&&r==y&&"P016 reset must reproduce seeded render");
+    }
+    {
+        // Separate source-player contract: real archived PCM must emit
+        // nonzero output when driven, never during zero-input startup.
+        psychiatry::ReactiveAcoustic a,b;
+        for(double rate:{44100.,48000.,96000.}) {
+            a.prepare(rate);b.prepare(rate);
+            for(int n=0;n<static_cast<int>(rate);++n) {
+                const auto z=a.tick(0.f,1.f);CHECK(z.l==0.f&&z.r==0.f);
+            }
+            CHECK(a.events()==0);
+            // Same input from reset, despite a different history of silence.
+            a.reset();b.reset();
+            double energy=0.,diff=0.;
+            for(int n=0;n<static_cast<int>(rate*4.);++n) {
+                const auto l=a.tick(.2f,1.f),r=b.tick(.2f,1.f);
+                CHECK(l.l==r.l&&l.r==r.r);
+                CHECK(std::isfinite(l.l)&&std::abs(l.l)<=.5f);
+                energy+=l.l*l.l+l.r*l.r;diff+=std::abs(l.l-l.r);
+            }
+            CHECK(a.events()>=2&&energy>1.&&diff>1.);
+            for(int n=0;n<200;++n) {
+                const auto z=a.tick(.2f,0.f);CHECK(z.l==0.f&&z.r==0.f);
+            }
+            std::printf("P026c rate=%.0f events=%llu energy=%.4f stereo_delta=%.4f\n",
+              rate,static_cast<unsigned long long>(a.events()),energy,diff);
+        }
     }
     std::puts("P001 PASS: dry, therapy, finite outputs, reverse triggers, tempo, transient, block size, P016 reset and extended-range endpoints");
 }

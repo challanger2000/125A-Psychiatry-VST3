@@ -26,6 +26,7 @@ void Paranoia::prepare(double sampleRate) {
     const auto capacity = static_cast<std::size_t>(sampleRate_ * 2.1) + 16;
     lookback_.assign(capacity, {});
     feedback_.assign(capacity, {});
+    acoustic_.prepare(sampleRate_);
     reset();
 }
 
@@ -39,6 +40,7 @@ void Paranoia::reset() noexcept {
     smoothedTherapy_ = clamp01(settings_.therapy);
     alternate_ = false;
     stats_ = {};
+    acoustic_.reset();
     random_ = seed_; // Reproduce event timing after resetting playback.
     scheduleNext();
 }
@@ -119,6 +121,9 @@ void Paranoia::process(float* const* channels, unsigned channelCount,
         const bool transient = envelope_ > (0.07f + 0.20f * (1.0f - m)) &&
             envelope_ - previousEnvelope_ > (0.00015f + 0.00035f * (1.0f - m));
         previousEnvelope_ = envelope_;
+        const auto ghost=acoustic_.tick(envelope_,m);
+        const float ghostL=channelCount==1?.5f*(ghost.l+ghost.r):ghost.l;
+        const float ghostR=channelCount==1?ghostL:ghost.r;
 
         if (++elapsed_ >= interval_) {
             if (settings_.trigger != Trigger::Transient && m > 0.0001f) triggerReverse(m);
@@ -136,8 +141,8 @@ void Paranoia::process(float* const* channels, unsigned channelCount,
         const float fbR = feedback_[wrapBack(cursor_, delayR, size)].r;
         const float fbGain = 0.12f + 0.55f * m;
         feedback_[cursor_] = {
-            std::tanh(0.62f * inL + fbGain * fbL),
-            std::tanh(0.62f * inR + fbGain * fbR)
+            std::tanh(0.62f * inL + 0.42f * ghostL + fbGain * fbL),
+            std::tanh(0.62f * inR + 0.42f * ghostR + fbGain * fbR)
         };
 
         Stereo reverse{};
@@ -157,9 +162,9 @@ void Paranoia::process(float* const* channels, unsigned channelCount,
 
         // Parallel spatially divergent echo and bounded, stereo-dependent reverse ghosts.
         const float wetL = std::tanh((0.85f - 0.21f * m) * inL +
-            (0.18f + 0.18f * m) * fbR + (0.35f + 0.32f * m) * reverse.l);
+            (0.18f + 0.18f * m) * fbR + (0.35f + 0.32f * m) * reverse.l + ghostL);
         const float wetR = std::tanh((0.85f - 0.21f * m) * inR +
-            (0.18f + 0.18f * m) * fbL + (0.35f + 0.32f * m) * reverse.r);
+            (0.18f + 0.18f * m) * fbL + (0.35f + 0.32f * m) * reverse.r + ghostR);
         const float affectedL = inL + m * (wetL - inL);
         const float affectedR = inR + m * (wetR - inR);
         const float wetAmount = 1.0f - smoothedTherapy_;

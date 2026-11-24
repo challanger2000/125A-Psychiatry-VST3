@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include "reactive_acoustic.hpp"
 
 namespace psychiatry {
 
@@ -28,6 +29,7 @@ public:
         std::uint64_t triggers = 0;
         std::uint64_t reverseEvents = 0;
         std::uint64_t reversedSamples = 0;
+        std::uint64_t acousticEvents = 0;
     };
 
     void prepare(double sampleRate);
@@ -37,7 +39,7 @@ public:
     // In-place; 1 or 2 planar float channels; arbitrary number of frames.
     void process(float* const* channels, unsigned channelCount,
                  std::size_t frames) noexcept;
-    Stats stats() const noexcept { return stats_; }
+    Stats stats() const noexcept { auto s=stats_;s.acousticEvents=acoustic_.events();return s; }
     unsigned latencySamples() const noexcept { return 0; } // reverses past audio, not future audio
 
 private:
@@ -61,6 +63,7 @@ private:
     bool alternate_ = false;
     Settings settings_{};
     Stats stats_{};
+    ReactiveAcoustic acoustic_{};
 
     std::uint32_t nextRandom() noexcept;
     void scheduleNext() noexcept;

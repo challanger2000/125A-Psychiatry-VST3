@@ -1,0 +1,18 @@
+Acoustic source recordings: Oculus Audio Pack 01 by Oculus VR, LLC
+https://developers.meta.com/vr/downloads/package/oculus-audio-pack-1/
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+Source mirror (pinned): https://github.com/facebookincubator/Meta-open-sound/tree/514c926efecdb3c7812bf00eedf8e5c8d61dd681/corpora/oculus-audio-pack
+
+Embedded source excerpts:
+VOXWhsp_WhispersCreepy_OS_01.ogg
+VOXWhsp_WhispersCreepyReverb_OS_01.ogg
+DOORKnck_OfficeDoorKnock_OS_01.ogg
+FEETHmn_ShoeMetalWalk_OS_01.ogg
+FEETHmn_ShoeMetalWalk_OS_03.ogg
+WOODFric_CreaksCreepy_OS_01.ogg
+
+Modifications: decoding, mono conversion, resampling to 24 kHz, excerpt
+selection, silence trimming, gain scaling, fades, PCM16 encoding, randomized
+excerpt playback, panning and further DSP processing by 125A PSYCHIATRY.
+No endorsement of this plugin by the original authors is implied.

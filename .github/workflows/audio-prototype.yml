@@ -19,6 +19,8 @@ jobs:
         os: [windows-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
+      - name: Install pinned build-time acoustic decoder
+        run: python -m pip install --disable-pip-version-check imageio-ffmpeg==0.6.0
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Compile audio prototype

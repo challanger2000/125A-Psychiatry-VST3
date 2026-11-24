@@ -19,6 +19,10 @@ User audition of v0.9.12 confirmed several usable effects above 50%, but rejecte
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
 - All Windows Actions artefacts are temporary engineering packages, not release installers.
 
+## P026c — PARANOIA embedded acoustic layer candidate / factory 0.9.13 (not yet verified)
+
+[Implementation and scope](docs/P026c.md). Six source recordings are selected from the 23 archived OGG files; build-time hash-verified PCM generation, reactive playback and actual PARANOIA wet/cross-feedback routing. No new controls or runtime codec. Native build/test results pending. Last fully verified source remains P024/P025 v0.9.12.
+
 ## P026b — PSYCHOSIS anti-alias correction candidate (verification pending)
 
 P026a source fc48623e26fc2a8e1ed6464260c073a1f9aec224: [DSP suite PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45425652865), [EditorHost PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45425652906), [Windows VST3 audio gate FAIL](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45425652866) after 47/47 Steinberg and legacy state PASS. The 48 kHz two-tone 2x15k+14k folded line exceeded -45 dB(input). Add a second pole before the heavily nonlinear midband; keep complementary high residual and fixed 24-sample stage latency. No test thresholds changed. Numerical replica (not compiled VST3) reproduced -44.54 dB and predicts -89.92 dB for that line after correction, with 55 Hz fundamental 0.37382 -> 0.37633, H3 0.01828 -> 0.03167 and H5 0.08231 -> 0.07036. Actual Windows verification still pending.

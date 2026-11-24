@@ -1,18 +1,31 @@
 cmake_minimum_required(VERSION 3.25)
-project(PsychiatryAudioPrototype VERSION 0.9.12 LANGUAGES CXX)
+project(PsychiatryAudioPrototype VERSION 0.9.13 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # A standalone DSP executable remains buildable without Steinberg's SDK.
+# Decode only archived, hash-verified sources at build time. The generated
+# immutable PCM is linked into the same VST3; no decoder at runtime.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(ACOUSTIC_BANK "${CMAKE_CURRENT_BINARY_DIR}/generated/acoustic_bank.hpp")
+file(GLOB_RECURSE ACOUSTIC_SOURCE_FILES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/sound-library/originals/*.ogg")
+add_custom_command(OUTPUT "${ACOUSTIC_BANK}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/prepare_acoustic_bank.py" "${ACOUSTIC_BANK}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/prepare_acoustic_bank.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sound-library/sources.json" ${ACOUSTIC_SOURCE_FILES}
+    VERBATIM)
 add_library(psychiatry_audio STATIC
+    "${ACOUSTIC_BANK}"
+    src/reactive_acoustic.cpp
     src/paranoia.cpp
     src/depression.cpp
     src/obsession.cpp
     src/three_worlds.cpp
     src/spectral_worlds.cpp)
-target_include_directories(psychiatry_audio PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(psychiatry_audio PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set_target_properties(psychiatry_audio PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(MSVC)
   target_compile_options(psychiatry_audio PRIVATE /W4 /permissive-)
@@ -100,7 +113,7 @@ if(PSYCHIATRY_BUILD_VST3)
   configure_file("${PSYCHIATRY_VST3_SDK_DIR}/vstgui4/LICENSE"
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VSTGUI.txt" COPYONLY)
   smtg_target_add_plugin_resources(PsychiatryPrototype
-      RESOURCES resource/psychiatry.uidesc
+      RESOURCES resource/psychiatry.uidesc resource/LICENSE-ACOUSTIC-SOURCES.txt
       resource/scene-1.png resource/scene-2.png resource/scene-3.png
       resource/scene-4.png resource/scene-5.png resource/scene-6.png
       resource/scene-7.png resource/scene-8.png resource/scene-9.png

@@ -7,3 +7,5 @@
 The upstream licenses do not constitute endorsement by Steinberg. Packaging checks fail if either license notice is absent. No new third-party media may be added without a source, rights statement and provenance record.
 
 P024: nine original generated grayscale PNGs (`resource/scene-1.png` through `scene-9.png`) are produced by `tools/generate_crt_scenes.mjs` from fictional box geometry, lighting, shadows, textures and deterministic grain. No external imagery, patient data, identifiable subjects or archival photographs. Generated art is historical-style fiction, not historical documentation.
+
+P026c candidate: six CC BY 4.0 Oculus Audio Pack 01 source excerpts from the pinned sound library are embedded as build-generated immutable PCM for PARANOIA. Attribution and modification notices are staged in LICENSE-ACOUSTIC-SOURCES.txt. imageio-ffmpeg 0.6.0 is build-time only; no codec, original OGG, download or runtime dependency shipped. Verify actual bundle and source hashes before release.

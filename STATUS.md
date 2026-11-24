@@ -1,12 +1,18 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026l / v0.9.20**. Latest verified controller checkpoint: P027a / v0.9.21. Current development candidate: P027d / v0.9.22. Final GUI deferred. **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P027d / v0.9.22**. Latest verified controller checkpoint: P027a / v0.9.21. Current development candidate: P027e / v0.9.23. Final GUI deferred. **Only `main`**; no final or musical approval.
 
-## Current candidate — P027d / v0.9.22 spectral midpoint correction
+## Current candidate — P027e / v0.9.23 randomizer density
+
+P027d exact source `181bf2f8f6dd15c1b64303a1a9c67a81dfca7663`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45474084089), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45474084135), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45474084014), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45474084126) all SUCCESS. Recorded prefix2 gain recovery 1.938–1.939 dB; full twelve at 50% now -17.686/-17.602/-17.054/-16.108 dB vs -20.624/-20.780/-21.318/-19.377 dB (drums/guitar/vocal/machine), improvements 2.938/3.178/4.264/3.269 dB. Mixed dense vectors now -9.914 to -14.268 dB. 68 combination rows, 240 individual rows, 96 A/B PASS. Still substantial intentional/cumulative attenuation. No human listening approval.
+
+P027e changes LOSS OF CONTROL only: select 3–6 of 12 worlds per press, nonzero amounts retain .12–.78, all others explicitly zero; all 12 host IDs still written, same group edits and untouched globals. Manual all-twelve setting remains possible. This is an engineering design choice to reduce dense random chain attenuation and improve differentiation, not a user-mandated exact density. The prior randomizer activated each macro with probability .82. Controller test now checks density; recorded QA additionally renders 8 seeded actual generator presets per 4 sources (32 cases) and records values and levels. No new gain gates or DSP/GUI changes. New CI pending.
+
+## Historical candidate — P027d / v0.9.22 spectral midpoint correction
 
 P027c exact source `c7f424092fed2465df227c4f148e0a1c1095f5e5`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45470028527), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45470028540), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45470028649) SUCCESS. EditorHost did not trigger. 68 recorded combinations, combined THERAPY endpoints/midpoint and bypass PASS, 240 individual rows/96 A/B. All 12 at 50%: -20.624/-20.780/-21.318/-19.377 dB (drums/guitar/vocal/machine). Mixed vectors -11.618 to -16.382 dB. Prefix stage 2 SCHIZOPHRENIA -2.384 to -6.286 dB, stage 8 HALLUCINATION -4.414 to -4.969 dB. These are interaction-dependent, not isolated gain.
 
-SCHIZOPHRENIA and HALLUCINATION only: partial power compensation of their inner dry/transformed crossfades, 0 and 100% unchanged, +1.938 dB at 50%, no dynamic normalization or feedback gain. This is a conservative mixing-law hypothesis, not proof of the cause of all attenuation. Preserve creative CATATONIA/AMNESIA loss, THERAPY and all other algorithms. Added analytic regression and pinned real-processor prefix 2 improvement oracle; all existing gates unchanged. Full CI pending; no local build or audition claimed.
+SCHIZOPHRENIA and HALLUCINATION only: partial power compensation of their inner dry/transformed crossfades, 0 and 100% unchanged, +1.938 dB at 50%, no dynamic normalization or feedback gain. This is a conservative mixing-law hypothesis, not proof of the cause of all attenuation. Preserve creative CATATONIA/AMNESIA loss, THERAPY and all other algorithms. Added analytic regression and pinned real-processor prefix 2 improvement oracle; all existing gates unchanged. All four CI subsequently passed as recorded above; no local build or audition claimed.
 
 ## Historical candidate — P027c actual recorded combination audit (factory v0.9.21 unchanged)
 

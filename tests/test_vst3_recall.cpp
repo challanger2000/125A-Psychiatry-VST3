@@ -254,7 +254,8 @@ int main(){
             controller.triggerLossOfControl();
             CHECK(spy->groupStarts==pass+1&&spy->groupFinishes==pass+1);
             CHECK(spy->events.size()==36);
-            bool different=false,anyActive=false;
+            bool different=false;
+            unsigned activeCount=0;
             for(std::size_t i=0;i<soundIds.size();++i) {
                 const auto id=soundIds[i];
                 const auto& begin=spy->events[i*3];
@@ -265,11 +266,11 @@ int main(){
                 const double value=controller.getParamNormalized(id);
                 CHECK(perform.value==value);
                 CHECK(std::isfinite(value)&&(value==0.||(value>=.12&&value<=.78)));
-                if(value>0.){observedNonzero[i]=true;anyActive=true;}
+                if(value>0.){observedNonzero[i]=true;++activeCount;}
                 if(value!=previous[i])different=true;
                 previous[i]=value;
             }
-            CHECK(anyActive&&different);
+            CHECK(activeCount>=3&&activeCount<=6&&different);
             CHECK(controller.getParamNormalized(kTherapy)==therapyBefore);
             CHECK(controller.getParamNormalized(kBypass)==bypassBefore);
             CHECK(controller.isGermanUi()==german&&controller.isMotionEnabled()==motion);
@@ -279,7 +280,7 @@ int main(){
         spy->release();
         controller.setGermanUi(false);
         controller.setMotionEnabled(false);
-        std::puts("P027a LOSS OF CONTROL PASS: 64 presses, 12 IDs, 36 host edits per press, globals preserved");
+        std::puts("P027a LOSS OF CONTROL PASS: 64 presses, 12 IDs, 3-6 active, 36 host edits per press, globals preserved");
     }
     // UI readouts display meaningful percentages, not raw 0.0000..1.0000.
     {

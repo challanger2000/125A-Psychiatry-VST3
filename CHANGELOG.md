@@ -2,10 +2,15 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
-## 0.9.22 — P027d spectral midpoint correction candidate
+## 0.9.23 — P027e randomizer density candidate
+
+- Randomly choose 3–6 active worlds from all twelve, retain .12–.78 amounts, explicitly reset others. Preserve THERAPY/bypass/UI and manual range.
+- Native host density regression, 32 actual recorded generator presets. No DSP or GUI changes; new CI pending.
+
+## 0.9.22 — P027d verified spectral midpoint correction
 
 - Partial power compensation for SCHIZOPHRENIA and HALLUCINATION crossfades only, midpoint +1.938 dB; endpoints unchanged.
-- Analytic and actual recorded prefix regression; prior safety gates unchanged. P027c passed three triggered workflows. New CI pending.
+- Analytic and actual recorded prefix regression; prior safety gates unchanged. P027c passed three triggered workflows. P027d passed all four.
 
 ## P027c — recorded combination gain audit (factory v0.9.21 unchanged)
 

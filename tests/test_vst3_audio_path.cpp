@@ -6,6 +6,7 @@
 // makes no claim to be a human listening evaluation.
 #include "vst3/processor.h"
 #include "vst3/ids.h"
+#include "vst3/loss_of_control.h"
 #include "base/source/fstreamer.h"
 #include "public.sdk/source/vst/utility/memoryibstream.h"
 #include "public.sdk/source/vst/hosting/parameterchanges.h"
@@ -1073,6 +1074,33 @@ void auditCombinations(const Stereo& dry,const char* sourceName,
     }
 }
 
+// P027e: render the same generator used by the actual controller with a
+// fixed test seed. Values are captured in the CSV; stdlib RNG mapping may
+// differ across platforms, so no portable bitwise preset claim is made.
+void auditRandomizer(const Stereo& dry,const char* sourceName,
+                     const std::string& dir,std::ofstream& csv){
+    std::mt19937 rng(0x125A27E);
+    for(int j=0;j<8;++j){
+        const auto preset=randomLossOfControl(rng);
+        std::array<float,12> amounts{};
+        unsigned active=0;
+        for(std::size_t i=0;i<amounts.size();++i){
+            amounts[i]=static_cast<float>(preset[i]);
+            if(amounts[i]>0.f)++active;
+        }
+        check(active>=3&&active<=6,"P027e randomizer density");
+        const auto wet=render(dry,-1,0.f,0.f,false,false,kRate,true,&amounts);
+        const auto m=measure(dry,wet);
+        check(m.peak<4.&&m.wetRms>1.e-7,"P027e randomizer finite bounded nonzero");
+        csv<<sourceName<<','<<j+1<<','<<active;
+        for(float v:amounts)csv<<','<<v;
+        csv<<','<<m.changeDb<<','<<m.fullScaleDb<<','<<m.shapeResidual<<'\n';
+        std::printf("P027e %s preset=%d active=%u gain=%+.3f peak=%+.3f residual=%.5f\n",
+            sourceName,j+1,active,m.changeDb,m.fullScaleDb,m.shapeResidual);
+        if(j<2&&m.peak<=1.)writeWav(dir+"/P027e_"+sourceName+"_preset"+std::to_string(j+1)+"_RAW.wav",wet);
+    }
+}
+
 // P025: reference recordings decoded into fixed 48 kHz float stereo
 // outside the plug-in. Keep raw measurements separate from audition gain.
 void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
@@ -1080,6 +1108,11 @@ void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
     check(csv.good(),"P025 CSV");
     std::ofstream combo(outputDir+"/P027c_combination_metrics.csv");
     check(combo.good(),"P027c CSV");
+    std::ofstream randomizer(outputDir+"/P027e_randomizer_metrics.csv");
+    check(randomizer.good(),"P027e CSV");
+    randomizer<<"source,preset,active_count";
+    for(auto name:kMacroNames)randomizer<<','<<name;
+    randomizer<<",gain_db,peak_dbfs,gain_matched_residual\n";
     combo<<"source,case,index";
     for(auto name:kMacroNames)combo<<','<<name;
     combo<<",gain_db,peak_dbfs,gain_matched_residual,delta_vs_previous_db\n";
@@ -1097,6 +1130,7 @@ void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
         check(identical(dry,render(dry,-1,0.f)),"P025 exact neutral");
         writeWav(outputDir+"/P025_"+name+"_DRY.wav",dry);
         auditCombinations(dry,name,outputDir,combo);
+        auditRandomizer(dry,name,outputDir,randomizer);
         for(int fx=0;fx<12;++fx) {
             for(float amount:{.05f,.10f,.20f,.50f,1.f}){
                 const auto wet=render(dry,fx,amount);
@@ -1128,6 +1162,8 @@ void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
     }
     check(csv.good(),"P025 metric write");
     check(combo.good(),"P027c metric write");
+    check(randomizer.good(),"P027e metric write");
+    std::puts("P027e randomizer audit PASS: 32 recorded presets");
     std::puts("P027c COMBINATION AUDIT PASS: 68 recorded cases; exact combined THERAPY and bypass; gain flags for review");
     std::puts("P025 RECORDED AUDIO EXPORT PASS: 240 objective rows, 96 RMS-matched A/B files; human audition not claimed");
 }

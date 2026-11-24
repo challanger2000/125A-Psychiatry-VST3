@@ -10,6 +10,7 @@ on:
       - 'vst3/processor.cpp'
       - 'vst3/processor.h'
       - 'vst3/ids.h'
+      - 'vst3/loss_of_control.h'
       - 'tests/test_vst3_audio_path.cpp'
       - 'CMakeLists.txt'
       - 'tools/prepare_acoustic_bank.py'
@@ -61,6 +62,7 @@ jobs:
           if (@(Import-Csv recorded-output/P025_recorded_metrics.csv).Count -ne 240) { throw "Missing recorded metrics" }
           if (@(Get-ChildItem recorded-output -Filter '*_AB.wav').Count -ne 96) { throw "Missing recorded A/B comparisons" }
           if (@(Import-Csv recorded-output/P027c_combination_metrics.csv).Count -ne 68) { throw "Missing combination audit metrics" }
+          if (@(Import-Csv recorded-output/P027e_randomizer_metrics.csv).Count -ne 32) { throw "Missing randomizer audit metrics" }
       - uses: actions/upload-artifact@v4
         with:
           name: P025-Recorded-Listening-Comparisons

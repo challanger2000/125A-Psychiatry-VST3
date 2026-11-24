@@ -1,6 +1,7 @@
 #include "controller.h"
 #include "ids.h"
 #include "monitor_model.h"
+#include "loss_of_control.h"
 
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/base/ustring.h"
@@ -149,17 +150,10 @@ tresult PLUGIN_API Controller::getParamStringByValue(
 }
 
 void Controller::triggerLossOfControl() {
-    // Run exclusively on VSTGUI's UI callback thread. Randomize useful ranges
-    // instead of maximum values for all twelve effects (avoids overloading the
-    // compound serial chain on the first randomization).
-    std::uniform_real_distribution<double> amount(0.12,0.78);
-    std::uniform_real_distribution<double> chance(0.0,1.0);
-    // If the host implements IComponentHandler2, group the twelve related
-    // parameter edits into a single automation/undo timestamp.
-    std::array<double,kMacroIds.size()> values{};
-    for(auto& value:values)value=chance(random_)<0.18?0.0:amount(random_);
-    if(std::none_of(values.begin(),values.end(),[](double v){return v>0.;}))
-        values[std::uniform_int_distribution<std::size_t>(0,kMacroIds.size()-1)(random_)]=amount(random_);
+    // UI thread only. All 12 IDs get updated, including explicit zeros.
+    // Group the edits when the host supports IComponentHandler2.
+    const auto values=randomLossOfControl(random_);
+    static_assert(kMacroIds.size()==std::tuple_size<decltype(values)>::value);
     startGroupEdit();
     for(std::size_t i=0;i<kMacroIds.size();++i) {
         const auto id=kMacroIds[i];

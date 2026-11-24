@@ -192,9 +192,13 @@ void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames
             auto& s=state_[ch];
             const float raw=audio[ch][i],x=sane(raw),dry=s.dryDelay.process(raw);
             s.low+=lowPole*(x-s.low);s.lowMid+=midPole*(x-s.lowMid);
-            s.focus+=focusPole*(s.lowMid-s.focus);
-            const float low=s.low,mid=s.lowMid-low,high=x-s.lowMid;
-            const float emphasis=(s.lowMid-s.focus)*(.65f*m);
+            // A second pole reduces ultrasonic leakage into the strong nonlinear
+            // midband path. The complementary residual retains upper-band
+            // content; no extra fixed latency or reduction of bass drive.
+            s.lowMidFiltered+=midPole*(s.lowMid-s.lowMidFiltered);
+            s.focus+=focusPole*(s.lowMidFiltered-s.focus);
+            const float low=s.low,mid=s.lowMidFiltered-low,high=x-s.lowMidFiltered;
+            const float emphasis=(s.lowMidFiltered-s.focus)*(.65f*m);
             s.driveEnvelope+=envPole*(std::abs(x)-s.driveEnvelope);
             const float ref=std::clamp(2.1f*s.driveEnvelope,.035f,.48f);
             const auto upL=s.up[0].process(low);

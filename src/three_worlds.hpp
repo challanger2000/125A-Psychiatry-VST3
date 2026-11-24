@@ -62,7 +62,7 @@ public:
     void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
 private:
     struct Channel {
-        float low=0.f,lowMid=0.f,driveEnvelope=0.f,dc=0.f,focus=0.f;
+        float low=0.f,lowMid=0.f,lowMidFiltered=0.f,driveEnvelope=0.f,dc=0.f,focus=0.f;
         std::array<detail::LinearPhaseInterpolator2x,3> up{};
         detail::LinearPhaseDecimator2x down{};
         detail::FixedDelay<detail::kLinearPhaseLatency> dryDelay{};

@@ -1,15 +1,15 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified gate: **P016 exact endpoints/reset and phase/transient audit / factory v0.9.5**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified gate: **P017 live automation exact endpoints / factory v0.9.6**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `de2fbe43c9752d0aecd1d0eea464416d52c49646` on **main** (P016 exact dry/wet endpoints, seeded reset, phase/impulse metrology; factory v0.9.5)..
-- **Windows/MSVC x64 real VST3 workflow:** [run 45290465707](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707), **SUCCESS**.
+- **Source commit tested:** `79fa77c297933b31cb5b81acefa5ad9d4a3345bf` on **main** (P017 live automation, factory v0.9.6).
+- **Windows/MSVC x64 real VST3 workflow:** [run 45293157519](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157519), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P016 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465707/artifacts/14873847457): `125A-PSYCHIATRY-P016-Phase-Transient-NOT-FINAL` (7-day retention, expires 2026-11-30).
-- **Windows + Linux standalone audio workflow:** [run 45290465506](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45290465506), **SUCCESS**.
+  - [P017 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157519/artifacts/14875257365): `125A-PSYCHIATRY-P017-Automation-NOT-FINAL` (7-day retention, expires 2026-11-30).
+- **Windows + Linux standalone audio workflow:** [run 45293157516](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157516), **SUCCESS**.
   - **6/6 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
   - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues. **P010 adds a separate 180-case test of the actual VST3 processor, not merely standalone DSP**.
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
@@ -25,12 +25,16 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 `createView(kEditor)` now constructs `VSTGUI::VST3Editor`, rather than returning null and falling back to host generic controls.
 - **Official Steinberg EditorHost GUI interaction PASSED:** [run 45269301923](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923). An actual Win32 GUI was created, a mouse click on LOSS OF CONTROL changed nine effect values and the CRT image (482 sampled pixels differed, RGB delta 81,702), and the subsequent DE language switch retained a working editor. [Three run screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923/artifacts/14864592486) were visually inspected. **This is still not Studio Pro or an audio listening test.**
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
-- VST3 factory version now **0.9.5**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+- VST3 factory version now **0.9.6**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P017 — exact automation convergence (CI pending)
+## P018 — phase-aligned oversampling candidate (local kernel passed; integration pending)
 
-Source factory v0.9.6. All nine macro and THERAPY parameter smoothers now reach exact 0/1 after a negligible residual or float precision stall; the prior recurrence could leave an indefinitely nonzero effect after an automated return to 0. Existing settled amounts and effect algorithms are unchanged. The real VST3 test exercises 54 automated wet-to-dry transitions at 44.1/48/96 kHz, including tiny and above-unity finite input values. P016 remains latest verified until Windows CI passes. Phase cancellation remains an explicit blocker.
+A 49-tap symmetric halfband FIR, efficient polyphase interpolation/decimation, and exact 24-host-sample delay per nonlinear stage are implemented. Local GCC C++17 test: impulse exactly symmetric, DC 0.999999996; 18 compensated phase measurements at 44.1/48/96 kHz and 100–16,000 Hz show absolute gain error <0.002 dB and negligible phase error. Four nonlinear tanh alias probes at 44.1/48 kHz: −95.12 to −105.22 dBc. **These are filter-kernel measurements, not evidence that the four complete FX have been corrected.** P017 remains the verified plugin build until integration, new PDC and whole-chain tests pass.
+
+## P017 — exact automation convergence verified
+
+Factory **v0.9.6**, tested commit `79fa77c297933b31cb5b81acefa5ad9d4a3345bf`. [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157519) and [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157516) **SUCCESS**. All 54 automated macro/THERAPY wet-to-dry transitions at 44.1/48/96 kHz reached exact Dry after the smoothing window, including tiny and above-unity finite samples. Steinberg 47/47, full-Wet comparisons 45/45, all earlier alias/phase-diagnostic and audio tests passed. [Developer bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157519/artifacts/14875257365). P016's measured partial-mix phase cancellation remains open until a phase-aligned chain is tested.
 
 ## P016 — verified exact endpoints, reset and phase/transient audit
 

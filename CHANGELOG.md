@@ -2,6 +2,12 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.6 — P017 (2026-11-24)
+
+- All nine macro and THERAPY smoothers settle to exact 0/100% without abrupt movement.
+- 54 automated wet-to-dry endpoint cases at three rates passed; [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157519), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157516) SUCCESS, Steinberg 47/47.
+- P018 phase alignment still required.
+
 ## 0.9.5 — P016 (2026-11-24)
 
 - Preserve raw finite samples at PARANOIA/THERAPY exact endpoints; restore the selected RNG seed at reset.

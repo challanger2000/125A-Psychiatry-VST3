@@ -13,3 +13,7 @@ Owner confirmed outer diameter 550 px. Keep 1280×960, 100 px macros, 120 px THE
 ## Revision D — header refinement
 
 Owner liked C substantially better and confirmed header fine-tuning. Title reserve 700×54, 52 px font; 18 px gap to DEPRESSION label (previous 6). Observation window remains Ø550 and shifts 28 px down; macros shift 24 px (OBSESSION 28 px). Side groups, therapy, controls, zoom and brand unchanged. Bounds, rectangular control collisions and circle clearances pass; no compiled GUI or final art yet. Review D before rendering.
+
+## Revision E — clearance correction
+
+Owner requested correction of narrow rim clearances. Keep Ø550, title, window center, logo, fan and lower utility controls unchanged. Small symmetric adjustments of macro positions; uniform labels 150×18 at (-75,-70), readouts 72×16 at (-36,+52). Tested all 36 macro rectangles and 12 other reservations for bounds, mutual rectangular overlap, and clearance to the circular window (knobs as circular artwork): minimum 18 px, versus 1.123 px in D. At 50% nominal zoom this becomes 9 px. This does not validate actual rendered assets, text metrics or VSTGUI runtime. Await owner review before rendering.

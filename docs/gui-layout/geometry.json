@@ -14,7 +14,7 @@
   ],
   "observation": {
     "cx": 640,
-    "cy": 465,
+    "cy": 477,
     "outerDiameter": 550,
     "openingDiameter": 490
   },
@@ -24,90 +24,78 @@
       "name": "DEPRESSION",
       "id": 100,
       "x": 640,
-      "y": 130,
-      "upper": true
+      "y": 130
     },
     {
       "name": "PARANOIA",
       "id": 101,
-      "x": 868,
-      "y": 175,
-      "upper": true
+      "x": 840,
+      "y": 175
     },
     {
       "name": "SCHIZOPHRENIA",
       "id": 102,
-      "x": 1034,
-      "y": 298,
-      "upper": true
+      "x": 970,
+      "y": 280
     },
     {
       "name": "MANIA",
       "id": 103,
-      "x": 1095,
-      "y": 465,
-      "upper": false
+      "x": 995,
+      "y": 465
     },
     {
       "name": "PANIC",
       "id": 104,
-      "x": 1034,
-      "y": 632,
-      "upper": false
+      "x": 975,
+      "y": 650
     },
     {
       "name": "DISSOCIATION",
       "id": 105,
-      "x": 868,
-      "y": 755,
-      "upper": false
+      "x": 855,
+      "y": 795
     },
     {
       "name": "OBSESSION",
       "id": 106,
       "x": 640,
-      "y": 800,
-      "upper": false
+      "y": 834
     },
     {
       "name": "HALLUCINATION",
       "id": 107,
-      "x": 413,
-      "y": 755,
-      "upper": false
+      "x": 425,
+      "y": 795
     },
     {
       "name": "PSYCHOSIS",
       "id": 108,
-      "x": 246,
-      "y": 633,
-      "upper": false
+      "x": 305,
+      "y": 650
     },
     {
       "name": "DELIRIUM",
       "id": 109,
-      "x": 185,
-      "y": 465,
-      "upper": false
+      "x": 285,
+      "y": 465
     },
     {
       "name": "CATATONIA",
       "id": 110,
-      "x": 246,
-      "y": 298,
-      "upper": true
+      "x": 310,
+      "y": 280
     },
     {
       "name": "AMNESIA",
       "id": 111,
-      "x": 412,
-      "y": 175,
-      "upper": true
+      "x": 440,
+      "y": 175
     }
   ],
   "therapy": {
-    "cx": 185,
-    "cy": 835,
+    "cx": 150,
+    "cy": 820,
     "diameter": 120
   },
   "lossOfControl": {
@@ -127,5 +115,25 @@
     "w": 220,
     "h": 82
   },
-  "notes": "Revision B: elliptical clock arrangement, radius 455×335; upper labels and values above knobs, lower values and labels below. XML circular window/fan stand-ins are rectangular; intended outline in SVG. Zoom not implemented."
+  "notes": "Revision C: outer diameter 550 fixed, closer free-form symmetric positions, labels above and values below, title prominent, lower corner groups, reserved zoom control. No final artwork or runtime changes.",
+  "revision": "C",
+  "title": {
+    "x": 365,
+    "y": 4,
+    "w": 550,
+    "h": 44,
+    "fontSize": 44
+  },
+  "zoomControl": {
+    "x": 1000,
+    "y": 907,
+    "w": 132,
+    "h": 26
+  },
+  "languageControl": {
+    "x": 1150,
+    "y": 907,
+    "w": 70,
+    "h": 26
+  }
 }

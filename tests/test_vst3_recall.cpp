@@ -329,7 +329,7 @@ int main(){
     }
     // P022: the monitor represents effective macro settings, not audio level.
     {
-        std::array<double,9> macros{};macros[3]=.8;macros[6]=.4;
+        std::array<double,12> macros{};macros[3]=.8;macros[6]=.4;
         const auto full=MonitorModel::make(macros,0.,0.);
         CHECK(full.dominant==3&&full.peak==.8f&&full.levels[6]==.4f);
         const auto half=MonitorModel::make(macros,.5,0.);
@@ -339,6 +339,41 @@ int main(){
         CHECK(dry.peak==0.f&&dry.total==0.f&&dry.wet==0.f&&!dry.bypass);
         CHECK(bypass.peak==0.f&&bypass.total==0.f&&bypass.wet==0.f&&bypass.bypass);
         CHECK(!(dry==bypass));
+        CHECK(full.secondary()==6&&dry.secondary()==-1&&bypass.secondary()==-1);
+        constexpr std::array<Vst::ParamID,12> ids{
+            kDepression,kParanoia,kSchizophrenia,kMania,kPanic,kDissociation,
+            kObsession,kHallucination,kPsychosis,kDelirium,kCatatonia,kAmnesia};
+        // Exercise all twelve actual controller values, including the
+        // newly implemented worlds. Single-world dominance and per-world
+        // change detection must not alias any of the previous nine IDs.
+        for(std::size_t world=0;world<ids.size();++world){
+            for(auto id:ids)CHECK(controller.setParamNormalized(id,0.)==kResultOk);
+            CHECK(controller.setParamNormalized(ids[world],.75)==kResultOk);
+            std::array<double,12> actual{};
+            for(std::size_t i=0;i<ids.size();++i)actual[i]=controller.getParamNormalized(ids[i]);
+            const auto isolated=MonitorModel::make(actual,0.,0.);
+            CHECK(isolated.dominant==static_cast<int>(world)&&isolated.peak==.75f);
+            CHECK(isolated.total==.75f&&isolated.secondary()==-1);
+            for(std::size_t i=0;i<actual.size();++i)
+                CHECK(isolated.levels[i]==(i==world?.75f:0.f));
+            CHECK(!(isolated==MonitorModel::make({},0.,0.)));
+            const auto reduced=MonitorModel::make(actual,.5,0.);
+            CHECK(reduced.peak==.375f&&reduced.dominant==static_cast<int>(world));
+            CHECK(MonitorModel::make(actual,1.,0.).total==0.f);
+            CHECK(MonitorModel::make(actual,0.,1.).total==0.f);
+        }
+        macros.fill(0.);
+        macros[9]=.8;macros[10]=.8;macros[11]=.6;
+        const auto tie=MonitorModel::make(macros,0.,0.);
+        CHECK(tie.dominant==9&&tie.secondary()==10);
+        macros[11]=1.;
+        const auto newer=MonitorModel::make(macros,0.,0.);
+        CHECK(newer.dominant==11&&newer.secondary()==9&&!(tie==newer));
+        macros[9]=std::numeric_limits<double>::quiet_NaN();
+        macros[10]=-1.;macros[11]=2.;
+        const auto clamped=MonitorModel::make(macros,0.,0.);
+        CHECK(clamped.dominant==11&&clamped.peak==1.f&&clamped.total==1.f&&clamped.secondary()==-1);
+        std::puts("P027f monitor logic PASS: all twelve worlds, secondary, ties, THERAPY, bypass, bounds");
     }
     CHECK(controller.terminate()==kResultOk);
     CHECK(component.terminate()==kResultOk);

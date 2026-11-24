@@ -2,10 +2,15 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
-## 0.9.23 — P027e randomizer density candidate
+## 0.9.24 — P027f twelve-world visual state candidate
+
+- Monitor logic observes all twelve parameters, stable primary/secondary, effective THERAPY and bypass, existing diagnostic resource indices safely mapped.
+- Actual controller/model regressions; no sound or final graphic redesign. Native CI pending.
+
+## 0.9.23 — P027e verified randomizer density
 
 - Randomly choose 3–6 active worlds from all twelve, retain .12–.78 amounts, explicitly reset others. Preserve THERAPY/bypass/UI and manual range.
-- Native host density regression, 32 actual recorded generator presets. No DSP or GUI changes; new CI pending.
+- Native host density regression, 32 actual recorded generator presets. No DSP or GUI changes; all four CI workflows passed.
 
 ## 0.9.22 — P027d verified spectral midpoint correction
 

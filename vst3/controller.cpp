@@ -219,7 +219,7 @@ public:
         fill(0,0,1,1,black);
         fill(.035,.035,.965,.962,dark);
         fill(.055,.066,.945,.928,black);
-        // Scene selection shares the same nine real macro control values
+        // Scene selection shares the same twelve real macro control values
         // as the FX processor; when several are active, the strongest is
         // the dominant image, other effects contribute contamination.
         const int chosen=model_.dominant;
@@ -233,9 +233,12 @@ public:
         }
         stroke(.5,.074,.5,.098,faint);
         stroke(.5,.902,.5,.925,faint);
-        // Nine distinct originally drawn institutional/diagnostic worlds.
-        // All proportions are relative to the CRT view to work under UI scale.
-        const auto sceneIndex=static_cast<std::size_t>(chosen);
+        // The existing nine diagnostic bitmaps remain temporary. Reuse
+        // three of them for new worlds until the owner-approved art pass.
+        // Logical world index and physical bitmap index are independent.
+        constexpr std::array<std::size_t,MonitorModel::worldCount> previewScene{
+            0,1,2,3,4,5,6,7,8,2,5,8};
+        const auto sceneIndex=previewScene[static_cast<std::size_t>(chosen)];
         const CRect imageRect(x(.5)-112,y(.14),x(.5)+112,y(.14)+196);
         auto* scene=scenes_[sceneIndex].get();
         if(scene&&scene->isLoaded()){
@@ -245,11 +248,13 @@ public:
             if(intensity>0.f){
                 // Bounded visual cross-exposure from the second strongest
                 // macro, with independent scene geometry rather than RNG.
-                std::size_t second=sceneIndex;float level=0.f;
-                for(std::size_t j=0;j<scenes_.size();++j)
-                    if(j!=sceneIndex&&model_.levels[j]>level){second=j;level=model_.levels[j];}
-                if(second!=sceneIndex&&scenes_[second]&&scenes_[second]->isLoaded())
-                    scenes_[second]->draw(dc,imageRect,CPoint(0,0),.23f*level);
+                const int secondWorld=model_.secondary();
+                if(secondWorld>=0){
+                    const auto index=static_cast<std::size_t>(secondWorld);
+                    const auto second=previewScene[index];
+                    if(second!=sceneIndex&&scenes_[second]&&scenes_[second]->isLoaded())
+                        scenes_[second]->draw(dc,imageRect,CPoint(0,0),.23f*model_.levels[index]);
+                }
                 // Subtle local analog horizontal displacement; do not flash
                 // the full picture. Still mode uses a fixed phase.
                 const int strips=chosen==8?5:chosen==6?3:chosen==1?2:1;
@@ -375,21 +380,23 @@ public:
             stroke(.062,yy,.938,yy,i%5==0?CColor{12,12,12,72}:CColor{0,0,0,30});
         }
         fill(.075,.848,.925,.887,black);
-        for(int i=0;i<9;++i){
-            const double xx=.12+i*.084;
-            fill(xx,.860,xx+.052,.878,dim);
-            const float level=model_.levels[static_cast<std::size_t>(i)];
-            if(level>0.f)fill(xx,.860,xx+.052*level,.878,green);
+        for(std::size_t i=0;i<model_.levels.size();++i){
+            const double xx=.12+i*.064;
+            fill(xx,.860,xx+.042,.878,dim);
+            const float level=model_.levels[i];
+            if(level>0.f)fill(xx,.860,xx+.042*level,.878,green);
         }
         static constexpr const char* sceneEnglish[]{
             "WARD / CORRIDOR","OBSERVATION","DOUBLE EXPOSURE",
             "ACTIVITY METER","ELECTRICAL TRACE","ISOLATION ROOM",
-            "REPEATED RECORD","SHADOW ECHO","SIGNAL FRACTURE"
+            "REPEATED RECORD","SHADOW ECHO","SIGNAL FRACTURE",
+            "DELIRIUM","CATATONIA","AMNESIA"
         };
         static constexpr const char* sceneGerman[]{
             "LEERER FLUR","BEOBACHTUNG","DOPPELBELICHTUNG",
             "AKTIVITAET","ELEKTRISCHE KURVE","ISOLATIONSRAUM",
-            "WIEDERHOLUNG","SCHATTEN-ECHO","SIGNALBRUCH"
+            "WIEDERHOLUNG","SCHATTEN-ECHO","SIGNALBRUCH",
+            "DELIRIUM","KATATONIE","AMNESIE"
         };
         const bool german=controller_->isGermanUi();
         char display[96]{};
@@ -416,9 +423,8 @@ public:
 private:
     Controller* controller_;
     MonitorModel readModel() const {
-        // Historical nine-scene diagnostic renderer only. Do not expand its
-        // array indices until the final image renderer is ready.
-        std::array<double,9> macros{};
+        static_assert(kMacroIds.size()==MonitorModel::worldCount);
+        std::array<double,MonitorModel::worldCount> macros{};
         for(std::size_t i=0;i<macros.size();++i)
             macros[i]=controller_->getParamNormalized(kMacroIds[i]);
         return MonitorModel::make(macros,controller_->getParamNormalized(kTherapy),

@@ -121,6 +121,48 @@ int main() {
         for(std::size_t n=grain;n<total;++n)
             CHECK(std::abs((l[n]-(1.f-wet)*.3f)-(x[n]+(1.f-wet)*.3f))<2.e-7f);
     }
+    // P026e: the captured waveform remains the source, but each repeat
+    // progressively loses treble relative to bass. Use exact grain bins
+    // so a change in overall loudness cannot satisfy the spectral check.
+    {
+        constexpr double sr=48000.;
+        const auto grain=static_cast<std::size_t>(sr*(.275-.257));
+        const auto total=grain*13;
+        psychiatry::Obsession fx;fx.prepare(sr);fx.setAmount(1.f);fx.reset();
+        std::vector<float> l(total),r(total);
+        for(std::size_t n=0;n<grain;++n) {
+            const double ph=6.283185307179586*n/grain;
+            l[n]=r[n]=static_cast<float>(.10*std::sin(2*ph)+.10*std::sin(72*ph));
+        }
+        run(fx,l,r,127);
+        auto ratio=[&](std::size_t repeat) {
+            auto mag=[&](int bin) {
+                double re=0.,im=0.;
+                for(std::size_t j=0;j<grain;++j) {
+                    const double ph=6.283185307179586*bin*j/grain;
+                    const float v=l[repeat*grain-1+j];
+                    re+=v*std::cos(ph);im+=v*std::sin(ph);
+                }
+                return std::hypot(re,im);
+            };
+            CHECK(mag(2)>1.);
+            return mag(72)/mag(2);
+        };
+        const double early=ratio(2),late=ratio(11);
+        CHECK(late<early*.70);
+        std::printf("P026e OBSESSION upper/lower ratio %.5f -> %.5f\n",early,late);
+    }
+    // Low-level signal retains continuous amplitude resolution.
+    {
+        auto renderQuiet=[](float level) {
+            psychiatry::Obsession fx;fx.prepare(48000.);fx.setAmount(1.f);fx.reset();
+            std::vector<float> l(10000,level),r=l;
+            run(fx,l,r,67);
+            return *std::max_element(l.begin(),l.end());
+        };
+        const float a=renderQuiet(1.e-5f),b=renderQuiet(2.e-5f);
+        CHECK(a>1.e-6f&&std::abs(b/a-2.f)<.005f);
+    }
     // invalid input and high rate safety.
     for(const auto rate : {44100.0,96000.0,192000.0}) {
         psychiatry::Depression a; psychiatry::Obsession b;

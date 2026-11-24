@@ -15,3 +15,5 @@ Only main. v0.9.12 is previous verified technical baseline, NOT an accepted fina
 P026c candidate: PARANOIA acoustic layer uses six pinned recordings embedded by tools/prepare_acoustic_bank.py at build time; see docs/P026c.md. Verify native Windows source/host/level regressions before claiming success. Other worlds still require design and review. v0.9.13 candidate not approved.
 
 P026d: P026c Linux decoded all six files and passed 7/7 DSP tests. Windows build failed on interpreter mismatch; CI now pins and passes the exact decoder-equipped Python. Inspect new Actions results before further DSP edits. No final approval.
+
+P026d is now a verified technical checkpoint (v0.9.13, all four CI workflows successful; see STATUS). P026e v0.9.14 candidate replaces OBSESSION bit reduction with progressive filtered/saturated replay; preserve frozen capture and verify new test results. Remaining work: DEPRESSION, SCHIZOPHRENIA, MANIA, DISSOCIATION, HALLUCINATION and three new worlds, then circular GUI. No user audition yet.

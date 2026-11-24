@@ -21,6 +21,7 @@ private:
     unsigned repeats_=0,repeatsPerCapture_=2;
     bool captured_=false;
     std::uint64_t retriggers_=0;
+    Sample colour_{};
     double rate_=48000.;
     float target_=0.f, smoothed_=0.f, step_=0.001f;
 };

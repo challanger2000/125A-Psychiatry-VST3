@@ -20,6 +20,14 @@ User audition of v0.9.12 confirmed several usable effects above 50%, but rejecte
 - All Windows Actions artefacts are temporary engineering packages, not release installers.
 
 
+## P026e — OBSESSION continuous timbral wear / v0.9.14 candidate
+
+Remove the old repeat-dependent 6–16-bit quantizer. Preserve immutable capture, grain length, repeat count, fades and neutral/fully wet semantics. The replacement is a repeat-dependent one-pole lowpass (6200 Hz towards ~713 Hz as wear approaches one), gradual blend up to 80%, continuous tanh shaping and bounded gain. The intent is compulsively repeated material that becomes increasingly muffled and strained, not bitcrushed. No change to other engines, GUI, latency or state. Tests retain frozen-grain controls and add high/low spectral-bin ratio at early vs late repeat plus low-level amplitude scaling. These are objective proxies, not musical acceptance. No tests executed on P026e yet.
+
+## P026d — v0.9.13 verified technical checkpoint
+
+Exact source c103cffb1d9811b4697dedd1e47215999545a8a1: Windows/Linux DSP [45434439617](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45434439617) SUCCESS; Windows actual VST3 [45434439087](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45434439087) SUCCESS; EditorHost [45434439260](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45434439260) SUCCESS; recorded-source audio [45434439426](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45434439426) SUCCESS. This includes the previous alias gate and embedded PARANOIA sources; no subjective approval or Studio Pro acceptance. Latest technical baseline v0.9.13, not final.
+
 ## P026d — Windows build interpreter correction (verification pending)
 
 P026c exact source d314dda1d9e8ee5c7530ce54f32993256077c603: Linux decoded six archived OGG files with matching hashes and 7/7 CTests passed, including the new acoustic player test and no-heap combined chain. Windows standalone, VST3, EditorHost and recorded-audio builds failed before compiling the acoustic engine: pip installed imageio-ffmpeg 0.6.0 into PATH Python, while CMake selected hosted Python 3.14.10/python3.exe without the module. See Actions 45431442142 / 45431442305 / 45431442219 / 45431442186. Correct all four build workflows by explicitly selecting Python 3.12 with setup-python, passing its exact python-path output to CMake, and checking decoder availability at configure time. No DSP changes or weakened test oracles. Native Windows VST3 audio, alias correction and acoustic bundle verification remain unverified; v0.9.13 not final.

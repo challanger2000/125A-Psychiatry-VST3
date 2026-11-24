@@ -6,7 +6,6 @@ namespace psychiatry {
 namespace {
 float norm(float x) noexcept {return std::isfinite(x)?std::clamp(x,0.f,1.f):0.f;}
 float safe(float x) noexcept {return std::isfinite(x)?std::clamp(x,-4.f,4.f):0.f;}
-float quantize(float v,float steps) noexcept {return std::round(v*steps)/steps;}
 }
 void Obsession::prepare(double sampleRate) {
     rate_=std::isfinite(sampleRate)&&sampleRate>=1000.&&sampleRate<=2000000.?sampleRate:48000.;
@@ -20,7 +19,7 @@ void Obsession::reset() noexcept {
     std::fill(history_.begin(),history_.end(),Sample{});
     cursor_=filled_=start_=phase_=0;
     loopLength_=1;repeats_=0;repeatsPerCapture_=2;captured_=false;
-    retriggers_=0;smoothed_=target_;
+    retriggers_=0;smoothed_=target_;colour_={};
 }
 void Obsession::setAmount(float amount) noexcept {target_=norm(amount);}
 void Obsession::process(float* const* channels,unsigned count,std::size_t frames) noexcept {
@@ -44,7 +43,7 @@ void Obsession::process(float* const* channels,unsigned count,std::size_t frames
                 // Capture a complete preceding grain. Freeze length and repeat
                 // count together so later automation cannot invalidate history.
                 start_=(cursor_+cap-loopLength_)%cap;
-                phase_=0;repeats_=0;captured_=true;
+                phase_=0;repeats_=0;captured_=true;colour_={};
             }
         }
         if(m>0.f) {
@@ -56,13 +55,26 @@ void Obsession::process(float* const* channels,unsigned count,std::size_t frames
                     static_cast<float>(rate_*.002),static_cast<float>(loopLength_)*.18f));
                 const float fade=std::min({1.f,static_cast<float>(phase_)/fadeFrames,
                     static_cast<float>(loopLength_-phase_-1)/fadeFrames});
-                const float bits=std::max(6.f,16.f-10.f*m-1.5f*static_cast<float>(repeats_));
-                const float quantSteps=std::exp2(bits),degrade=.20f+.70f*m;
-                // Fade the LOOP, not the wet mix. Full-wet edges cannot leak
-                // the live input. 0.54 dB wet-only trim preserves headroom.
+                // Repetition-dependent analogue-style coloration of the
+                // immutable grain. No bit reduction, quantization or rate
+                // reduction. The same source is recognizable as its upper
+                // spectrum narrows and the drive progressively increases.
+                const float progress=static_cast<float>(repeats_)/
+                    static_cast<float>(std::max(1u,repeatsPerCapture_));
+                const float wear=m*(.15f+.85f*progress);
+                const float cutoff=6200.f*std::pow(.115f,wear);
+                const float alpha=static_cast<float>(1.-std::exp(-6.283185307179586*cutoff/rate_));
+                colour_.l+=alpha*(sample.l-colour_.l);
+                colour_.r+=alpha*(sample.r-colour_.r);
+                const float blend=.80f*wear;
+                const float drive=1.f+.50f*m+.60f*wear;
                 const float gain=(1.f-.06f*m*m)*fade;
-                loopL=gain*((1.f-degrade)*sample.l+degrade*std::tanh(1.5f*quantize(sample.l,quantSteps)));
-                loopR=gain*((1.f-degrade)*sample.r+degrade*std::tanh(1.5f*quantize(sample.r,quantSteps)));
+                const auto shape=[&](float x,float filtered) noexcept {
+                    const float coloured=x+blend*(filtered-x);
+                    return gain*std::tanh(drive*coloured);
+                };
+                loopL=shape(sample.l,colour_.l);
+                loopR=shape(sample.r,colour_.r);
             }
             channels[0][n]=wet==1.f?loopL:safe(rawL)+wet*(loopL-safe(rawL));
             if(count==2)channels[1][n]=wet==1.f?loopR:safe(rawR)+wet*(loopR-safe(rawR));

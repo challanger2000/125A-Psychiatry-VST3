@@ -6,6 +6,8 @@
 #include "pluginterfaces/base/ustring.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "vstgui/lib/cview.h"
+#include "vstgui/lib/cbitmap.h"
+#include "vstgui/lib/cresourcedescription.h"
 #include "vstgui/lib/cdrawcontext.h"
 #include "vstgui/lib/cfont.h"
 #include <cstring>
@@ -169,6 +171,10 @@ class DiagnosticMonitor final : public VSTGUI::CView {
 public:
     explicit DiagnosticMonitor(Controller* controller)
         : VSTGUI::CView(VSTGUI::CRect(0,0,288,325)), controller_(controller) {
+        static constexpr const char* names[]{"scene-1.png","scene-2.png","scene-3.png",
+            "scene-4.png","scene-5.png","scene-6.png","scene-7.png","scene-8.png","scene-9.png"};
+        for(std::size_t i=0;i<scenes_.size();++i)
+            scenes_[i]=VSTGUI::owned(new VSTGUI::CBitmap(VSTGUI::CResourceDescription(names[i])));
         model_=readModel();
         motion_=controller_->isMotionEnabled();
         german_=controller_->isGermanUi();
@@ -226,7 +232,33 @@ public:
         stroke(.5,.902,.5,.925,faint);
         // Nine distinct originally drawn institutional/diagnostic worlds.
         // All proportions are relative to the CRT view to work under UI scale.
-        if(chosen==0 || top<.08f){ // empty institutional corridor
+        const auto sceneIndex=static_cast<std::size_t>(chosen);
+        const CRect imageRect(x(.5)-112,y(.14),x(.5)+112,y(.14)+196);
+        auto* scene=scenes_[sceneIndex].get();
+        if(scene&&scene->isLoaded()){
+            // Original grayscale perspective-rendered rooms/equipment. All
+            // decoding is editor-side, no external files or audio-thread work.
+            scene->draw(dc,imageRect);
+            if(intensity>0.f){
+                // Bounded visual cross-exposure from the second strongest
+                // macro, with independent scene geometry rather than RNG.
+                std::size_t second=sceneIndex;float level=0.f;
+                for(std::size_t j=0;j<scenes_.size();++j)
+                    if(j!=sceneIndex&&model_.levels[j]>level){second=j;level=model_.levels[j];}
+                if(second!=sceneIndex&&scenes_[second]&&scenes_[second]->isLoaded())
+                    scenes_[second]->draw(dc,imageRect,CPoint(0,0),.23f*level);
+                // Subtle local analog horizontal displacement; do not flash
+                // the full picture. Still mode uses a fixed phase.
+                const int strips=chosen==8?5:chosen==6?3:chosen==1?2:1;
+                for(int j=0;j<strips;++j){
+                    const double row=18.+std::fmod(j*47.+phase*1.1,150.);
+                    const double shift=std::round(10.*intensity*std::sin(j*2.4+phase*.17+.8));
+                    const double left=std::max(0.,shift),right=224.+std::min(0.,shift);
+                    if(right>left)scene->draw(dc,CRect(imageRect.left+left,imageRect.top+row,
+                        imageRect.left+right,imageRect.top+row+5.),CPoint(left-shift,row),.55f);
+                }
+            }
+        }else if(chosen==0 || top<.08f){ // vector fallback if resource loading fails
             fill(.11,.14,.89,.84,dim);
             for(int i=0;i<6;++i) {
                 const double d=static_cast<double>(i)/6.;
@@ -334,10 +366,10 @@ public:
             const double yy=.12+std::fmod((i*0.173+tick_*.0007),.75);
             stroke(.09,yy,.92,yy,i%3==0?green:faint);
         }
-        // Fixed low-contrast scanlines, never a rapid full-screen flash.
+        // Restrained scanlines over the photographic-style artwork.
         for(int i=0;i<84;++i){
             const double yy=.104+i*.0095;
-            stroke(.062,yy,.938,yy,i%5==0?faint:dim);
+            stroke(.062,yy,.938,yy,i%5==0?CColor{12,12,12,72}:CColor{0,0,0,30});
         }
         fill(.075,.848,.925,.887,black);
         for(int i=0;i<9;++i){
@@ -387,6 +419,7 @@ private:
         return MonitorModel::make(macros,controller_->getParamNormalized(kTherapy),
                                  controller_->getParamNormalized(kBypass));
     }
+    std::array<VSTGUI::SharedPointer<VSTGUI::CBitmap>,9> scenes_{};
     MonitorModel model_{};
     bool motion_=false,german_=false;
     unsigned tick_=0;

@@ -74,6 +74,17 @@ try {
     }
     $before=Screenshot 'P009-Editor-Before.png'
 
+    # P024: sample the actual CRT scene, excluding labels and strip. A
+    # loaded shaded image has many grayscale levels; the vector fallback does not.
+    $shades=[System.Collections.Generic.HashSet[int]]::new()
+    for($yy=54;$yy -lt 232;$yy+=3){
+        for($xx=37;$xx -lt 251;$xx+=3){
+            $p=$before.GetPixel($origin.X+685+$xx,$origin.Y+116+$yy)
+            [void]$shades.Add([int]$p.R)
+        }
+    }
+    Write-Host "P024 loaded CRT scene unique red levels=$($shades.Count)"
+    if($shades.Count -lt 45){throw 'P024 raster artwork not visible in actual editor'}
     # Actual press of the LOSS OF CONTROL GUI button.
     ClickClient $handle 510 534
     Start-Sleep -Milliseconds 650

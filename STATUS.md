@@ -28,6 +28,10 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.10**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P024 — original grayscale CRT artwork (candidate)
+
+Nine deterministic 224×196 grayscale PNGs of fictional empty clinical corridors, rooms, equipment and cabinets are committed, with reproducible perspective renderer. Runtime draws real packaged bitmaps, adds bounded local horizontal displacement and secondary macro cross-exposure; no patient photographs, real archive claims or outside image rights. PNG packaging checks and actual EditorHost image shade diversity check added. P023 CI remains separate. Not yet verified in Windows editor.
+
 ## P023 — host tail declaration (v0.9.11; CI pending)
 
 The SDK default getTailSamples() returned kNoTail despite audible delay, grain and reverb tails. Candidate declares 30 seconds plus the fixed 96-sample latency at the configured sample rate. Actual processor tests exercise initial silence, two seconds of input with all nine macros at 100%, 30 seconds of tail, and require the final complete second below −100 dBFS. Report the measured decay per second; no verified claim until CI runs. P022 fully verified; P023 CI now triggered.

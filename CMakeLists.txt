@@ -101,6 +101,9 @@ if(PSYCHIATRY_BUILD_VST3)
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VSTGUI.txt" COPYONLY)
   smtg_target_add_plugin_resources(PsychiatryPrototype
       RESOURCES resource/psychiatry.uidesc
+      resource/scene-1.png resource/scene-2.png resource/scene-3.png
+      resource/scene-4.png resource/scene-5.png resource/scene-6.png
+      resource/scene-7.png resource/scene-8.png resource/scene-9.png
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VST3-SDK.txt"
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VSTGUI.txt")
   smtg_target_configure_version_file(PsychiatryPrototype)

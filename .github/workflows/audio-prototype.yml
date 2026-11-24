@@ -53,7 +53,7 @@ jobs:
         shell: pwsh
         run: |
           & "./build/Release/render_spectral_worlds.exe" "artifacts/P005"
-      - name: Objective 120-case quality and CPU audit
+      - name: Objective 168-case quality and CPU audit
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
@@ -64,7 +64,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: P006-Nine-Macro-Audio-and-Quality-Audit
+          name: P027b-Twelve-Macro-Audio-and-Quality-Audit
           path: artifacts/*
           if-no-files-found: error
           retention-days: 7

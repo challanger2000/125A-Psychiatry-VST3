@@ -2,11 +2,17 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
-## 0.9.21 — P027a twelve-world randomizer candidate (2026-11-24)
+## P027b — expanded functional audit (factory v0.9.21 unchanged)
+
+- Host integrity now covers all 12 effects as well as legacy 9, mono/stereo and 44.1/48/96 kHz; no production changes.
+- Objective matrix 168 cases; retain old nine-chain results and include new twelve-chain and three singles. Recorded QA triggers on actual processor/test changes.
+- New CI pending; no final listening approval.
+
+## 0.9.21 — P027a verified twelve-world randomizer (2026-11-24)
 
 - LOSS OF CONTROL now targets all twelve automatable sound IDs; retains existing random ranges and group edits.
 - Expanded actual controller/host-spy regression, 64 presses and 36 callbacks per press. Global and UI-only values unchanged.
-- Existing diagnostic GUI remains provisional. DSP unchanged. Native candidate CI pending.
+- Existing diagnostic GUI remains provisional. DSP unchanged. All three triggered workflows passed; recorded workflow not triggered.
 
 ## 0.9.20 — P026l verified freeze acquisition correction (2026-11-24)
 

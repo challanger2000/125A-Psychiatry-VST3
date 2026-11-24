@@ -5,6 +5,7 @@
 #include "spectral_worlds.hpp"
 #include "obsession.hpp"
 #include "three_worlds.hpp"
+#include "creative_worlds.hpp"
 
 #include <algorithm>
 #include <array>
@@ -90,14 +91,18 @@ struct Suite {
     psychiatry::Obsession obsession;
     psychiatry::Hallucination hallucination;
     psychiatry::Psychosis psychosis;
+    psychiatry::Delirium delirium;
+    psychiatry::Catatonia catatonia;
+    psychiatry::Amnesia amnesia;
 
     void prepare() {
         depression.prepare(sr); paranoia.prepare(sr); schizophrenia.prepare(sr);
         mania.prepare(sr);panic.prepare(sr);dissociation.prepare(sr);
         obsession.prepare(sr);hallucination.prepare(sr);psychosis.prepare(sr);
+        delirium.prepare(sr);catatonia.prepare(sr);amnesia.prepare(sr);
     }
     void configure(int selected,float intensity) noexcept {
-        const auto amount=[&](int n){return selected==9||selected==n?intensity:0.f;};
+        const auto amount=[&](int n){return selected==13||(selected==12&&n<9)||selected==n?intensity:0.f;};
         depression.setAmount(amount(0));
         psychiatry::Paranoia::Settings settings;
         settings.amount=amount(1);
@@ -113,20 +118,25 @@ struct Suite {
         obsession.setAmount(amount(6));
         hallucination.setAmount(amount(7));
         psychosis.setAmount(amount(8));
+        delirium.setAmount(amount(9));catatonia.setAmount(amount(10));amnesia.setAmount(amount(11));
         depression.reset();paranoia.setSeed(0x125AABCDEFULL);paranoia.reset();
         schizophrenia.reset();mania.reset();panic.reset();dissociation.reset();
         obsession.reset();hallucination.reset();psychosis.reset();
+        delirium.reset();catatonia.reset();amnesia.reset();
     }
     void process(int selected,float* const* ptrs,std::size_t n) noexcept {
-        if(selected==9 || selected==0)depression.process(ptrs,2,n);
-        if(selected==9 || selected==2)schizophrenia.process(ptrs,2,n);
-        if(selected==9 || selected==3)mania.process(ptrs,2,n);
-        if(selected==9 || selected==4)panic.process(ptrs,2,n);
-        if(selected==9 || selected==1)paranoia.process(ptrs,2,n);
-        if(selected==9 || selected==5)dissociation.process(ptrs,2,n);
-        if(selected==9 || selected==6)obsession.process(ptrs,2,n);
-        if(selected==9 || selected==7)hallucination.process(ptrs,2,n);
-        if(selected==9 || selected==8)psychosis.process(ptrs,2,n);
+        if(selected>=12 || selected==0)depression.process(ptrs,2,n);
+        if(selected>=12 || selected==2)schizophrenia.process(ptrs,2,n);
+        if(selected>=12 || selected==3)mania.process(ptrs,2,n);
+        if(selected>=12 || selected==4)panic.process(ptrs,2,n);
+        if(selected>=12 || selected==1)paranoia.process(ptrs,2,n);
+        if(selected>=12 || selected==5)dissociation.process(ptrs,2,n);
+        if(selected>=12 || selected==6)obsession.process(ptrs,2,n);
+        if(selected>=12 || selected==7)hallucination.process(ptrs,2,n);
+        if(selected>=12 || selected==8)psychosis.process(ptrs,2,n);
+        if(selected==13||selected==9)delirium.process(ptrs,2,n);
+        if(selected==13||selected==10)catatonia.process(ptrs,2,n);
+        if(selected==13||selected==11)amnesia.process(ptrs,2,n);
     }
 };
 struct Measurements {
@@ -166,9 +176,10 @@ Measurements measure(const Stereo& dry,const Stereo& wet,double milliseconds){
 int main(){
     constexpr std::array<const char*,4> types{
         "synth_bass","drums","synthetic_voice_like","atmosphere"};
-    constexpr std::array<const char*,10> names{
+    constexpr std::array<const char*,14> names{
         "DEPRESSION","PARANOIA","SCHIZOPHRENIA","MANIA","PANIC",
-        "DISSOCIATION","OBSESSION","HALLUCINATION","PSYCHOSIS","ALL_NINE"};
+        "DISSOCIATION","OBSESSION","HALLUCINATION","PSYCHOSIS",
+        "DELIRIUM","CATATONIA","AMNESIA","ALL_NINE","ALL_TWELVE"};
     constexpr std::array<float,3> amounts{0.20f,0.50f,0.85f};
     Suite suite;
     suite.prepare(); // outside timed audio
@@ -190,7 +201,7 @@ int main(){
                 const auto elapsed=std::chrono::duration<double,std::milli>(
                     std::chrono::steady_clock::now()-start).count();
                 auto aligned=dry;
-                const std::size_t latency=effect==9?4*psychiatry::detail::kLinearPhaseLatency:
+                const std::size_t latency=effect>=12?4*psychiatry::detail::kLinearPhaseLatency:
                     ((effect==0||effect==3||effect==4||effect==8)?psychiatry::detail::kLinearPhaseLatency:0);
                 if(latency)for(auto* channel:{&aligned.l,&aligned.r}) {
                     std::move_backward(channel->begin(),channel->end()-latency,channel->end());
@@ -233,7 +244,7 @@ int main(){
     }
     // A high warning count is intentionally NOT a failing CTest:
     // human audition must decide whether the strong transformations are useful.
-    std::fprintf(stderr,"P006 objective audit completed: %d review flags out of 120 source/macro/intensity cases; %d safety-level violations\n",
+    std::fprintf(stderr,"P006 objective audit completed: %d review flags out of 168 source/macro/intensity cases; %d safety-level violations\n",
                  warnings,unsafeLevels);
     if(unsafeLevels>0) {
         std::fputs("P006 FAIL: clipping or excessive gain detected by reference audit\n",stderr);

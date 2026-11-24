@@ -700,17 +700,18 @@ void testHostIntegrity() {
     constexpr int total=48000;
     constexpr int maxBlock=1024;
     const auto src=source(1);
-    const auto setup=[&](Processor& p,int channels,float amount,float therapy){
+    const auto setup=[&](Processor& p,int channels,int rate,bool twelve,float amount,float therapy){
         check(p.initialize(nullptr)==kResultOk,"P019 host init");
         auto layout=channels==1?Vst::SpeakerArr::kMono:Vst::SpeakerArr::kStereo;
         check(p.setBusArrangements(&layout,1,&layout,1)==kResultTrue,"P019 bus arrangement");
-        Vst::ProcessSetup st{Vst::kRealtime,Vst::kSample32,maxBlock,kRate};
+        Vst::ProcessSetup st{Vst::kRealtime,Vst::kSample32,maxBlock,static_cast<double>(rate)};
         check(p.setupProcessing(st)==kResultOk,"P019 host setup");
         ResizableMemoryIBStream state;
         IBStreamer writer(&state,kLittleEndian);
-        check(writer.writeInt32(kStateMagic)&&writer.writeInt32(4),"P019 state header");
+        check(writer.writeInt32(kStateMagic)&&writer.writeInt32(twelve?kStateVersion:4),"P019 state header");
         for(int i=0;i<9;++i)check(writer.writeFloat(amount),"P019 macro");
         check(writer.writeFloat(therapy)&&writer.writeInt32(0),"P019 therapy");
+        if(twelve)for(int i=0;i<3;++i)check(writer.writeFloat(amount),"P027b v5 macro");
         state.rewind();
         check(p.setState(&state)==kResultOk&&p.setActive(true)==kResultOk,"P019 host activate");
     };
@@ -733,12 +734,12 @@ void testHostIntegrity() {
             if(channels==2)check(std::isfinite(output.r[n])&&std::abs(output.r[n])<4.f,"P019 host finite right");
         }
     };
-    for(int channels:{1,2}) {
+    for(bool twelve:{false,true})for(int rate:{44100,48000,96000})for(int channels:{1,2}) {
         Processor a,b,isolated;
-        setup(a,channels,.85f,.25f);setup(b,channels,.85f,.25f);setup(isolated,channels,0.f,1.f);
+        setup(a,channels,rate,twelve,.85f,.25f);setup(b,channels,rate,twelve,.85f,.25f);setup(isolated,channels,rate,twelve,0.f,1.f);
         Stereo outA(total),outB(total),outIso(total),other=source(4);
         int pos=0,step=0;
-        constexpr std::array<int,5> sizes{17,127,1024,3,256};
+        constexpr std::array<int,6> sizes{17,127,1024,3,256,1537}; // also exercise chunking beyond setup maximum
         while(pos<total) {
             const int n=std::min(sizes[step++%sizes.size()],total-pos);
             block(a,src,outA,pos,n,channels,true);
@@ -748,6 +749,9 @@ void testHostIntegrity() {
         for(int n=0;n<total;n+=251)block(b,src,outB,n,std::min(251,total-n),channels,false);
         check(outA.l==outB.l,"P019 in-place/variable-block/instance left equivalence");
         if(channels==2)check(outA.r==outB.r,"P019 in-place/variable-block/instance right equivalence");
+        bool changed=false;
+        for(int n=kLatency;n<total;++n)if(std::abs(outB.l[n]-src.l[n-kLatency])>1.e-4f)changed=true;
+        check(changed,"P027b host exercise must produce actual wet change");
         for(int n=0;n<total;++n) {
             check(outIso.l[n]==(n>=kLatency?other.l[n-kLatency]:0.f),"P019 independent dry left");
             if(channels==2)check(outIso.r[n]==(n>=kLatency?other.r[n-kLatency]:0.f),"P019 independent dry right");
@@ -761,7 +765,7 @@ void testHostIntegrity() {
             check(p->setActive(false)==kResultOk,"P019 deactivate");
             check(p->terminate()==kResultOk,"P019 terminate");
         }
-        std::printf("P019 HOST INTEGRITY PASS channels=%d, variable blocks, in-place, isolated instances, exact compensated dry, restart\n",channels);
+        std::printf("P019 HOST INTEGRITY PASS channels=%d rate=%d macros=%d, variable/oversized blocks, in-place, isolated instances, exact compensated dry, restart\n",channels,rate,twelve?12:9);
     }
 }
 void testExtendedDry() {

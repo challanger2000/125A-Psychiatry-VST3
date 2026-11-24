@@ -14,7 +14,7 @@
   ],
   "observation": {
     "cx": 640,
-    "cy": 477,
+    "cy": 505,
     "outerDiameter": 550,
     "openingDiameter": 490
   },
@@ -24,73 +24,73 @@
       "name": "DEPRESSION",
       "id": 100,
       "x": 640,
-      "y": 130
+      "y": 154
     },
     {
       "name": "PARANOIA",
       "id": 101,
       "x": 840,
-      "y": 175
+      "y": 199
     },
     {
       "name": "SCHIZOPHRENIA",
       "id": 102,
       "x": 970,
-      "y": 280
+      "y": 304
     },
     {
       "name": "MANIA",
       "id": 103,
       "x": 995,
-      "y": 465
+      "y": 489
     },
     {
       "name": "PANIC",
       "id": 104,
       "x": 975,
-      "y": 650
+      "y": 674
     },
     {
       "name": "DISSOCIATION",
       "id": 105,
       "x": 855,
-      "y": 795
+      "y": 819
     },
     {
       "name": "OBSESSION",
       "id": 106,
       "x": 640,
-      "y": 834
+      "y": 862
     },
     {
       "name": "HALLUCINATION",
       "id": 107,
       "x": 425,
-      "y": 795
+      "y": 819
     },
     {
       "name": "PSYCHOSIS",
       "id": 108,
       "x": 305,
-      "y": 650
+      "y": 674
     },
     {
       "name": "DELIRIUM",
       "id": 109,
       "x": 285,
-      "y": 465
+      "y": 489
     },
     {
       "name": "CATATONIA",
       "id": 110,
       "x": 310,
-      "y": 280
+      "y": 304
     },
     {
       "name": "AMNESIA",
       "id": 111,
       "x": 440,
-      "y": 175
+      "y": 199
     }
   ],
   "therapy": {
@@ -115,14 +115,14 @@
     "w": 220,
     "h": 82
   },
-  "notes": "Revision C: outer diameter 550 fixed, closer free-form symmetric positions, labels above and values below, title prominent, lower corner groups, reserved zoom control. No final artwork or runtime changes.",
-  "revision": "C",
+  "notes": "Revision D: owner positively reviewed C; header refinement only. Title 52 px in 700×54 reservation, label gap 18 px, window and ring shifted slightly down to retain clearances. No final art or runtime changes.",
+  "revision": "D",
   "title": {
-    "x": 365,
-    "y": 4,
-    "w": 550,
-    "h": 44,
-    "fontSize": 44
+    "x": 290,
+    "y": 6,
+    "w": 700,
+    "h": 54,
+    "fontSize": 52
   },
   "zoomControl": {
     "x": 1000,

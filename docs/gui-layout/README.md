@@ -9,3 +9,7 @@ Files: psychiatry-layout-draft.uidesc, geometry.svg, geometry.json.
 ## Revision C
 
 Owner confirmed outer diameter 550 px. Keep 1280×960, 100 px macros, 120 px THERAPY. Free-form symmetric clock positions closer to observation frame, uniform label above and percentage below. Bold title 44 px; zoom placeholder reserved in bottom right next to language. Therapy and LOSS remain separated; no new artwork. Geometry bounds, control rectangles and circular window clearances checked, not a runtime/editor screenshot. Await owner review.
+
+## Revision D — header refinement
+
+Owner liked C substantially better and confirmed header fine-tuning. Title reserve 700×54, 52 px font; 18 px gap to DEPRESSION label (previous 6). Observation window remains Ø550 and shifts 28 px down; macros shift 24 px (OBSESSION 28 px). Side groups, therapy, controls, zoom and brand unchanged. Bounds, rectangular control collisions and circle clearances pass; no compiled GUI or final art yet. Review D before rendering.

@@ -1,12 +1,18 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026j / v0.9.18**. Current development candidate: P026l / v0.9.20. **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026l / v0.9.20**. Next milestone: P027 GUI. **Only `main`**; no final or musical approval.
 
-## Current checkpoint — P026l / v0.9.20 candidate
+## Current checkpoint — P026l / v0.9.20 verified; P027 visual design
+
+P026l exact source `0f0a4d66bfc5bde3c9a6ee1054e80619240f8f82`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45463559947), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45463559848), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45463559886), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45463560015) all SUCCESS. Windows validator 47/47; actual processor substantive full-wet 60/60, WEAK=0, gain-placebo and sample-accurate automation PASS. P023 nine- and twelve-world excitation/tail PASS at 44.1/48/96 kHz. Twelve-world active peaks .33882/.50740/.48635, first-tail peaks .30756/.26496/.28322. Technical verification only, not final musical or DAW approval.
+
+Next: implement the [P027 GUI](docs/P027-GUI-DESIGN.md). Large physical observation window, rusty pipes and fan, original raster filmstrips and simple motion. Preserve verified audio and host contract.
+
+## Historical checkpoint — P026l correction candidate
 
 P026k exact source `485223691aa1f399df439ed51dc2a08d10ac1dac`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45460684862), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45460681915) and [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45460682047) SUCCESS; [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45460681890) FAIL in P023 all-twelve meaningful excitation/tail assertion. MSVC plugin and legacy/v5 state passed. No full approval.
 
-P026l adds CATATONIA stronger-source reacquisition to avoid locking an almost silent leading edge, a focused quiet-onset regression, and detailed tail diagnostics without relaxing gates. See [P026l](docs/P026l.md). All candidate CI pending. The new [P027 design](docs/P027-GUI-DESIGN.md) is owner-approved visual direction; original art archive preserved in chat, not yet uploaded as repository binaries. No filmstrips/layout yet. Sound verification first.
+P026l adds CATATONIA stronger-source reacquisition to avoid locking an almost silent leading edge, a focused quiet-onset regression, and detailed tail diagnostics without relaxing gates. See [P026l](docs/P026l.md). All candidate CI subsequently passed as recorded above. The new [P027 design](docs/P027-GUI-DESIGN.md) is owner-approved visual direction; original art archive preserved in chat, not yet uploaded as repository binaries. No filmstrips/layout yet. Sound verification first.
 
 ## Historical checkpoint — P026j / v0.9.18 verified; P026k / v0.9.19 twelve-world audio candidate
 

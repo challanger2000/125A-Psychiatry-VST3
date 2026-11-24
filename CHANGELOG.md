@@ -2,11 +2,11 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
-## 0.9.20 — P026l freeze acquisition correction candidate (2026-11-24)
+## 0.9.20 — P026l verified freeze acquisition correction (2026-11-24)
 
 - Preserve a deliberate equal-level freeze but reacquire on a substantially stronger source frame, preventing an almost silent leading edge from monopolizing a hold.
 - Add quiet-onset regression and all-twelve P023 excitation diagnostics. Existing thresholds unchanged.
-- P026k Windows P023 failed; DSP/recorded/EditorHost passed. P026l CI pending.
+- P026k Windows P023 failed; DSP/recorded/EditorHost passed. P026l all four CI workflows passed (see STATUS.md).
 - Document owner-approved vintage horror GUI concept in P027-GUI-DESIGN.md; no GUI code change.
 
 ## 0.9.19 — P026k twelve-world sound candidate (2026-11-24)

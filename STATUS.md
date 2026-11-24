@@ -28,6 +28,10 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.11**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P025 — recorded-source audition (prepared; CI pending)
+
+Pinned CC0 VCSL percussion and Meta acoustic guitar recordings; Oculus CC BY 4.0 vocal foley and room-tone recordings (with attribution). Fixture preparer verifies Git blob hashes; converts and arranges 4-second inputs plus 2-second tails. Actual Processor::process renders all nine at 5/10/20/50/100%, writes 180 objective rows and 72 RMS-matched dry/wet pairs at 50/100%. No fixtures in product, no human listening claim. Separate workflow prepared, to run after P024. Vocal foley is breathing/laughter, not speech or singing.
+
 ## P024 — original grayscale CRT artwork (v0.9.12; CI pending)
 
 Nine deterministic 224×196 grayscale PNGs of fictional empty clinical corridors, rooms, equipment and cabinets are committed, with reproducible perspective renderer. Runtime draws real packaged bitmaps, adds bounded local horizontal displacement and secondary macro cross-exposure; no patient photographs, real archive claims or outside image rights. PNG packaging checks and actual EditorHost image shade diversity check added. P023 fully verified; P024 CI triggered. Not yet verified in Windows editor.

@@ -1,0 +1,65 @@
+[
+  {
+    "name": "kick",
+    "repository": "sgossner/VCSL",
+    "commit": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+    "path": "Membranophones/Struck Membranophones/Bass Drum 1/BDrumNew_hit_v3_rr1_Sum.wav",
+    "git_blob_sha1": "5f068b40b13f887c170d574b916dd21927f545ca"
+  },
+  {
+    "name": "snare",
+    "repository": "sgossner/VCSL",
+    "commit": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+    "path": "Membranophones/Struck Membranophones/Legacy Snares/OldSnare/snare_f1.wav",
+    "git_blob_sha1": "365a9a0e46a2753be2a7d2f829e928e7ff589f0a"
+  },
+  {
+    "name": "hat",
+    "repository": "sgossner/VCSL",
+    "commit": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+    "path": "Idiophones/Struck Idiophones/Hi-Hat Cymbal/HiHat_Close_rr1_Mid.wav",
+    "git_blob_sha1": "c4b2cdf0400e6b46f9dd2c59212adf44f4440775"
+  },
+  {
+    "name": "guitar_a",
+    "repository": "facebookincubator/Meta-open-sound",
+    "commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "path": "systems/instruments/meta-steel-guitar/ogg/INSGuitarSteel_StringA_Vel02_A2_01.ogg",
+    "git_blob_sha1": "3d9be7702d3ca8fa719da16dcd4a82880ba0365e"
+  },
+  {
+    "name": "guitar_c",
+    "repository": "facebookincubator/Meta-open-sound",
+    "commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "path": "systems/instruments/meta-steel-guitar/ogg/INSGuitarSteel_StringA_Vel02_C3_01.ogg",
+    "git_blob_sha1": "0cc86d5d3f7e10993ef18d8bacdaf4aeda5c81e1"
+  },
+  {
+    "name": "guitar_d",
+    "repository": "facebookincubator/Meta-open-sound",
+    "commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "path": "systems/instruments/meta-steel-guitar/ogg/INSGuitarSteel_StringA_Vel02_D3_01.ogg",
+    "git_blob_sha1": "ae50ac717c034facae4c2164dbe3ad2afb9fad48"
+  },
+  {
+    "name": "breath",
+    "repository": "facebookincubator/Meta-open-sound",
+    "commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "path": "corpora/oculus-audio-pack/ogg/HMNBrth_FemaleBreathing_OS_01.ogg",
+    "git_blob_sha1": "328f743b1a7388403f7d84e46fad1c6328370246"
+  },
+  {
+    "name": "laugh",
+    "repository": "facebookincubator/Meta-open-sound",
+    "commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "path": "corpora/oculus-audio-pack/ogg/VOXLaff_Female01Laugh_OS_01.ogg",
+    "git_blob_sha1": "549c6c5172eb41b04d229423c7eea7604bdac6f7"
+  },
+  {
+    "name": "room",
+    "repository": "facebookincubator/Meta-open-sound",
+    "commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "path": "corpora/oculus-audio-pack/ogg/AMBInd_RoomToneMachineRoom_LOOP_01.ogg",
+    "git_blob_sha1": "e8290f99ae4853fed6ad97e90a4089ac8f7c039c"
+  }
+]

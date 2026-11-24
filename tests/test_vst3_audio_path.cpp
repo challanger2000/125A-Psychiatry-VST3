@@ -988,8 +988,61 @@ void testDenseAutomationStress() {
         std::printf("P021 STRESS PASS rate=%d all-nine dense automation and silence\n",sr);
     }
 }
+// P025: reference recordings decoded into fixed 48 kHz float stereo
+// outside the plug-in. Keep raw measurements separate from audition gain.
+void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
+    std::ofstream csv(outputDir+"/P025_recorded_metrics.csv");
+    check(csv.good(),"P025 CSV");
+    csv<<"source,macro,amount,gain_db,peak_dbfs,raw_null_ratio,gain_matched_residual\n";
+    constexpr std::array<const char*,4> names{"recorded_drums","recorded_guitar","recorded_vocal_foley","recorded_machine_room"};
+    for(const char* name:names) {
+        Stereo dry(6*kRate);
+        std::ifstream in(inputDir+"/"+name+".f32",std::ios::binary);
+        check(in.good(),"P025 recording missing");
+        for(std::size_t i=0;i<dry.size();++i){
+            in.read(reinterpret_cast<char*>(&dry.l[i]),sizeof(float));
+            in.read(reinterpret_cast<char*>(&dry.r[i]),sizeof(float));
+        }
+        check(in.good()&&in.peek()==std::char_traits<char>::eof(),"P025 recording length");
+        check(identical(dry,render(dry,-1,0.f)),"P025 exact neutral");
+        writeWav(outputDir+"/P025_"+name+"_DRY.wav",dry);
+        for(int fx=0;fx<9;++fx) {
+            for(float amount:{.05f,.10f,.20f,.50f,1.f}){
+                const auto wet=render(dry,fx,amount);
+                const auto m=measure(dry,wet);
+                check(m.peak<4.&&m.wetRms>1.e-7,"P025 uncontrolled peak or silent effect");
+                csv<<name<<','<<kMacroNames[fx]<<','<<amount<<','<<m.changeDb<<','<<m.fullScaleDb<<','<<m.nullRatio<<','<<m.shapeResidual<<'\n';
+                std::printf("P025 %s %s %.2f gain=%+.3f peak=%.3f residual=%.5f\n",
+                    name,kMacroNames[fx],amount,m.changeDb,m.fullScaleDb,m.shapeResidual);
+                if(amount==.5f||amount==1.f){
+                    // Least arbitrary loudness comparison: RMS match, then
+                    // one shared headroom attenuation for both halves.
+                    const double gain=m.dryRms/std::max(1.e-12,m.wetRms);
+                    double peak=0.;
+                    for(std::size_t i=0;i<dry.size();++i)
+                        peak=std::max({peak,std::abs(double(dry.l[i])),std::abs(double(dry.r[i])),
+                            gain*std::abs(double(wet.l[i])),gain*std::abs(double(wet.r[i]))});
+                    const double scale=std::min(1.,.90/std::max(1.e-12,peak));
+                    const auto gap=static_cast<std::size_t>(kRate/2);
+                    Stereo pair(dry.size()*2+gap);
+                    for(std::size_t i=0;i<dry.size();++i){
+                        pair.l[i]=float(scale*dry.l[i]);pair.r[i]=float(scale*dry.r[i]);
+                        pair.l[i+dry.size()+gap]=float(scale*gain*wet.l[i]);
+                        pair.r[i+dry.size()+gap]=float(scale*gain*wet.r[i]);
+                    }
+                    writeWav(outputDir+"/P025_"+name+"_"+kMacroNames[fx]+(amount==1.f?"_100_AB.wav":"_50_AB.wav"),pair);
+                }
+            }
+        }
+    }
+    check(csv.good(),"P025 metric write");
+    std::puts("P025 RECORDED AUDIO EXPORT PASS: 180 objective rows, 72 RMS-matched A/B files; human audition not claimed");
+}
 } // namespace
 int main(int argc,char** argv){
+    if(argc==4&&std::string(argv[1])=="--recordings"){
+        auditRecordings(argv[2],argv[3]);return 0;
+    }
     std::ofstream csv;
     const bool exportWav=argc>1;
     if(exportWav){

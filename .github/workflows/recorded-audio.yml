@@ -1,0 +1,54 @@
+name: P025 Recorded Audio Audition Exports
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/prepare_recordings.py'
+      - 'tools/recording_sources.json'
+      - '.github/workflows/recorded-audio.yml'
+concurrency:
+  group: psychiatry-recorded-audio-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  recorded-audio:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare pinned recorded sources
+        shell: pwsh
+        run: |
+          Get-Command ffmpeg -ErrorAction Stop
+          python tools/prepare_recordings.py recorded-input
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Fetch pinned SDK
+        shell: pwsh
+        run: |
+          git clone --no-checkout https://github.com/steinbergmedia/vst3sdk.git external/vst3sdk
+          git -C external/vst3sdk checkout 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          git -C external/vst3sdk submodule update --init --recursive
+      - name: Build actual VST3 processor harness
+        shell: pwsh
+        run: |
+          cmake -S . -B build-vst3 -G "Visual Studio 17 2022" -A x64 -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build-vst3 --config Release --target test_vst3_audio_path --parallel 4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Render recorded sources
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path recorded-output | Out-Null
+          Copy-Item recorded-input/ATTRIBUTION.txt recorded-output/
+          $auditor = Get-ChildItem build-vst3 -Recurse -File -Filter test_vst3_audio_path.exe | Where-Object FullName -match '[\\/]Release[\\/]' | Select-Object -First 1
+          if (-not $auditor) { throw "Missing actual VST3 processor harness" }
+          & $auditor.FullName --recordings recorded-input recorded-output
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@(Import-Csv recorded-output/P025_recorded_metrics.csv).Count -ne 180) { throw "Missing recorded metrics" }
+          if (@(Get-ChildItem recorded-output -Filter '*_AB.wav').Count -ne 72) { throw "Missing recorded A/B comparisons" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: P025-Recorded-Listening-Comparisons
+          path: recorded-output/
+          if-no-files-found: error
+          retention-days: 7

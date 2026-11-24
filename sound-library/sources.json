@@ -21,10 +21,24 @@
     "license": "CC-BY-4.0"
   },
   {
+    "path": "sound-library/originals/creaks/WOODFric_LargeWoodMetalDrag_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/WOODFric_LargeWoodMetalDrag_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "a4b57a5cf85b13d6b992c1d38b1ca0d7265c229e",
+    "license": "CC-BY-4.0"
+  },
+  {
     "path": "sound-library/originals/doors/DOORKnck_OfficeDoorKnock_OS_01.ogg",
     "source_path": "corpora/oculus-audio-pack/ogg/DOORKnck_OfficeDoorKnock_OS_01.ogg",
     "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
     "git_blob_sha1": "34c964594cf5e3121bdf04b26041abcde22f1f78",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/doors/DOORMetl_HatchClose_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/DOORMetl_HatchClose_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "8347f0e48913bb019dd627d35bbbec5eb4f6df5c",
     "license": "CC-BY-4.0"
   },
   {
@@ -42,6 +56,27 @@
     "license": "CC-BY-4.0"
   },
   {
+    "path": "sound-library/originals/footsteps/FEETHmn_ShoeMetalWalk_OS_03.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/FEETHmn_ShoeMetalWalk_OS_03.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "5f898dc9596e122c2428b63887735c4367e89fee",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/machines/MACHMisc_MachineGeneric_LOOP_02.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/MACHMisc_MachineGeneric_LOOP_02.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "0c57429b4f6c603c767cf8f6191afe88c95d8f0c",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/machines/MACHMisc_MachineHum_LOOP_02.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/MACHMisc_MachineHum_LOOP_02.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "f8438248781c10e79364751b121e48e27d8865d5",
+    "license": "CC-BY-4.0"
+  },
+  {
     "path": "sound-library/originals/metal/METLHndl_ElectricBoxOpen_OS_01.ogg",
     "source_path": "corpora/oculus-audio-pack/ogg/METLHndl_ElectricBoxOpen_OS_01.ogg",
     "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
@@ -53,6 +88,13 @@
     "source_path": "corpora/oculus-audio-pack/ogg/METLImpt_MetalHitSurface_OS_01.ogg",
     "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
     "git_blob_sha1": "1817e07deb1d386639f193779e4ea16e6f616de7",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/metal/METLImpt_MetalHitSurface_OS_03.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/METLImpt_MetalHitSurface_OS_03.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "3757597be4fa8397b09f16a400272ddee82c8661",
     "license": "CC-BY-4.0"
   },
   {

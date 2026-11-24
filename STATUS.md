@@ -1,6 +1,6 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified gate: **P024 raster CRT / factory v0.9.12**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified gate: **P025 recorded-source QA / factory v0.9.12**, **portable candidate for final target-DAW acceptance, not a public release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
@@ -28,13 +28,15 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.12**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P025 — recorded-source audition (CI pending)
+## P025 — verified recorded-source audit
 
-Pinned CC0 VCSL percussion and Meta acoustic guitar recordings; Oculus CC BY 4.0 vocal foley and room-tone recordings (with attribution). Fixture preparer verifies Git blob hashes; converts and arranges 4-second inputs plus 2-second tails. Actual Processor::process renders all nine at 5/10/20/50/100%, writes 180 objective rows and 72 RMS-matched dry/wet pairs at 50/100%. No fixtures in product, no human listening claim. P024 fully verified, including manual inspection of actual EditorHost screenshot. Initial P025 workflow 45312161044 failed before source preparation (missing FFmpeg); pinned QA-only bundled decoder added, retry triggered. Vocal foley is breathing/laughter, not speech or singing.
+[Actual Windows processor recording audit](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45312252550) **SUCCESS**, test source `63544cf1ae6dd0d0037f149943bd956521420c7f`. All nine source file Git hashes verified. Four arranged recorded inputs (drum kit, acoustic guitar, breath/laugh vocal foley, machine-room ambience), 5/10/20/50/100% on each of nine effects = **180/180 measurement rows** and **72 RMS-matched A/B WAVs**. Peak maximum −1.943 dBFS; RMS gain range −5.149 to +3.576 dB; all finite. Minimum full-wet gain-matched residual 0.42477 (recorded guitar/PSYCHOSIS). At 20% weakest measured residual 0.02474 (recorded guitar/DEPRESSION); subjective low-position strength is not established by measurement alone. [Recorded comparisons and attribution](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45312252550/artifacts/14882529933). No claim of human audition, sung/spoken vocal or recorded bass tests.
+
+Git comparison from P024 verified source to P025 test source confirms no changes in src/, vst3/, resource/ or CMakeLists.txt; the actual product remains the verified v0.9.12 P024 bundle, with P025 QA extensions only. No more speculative DSP changes before actual musical/DAW feedback.
 
 ## P024 — verified original grayscale CRT artwork
 
-Factory **0.9.12**, tested `eedbb5ca9bef415bd40e96044f4a4a921bfa0a2d`. [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769415), [Win32 EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769462) all **SUCCESS**. Nine original grayscale PNGs packaged. Real editor sampled 186 distinct grayscale levels in the image region, proving raster artwork rather than vector fallback. Actual bypass/restore brightness 2840 → 124 → 2840; randomizer and language switch passed. 47/47 validator, 45/45 full-wet, tail and stress regressions passed. [GUI screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769462/artifacts/14883140743). [Metrics](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352/artifacts/14882781951). Art is fictional procedural rendering, not archival photography. P025 recording audit follows.
+Factory **0.9.12**, tested `eedbb5ca9bef415bd40e96044f4a4a921bfa0a2d`. [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769415), [Win32 EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769462) all **SUCCESS**. Nine original grayscale PNGs packaged. Real editor sampled 186 distinct grayscale levels in the image region, proving raster artwork rather than vector fallback. Actual bypass/restore brightness 2840 → 124 → 2840; randomizer and language switch passed. 47/47 validator, 45/45 full-wet, tail and stress regressions passed. [GUI screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769462/artifacts/14883140743). [Metrics](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352/artifacts/14882781951). Art is fictional procedural rendering, not archival photography. P025 recording audit passed.
 
 ## P023 — verified host tail declaration
 
@@ -224,12 +226,12 @@ The major new evidence is **actual audio passing through `psychiatry::vst3::Proc
 
 [Full P006 method, findings and limitations](docs/P006.md).
 
-## Current remaining acceptance gates
+## Final target-DAW acceptance
 
-- **Recorded-source audit P025:** real sampled drums/acoustic guitar, vocal foley and machine-room ambience; objective measurements and RMS-matched A/B export are running. Vocal foley is not sung or spoken voice. Synthetic audio, alias/intermodulation, PDC, exact endpoints, three-rate automation, tail decay and allocation/CPU regression tests have already passed in P024.
+- **Recorded-source audit P025:** real sampled drums/acoustic guitar, vocal foley and machine-room ambience; objective measurements and RMS-matched A/B export are complete and passed. Vocal foley is not sung or spoken voice. Synthetic audio, alias/intermodulation, PDC, exact endpoints, three-rate automation, tail decay and allocation/CPU regression tests have already passed in P024.
 - **Visual:** all nine original fictional grayscale scene bitmaps are loaded in the actual Windows GUI; no third-party or archival images are bundled. Manual inspection of P024 EditorHost screenshot confirmed the new CRT art, legible controls and complete panel. The original photographic reference is not claimed to be reproduced exactly.
 - **Final host acceptance:** only actual Studio Pro session listening, recall and automation in the target DAW can establish end-user acceptance. No completed DAW test is claimed.
-- **Distribution:** a verified portable Windows x64 VST3 bundle exists. No public final release, installer or finished-product approval claimed. No test recordings in plugin bundle.
+- **Distribution:** deliver the inspected P024 v0.9.12 portable candidate for the final target-DAW test. No public final release, installer or final listening approval claimed. No test recordings in plugin bundle.
 
 ## P024 package inspection
 

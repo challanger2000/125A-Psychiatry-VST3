@@ -2,7 +2,7 @@
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **Current verified engineering checkpoint: P024 raster CRT / factory v0.9.12**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Original fictional grayscale CRT scenes verified; not archival photographs. Studio Pro acceptance remains open.**
+> **Current verified engineering checkpoint: P025 recorded-source QA / factory v0.9.12**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Original fictional grayscale CRT scenes verified; not archival photographs. Studio Pro acceptance remains open.**
 
 ## Nine equally important effect worlds
 
@@ -24,9 +24,13 @@ Distortion is **not** the central effect of the entire product. Each macro conta
 
 **LOSS OF CONTROL / KONTROLLVERLUST** now changes the nine host-automatable macro settings as a single grouped automation gesture where supported. It never modifies THERAPY or Bypass. The **DE/EN toggle** switches between two actual UI templates and saves the language independently of sound state. This is a **functional provisional VSTGUI**, not the final historic visual concept.
 
+## P025 — verified recorded-source QA (v0.9.12 candidate)
+
+[Windows actual processor audit](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45312252550) passed: 180 measured recorded-source cases, 72 level-matched A/B comparisons; highest peak −1.943 dBFS, all finite. [Comparisons and credits](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45312252550/artifacts/14882529933). No changes to product code or resources since P024. The inspected v0.9.12 portable bundle is the final Studio Pro acceptance candidate; no public release or human audition claimed.
+
 ## P024 — verified v0.9.12
 
-[Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769415), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769462) passed. Nine original grayscale rendered scenes loaded in real editor; 186 sampled grayscale levels, bypass/restore and language tests passed. P025 recorded-source audit pending.
+[Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769415), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769462) passed. Nine original grayscale rendered scenes loaded in real editor; 186 sampled grayscale levels, bypass/restore and language tests passed. P025 recorded-source audit passed.
 
 ## P023 — verified v0.9.11
 
@@ -176,6 +180,6 @@ ctest --test-dir build -C Release --output-on-failure
 
 See [docs/P002.md](docs/P002.md) for the Windows Steinberg SDK build setup.
 
-**Release acceptance remains open:** P024 Windows VST3 and actual GUI, alias/intermodulation, phase, endpoints, dense automation and tail decay tests are verified. P025 recorded-source audit is pending; actual Studio Pro listening and project recall have not yet been verified. A green build is not a substitute for listening.
+**Release acceptance remains open:** P024 Windows VST3 and actual GUI, alias/intermodulation, phase, endpoints, dense automation and tail decay tests are verified. P025 recorded-source audit passed; actual Studio Pro listening and project recall have not yet been verified. A green build is not a substitute for listening.
 
 © 125A. Final license to be determined before redistribution.

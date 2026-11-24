@@ -2,6 +2,10 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## P025 — recorded-source verification (factory 0.9.12)
+
+- [Recorded audio QA](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45312252550) SUCCESS, 180 measured rows and 72 RMS-matched A/B WAVs. Peak ≤ −1.943 dBFS; no changes to product source or bundle. Final DAW acceptance candidate remains v0.9.12.
+
 ## 0.9.12 — P024 (2026-11-24)
 
 - Nine original procedural grayscale CRT images, dominant/secondary scene behavior and local displacement; no external photography.

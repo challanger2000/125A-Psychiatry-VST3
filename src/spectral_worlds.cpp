@@ -157,7 +157,7 @@ void Dissociation::process(float* const* io,unsigned channels,std::size_t frames
             // makeup multiplies only the transformed time-displaced branch.
             // Unity at 0%; smooth +~5.1 dB at 100%. Not a limiter/AGC.
             const float makeup=1.f+0.80f*m*m;
-            if(m>0.f) io[ch][i]=x+m*(makeup*displaced-x);
+            if(m>0.f) io[ch][i]=m==1.f?makeup*displaced:x+m*(makeup*displaced-x);
         }
     }
 }

@@ -1,4 +1,4 @@
-name: P025 Recorded Audio Audition Exports
+name: P025 Recorded Audio Audition Exports (pinned fixtures)
 on:
   workflow_dispatch:
   push:

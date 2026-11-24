@@ -1,15 +1,15 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified gate: **P023 tail declaration / factory v0.9.11**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified gate: **P024 raster CRT / factory v0.9.12**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `4b3a5c9e8401ac94cdaaa34b8f06048fb2d0636d` on **main** (P023, factory v0.9.11).
-- **Windows/MSVC x64 real VST3 workflow:** [run 45307623931](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45307623931), **SUCCESS**.
+- **Source commit tested:** `eedbb5ca9bef415bd40e96044f4a4a921bfa0a2d` on **main** (P024, factory v0.9.12).
+- **Windows/MSVC x64 real VST3 workflow:** [run 45309769352](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P023 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45307623931/artifacts/14881623215): `125A-PSYCHIATRY-P023-Tail-NOT-FINAL` (7-day retention, expires 2026-12-01).
-- **Windows + Linux standalone audio workflow:** [run 45307623916](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45307623916), **SUCCESS**.
+  - [P024 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352/artifacts/14882642144): `125A-PSYCHIATRY-P024-CRT-NOT-FINAL` (7-day retention, expires 2026-12-01).
+- **Windows + Linux standalone audio workflow:** [run 45309769415](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769415), **SUCCESS**.
   - **7/7 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
   - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues. **P010 adds a separate 180-case test of the actual VST3 processor, not merely standalone DSP**.
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
@@ -25,16 +25,16 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 `createView(kEditor)` now constructs `VSTGUI::VST3Editor`, rather than returning null and falling back to host generic controls.
 - **Official Steinberg EditorHost GUI interaction PASSED:** [run 45269301923](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923). An actual Win32 GUI was created, a mouse click on LOSS OF CONTROL changed nine effect values and the CRT image (482 sampled pixels differed, RGB delta 81,702), and the subsequent DE language switch retained a working editor. [Three run screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923/artifacts/14864592486) were visually inspected. **This is still not Studio Pro or an audio listening test.**
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
-- VST3 factory version now **0.9.11**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+- VST3 factory version now **0.9.12**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P025 — recorded-source audition (prepared; CI pending)
+## P025 — recorded-source audition (CI pending)
 
-Pinned CC0 VCSL percussion and Meta acoustic guitar recordings; Oculus CC BY 4.0 vocal foley and room-tone recordings (with attribution). Fixture preparer verifies Git blob hashes; converts and arranges 4-second inputs plus 2-second tails. Actual Processor::process renders all nine at 5/10/20/50/100%, writes 180 objective rows and 72 RMS-matched dry/wet pairs at 50/100%. No fixtures in product, no human listening claim. Separate workflow prepared, to run after P024. Vocal foley is breathing/laughter, not speech or singing.
+Pinned CC0 VCSL percussion and Meta acoustic guitar recordings; Oculus CC BY 4.0 vocal foley and room-tone recordings (with attribution). Fixture preparer verifies Git blob hashes; converts and arranges 4-second inputs plus 2-second tails. Actual Processor::process renders all nine at 5/10/20/50/100%, writes 180 objective rows and 72 RMS-matched dry/wet pairs at 50/100%. No fixtures in product, no human listening claim. P024 fully verified; separate recorded-source workflow triggered. Vocal foley is breathing/laughter, not speech or singing.
 
-## P024 — original grayscale CRT artwork (v0.9.12; CI pending)
+## P024 — verified original grayscale CRT artwork
 
-Nine deterministic 224×196 grayscale PNGs of fictional empty clinical corridors, rooms, equipment and cabinets are committed, with reproducible perspective renderer. Runtime draws real packaged bitmaps, adds bounded local horizontal displacement and secondary macro cross-exposure; no patient photographs, real archive claims or outside image rights. PNG packaging checks and actual EditorHost image shade diversity check added. P023 fully verified; P024 CI triggered. Not yet verified in Windows editor.
+Factory **0.9.12**, tested `eedbb5ca9bef415bd40e96044f4a4a921bfa0a2d`. [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769415), [Win32 EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769462) all **SUCCESS**. Nine original grayscale PNGs packaged. Real editor sampled 186 distinct grayscale levels in the image region, proving raster artwork rather than vector fallback. Actual bypass/restore brightness 2840 → 124 → 2840; randomizer and language switch passed. 47/47 validator, 45/45 full-wet, tail and stress regressions passed. [GUI screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769462/artifacts/14883140743). [Metrics](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45309769352/artifacts/14882781951). Art is fictional procedural rendering, not archival photography. P025 recording audit follows.
 
 ## P023 — verified host tail declaration
 

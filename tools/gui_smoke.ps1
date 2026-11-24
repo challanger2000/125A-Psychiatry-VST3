@@ -41,7 +41,7 @@ function ClickClient([IntPtr]$hwnd,[int]$x,[int]$y) {
 $build=Join-Path $PSScriptRoot '..\build-vst3'
 $hostExe=Get-ChildItem -LiteralPath $build -Recurse -File -Filter 'editorhost.exe' |
     Sort-Object FullName | Select-Object -First 1
-$bundle=Get-ChildItem -LiteralPath $build -Recurse -Directory -Filter '125A PSYCHIATRY.vst3' |
+$bundle=Get-ChildItem -LiteralPath $build -Recurse -Directory -Filter '125A-PSYCHIATRY.vst3' |
     Where-Object { $_.FullName -match '[\\/]+VST3[\\/]+Release[\\/]' } |
     Sort-Object FullName | Select-Object -First 1
 if(-not $hostExe -or -not $bundle) { throw 'P009 GUI test: host or plugin bundle missing' }

@@ -28,7 +28,7 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.9**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P022 — control-driven CRT polish (v0.9.10; CI pending)
+## P022 — control-driven CRT polish (v0.9.10; corrected package CI pending)
 
 Monitor intensity follows all nine actual controls, inverse THERAPY and host Bypass; zero-state, bypass and therapy-dry captions are distinct. Static mode is truly static, initial values are read on editor creation, motion stops when all controls are neutral. Added deterministic monitor model assertions and actual EditorHost bypass/restore screenshot comparison. Removed engineering checkpoint labels from both templates. No archival photo assets added; not final visual acceptance. The bundle now uses the product name, verifies its actual x64 binary and includes pinned VST3 SDK/VSTGUI license notices. Plugin package and metrology are separate artifacts. P021 actual audio/state/build CTest and complete metrics export passed. P022 CI triggered with a distinct workflow name so P021 export can finish.
 
@@ -229,3 +229,5 @@ The major new evidence is **actual audio passing through `psychiatry::vst3::Proc
 ## Project rules
 
 Keep **only `main`**, keep every verified last-tested commit and Actions links in this file; distinguish synthetic objective QA from actual audible approval. Release UI, packages and product metadata use the neutral **125A** brand; do not surface personal developer identity.
+
+P022 initial Windows runs 45305541109 and 45305541179 failed before plugin compilation: upstream SDK resource custom command splits the spaced package path (MSB8066). Standalone DSP 45305541318 passed. Use `125A-PSYCHIATRY.vst3` for the bundle and module; factory display name remains `125A PSYCHIATRY`. Rerun Windows and EditorHost, no DSP changes.

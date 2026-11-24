@@ -79,7 +79,7 @@ if(PSYCHIATRY_BUILD_VST3)
   # Keep the CMake target stable, but name the actual VST3 package and
   # Windows binary after the product, using the pinned SDK package API.
   smtg_add_vst3plugin(PsychiatryPrototype
-      PACKAGE_NAME "125A PSYCHIATRY"
+      PACKAGE_NAME "125A-PSYCHIATRY"
       SOURCES_LIST
       vst3/ids.h vst3/monitor_model.h
       vst3/processor.h vst3/processor.cpp

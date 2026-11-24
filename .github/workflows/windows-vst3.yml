@@ -82,11 +82,11 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "artifacts" | Out-Null
-          $bundles = @(Get-ChildItem -Path "build-vst3" -Recurse -Directory -Filter "125A PSYCHIATRY.vst3" |
+          $bundles = @(Get-ChildItem -Path "build-vst3" -Recurse -Directory -Filter "125A-PSYCHIATRY.vst3" |
             Where-Object { $_.FullName -match '[\\/]VST3[\\/]Release[\\/]' })
           if ($bundles.Count -ne 1) { throw "Expected exactly one branded Windows VST3 bundle, got $($bundles.Count)" }
           $chosen = $bundles[0]
-          $binary = Join-Path $chosen.FullName "Contents/x86_64-win/125A PSYCHIATRY.vst3"
+          $binary = Join-Path $chosen.FullName "Contents/x86_64-win/125A-PSYCHIATRY.vst3"
           if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) { throw "Branded x64 binary missing" }
           foreach ($license in @("LICENSE-VST3-SDK.txt","LICENSE-VSTGUI.txt")) {
             $notice = @(Get-ChildItem -LiteralPath $chosen.FullName -Recurse -File -Filter $license)

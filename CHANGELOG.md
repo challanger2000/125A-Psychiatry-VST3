@@ -2,6 +2,12 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.7 — P018 (2026-11-24)
+
+- Linear-phase FIR in four nonlinear worlds, matched per-stage and global mix delay, fixed 96-sample host PDC, input-time parameter event alignment.
+- Worst observed 50% cancellation improved −23.55 to −2.28 dB; three other oversampled worlds no worse than −0.47 dB. All prior alias, automation and quality gates pass.
+- [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573), [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639454), [GUI](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639417) SUCCESS; validator 47/47, 7/7 DSP groups per platform, 0/120 quality flags.
+
 ## 0.9.6 — P017 (2026-11-24)
 
 - All nine macro and THERAPY smoothers settle to exact 0/100% without abrupt movement.

@@ -106,7 +106,7 @@ An aesthetic of old clinical instruments, analog measurement devices, institutio
 - GitHub Actions should eventually build and test the *actual plugin*; a documentation-only green check is not a substitute for audio tests.
 - Keep product name **125A PSYCHIATRY**, English default and DE/EN GUI labels.
 - No personal names/account links in released GUI, installers or packaged metadata. Public repo hosting identity may still be visible on GitHub.
-- Latest verified checkpoint **P017 / 0.9.6**. All nine engines are functional; P018 phase-aligned oversampling, realistic musical audition, final GUI and Studio Pro acceptance remain open. STATUS.md is the authoritative current build record.
+- Latest verified checkpoint **P018 / 0.9.7**. Fixed 96-sample reported latency; neutral, bypass and dry are exact after host compensation. Realistic musical audition, final GUI and Studio Pro acceptance remain open. STATUS.md is the authoritative current build record.
 
 ## External references (inspiration, not dependencies)
 Sugar Bytes Turnado; UJAM Finisher series; Devious Machines Infiltrator; Freakshow Industries; Zopke Sounds PARANORMAL; remaincalm PARANOIA; de la Mancha therapy; Wavesfactory Whispers (visual reference). Do not copy proprietary code, imagery, presets, or product identity.

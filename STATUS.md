@@ -1,16 +1,16 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified gate: **P017 live automation exact endpoints / factory v0.9.6**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified gate: **P018 phase-aligned oversampling and PDC / factory v0.9.7**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `79fa77c297933b31cb5b81acefa5ad9d4a3345bf` on **main** (P017 live automation, factory v0.9.6).
-- **Windows/MSVC x64 real VST3 workflow:** [run 45293157519](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157519), **SUCCESS**.
+- **Source commit tested:** `1cb6df8d9462c6edf4a673151dc7ca4a3203afdc` on **main** (P018, factory v0.9.7).
+- **Windows/MSVC x64 real VST3 workflow:** [run 45295639573](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P017 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157519/artifacts/14875257365): `125A-PSYCHIATRY-P017-Automation-NOT-FINAL` (7-day retention, expires 2026-11-30).
-- **Windows + Linux standalone audio workflow:** [run 45293157516](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45293157516), **SUCCESS**.
-  - **6/6 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
+  - [P018 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573/artifacts/14875973051): `125A-PSYCHIATRY-P018-Phase-Aligned-NOT-FINAL` (7-day retention, expires 2026-11-30).
+- **Windows + Linux standalone audio workflow:** [run 45295639454](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639454), **SUCCESS**.
+  - **7/7 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
   - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues. **P010 adds a separate 180-case test of the actual VST3 processor, not merely standalone DSP**.
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
 - All Windows Actions artefacts are temporary engineering packages, not release installers.
@@ -25,12 +25,17 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 `createView(kEditor)` now constructs `VSTGUI::VST3Editor`, rather than returning null and falling back to host generic controls.
 - **Official Steinberg EditorHost GUI interaction PASSED:** [run 45269301923](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923). An actual Win32 GUI was created, a mouse click on LOSS OF CONTROL changed nine effect values and the CRT image (482 sampled pixels differed, RGB delta 81,702), and the subsequent DE language switch retained a working editor. [Three run screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923/artifacts/14864592486) were visually inspected. **This is still not Studio Pro or an audio listening test.**
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
-- VST3 factory version now **0.9.6**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+- VST3 factory version now **0.9.7**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P018 — phase-aligned oversampling (integrated; Windows verification pending)
+## P018 — verified phase-aligned oversampling and fixed PDC
 
-A 49-tap symmetric halfband FIR, efficient polyphase interpolation/decimation, and exact 24-host-sample delay per nonlinear stage are implemented. Local GCC C++17 test: impulse exactly symmetric, DC 0.999999996; 18 compensated phase measurements at 44.1/48/96 kHz and 100–16,000 Hz show absolute gain error <0.002 dB and negligible phase error. Four nonlinear tanh alias probes at 44.1/48 kHz: −95.12 to −105.22 dBc. **These are filter-kernel measurements, not evidence that the four complete FX have been corrected.** Factory source v0.9.7 integrates the candidate in four engines, delays every neutral stage exactly 24 samples, aligns global THERAPY and Bypass to 96 samples, reports fixed VST3 latency and queues host automation according to stage position. Tests use explicit padded renders and PDC compensation; no claim of a passed actual plugin until CI completes. P017 remains latest verified.
+Factory **0.9.7**, tested `1cb6df8d9462c6edf4a673151dc7ca4a3203afdc`. [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639454), [official Win32 EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639417) all **SUCCESS**. 47/47 validator, 7/7 standalone DSP groups per OS, 0/120 quality flags, 54 automation endpoints, 45/45 full-wet reference cases.
+
+- Four nonlinear stages use symmetric 49-tap polyphase FIR 2x oversampling, each aligned to 24 host samples. Fixed total **96 samples** (~2 ms at 48 kHz), reported to host; exact neutral/bypass/THERAPY after PDC; delayed parameter routing.
+- Across 144 phase observations worst cancellation improved **−23.55 to −2.28 dB** (DEPRESSION/96k/1k); MANIA/PANIC/PSYCHOSIS worst −0.47 dB. The 24 compensated impulse measurements include small FIR pre-ringing, raw output is causal. Worst folded two-tone line −52.93 dB(input); existing alias gates passed.
+- Reference CI all-nine 100% CPU 0.0641× realtime, max callback 0.4092 ms (not Studio Pro performance).
+- [Metrics](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573/artifacts/14876258244) · [development bundle](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573/artifacts/14875973051). Remaining: additional engine behavior, recorded musical audition, long-session/multiple-instance actual VST3 tests, final GUI and Studio Pro acceptance.
 
 ## P017 — exact automation convergence verified
 

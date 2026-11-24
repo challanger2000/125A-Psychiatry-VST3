@@ -837,6 +837,91 @@ void testAutomatedEndpoints() {
         }
     }
 }
+// P021: identical absolute automation timeline, radically different host
+// block boundaries. Exercise all nine effects, native bypass, long silence,
+// returning input and exact global Dry at the end, at three host rates.
+void testDenseAutomationStress() {
+    struct Event {int sample;Vst::ParamID id;double value;};
+    for(int sr:{44100,48000,96000}) {
+        const int total=7*sr;
+        Stereo input(total);
+        std::uint32_t rng=0x125A3121u;
+        const auto random=[&]() {
+            rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;
+            return double(rng&65535u)/65535.;
+        };
+        std::vector<Event> events;
+        for(int n=0;n<3*sr;n+=113) {
+            for(auto id:kMacroIds)events.push_back({n,id,random()});
+            events.push_back({n,kTherapy,random()*.8});
+        }
+        for(auto id:kMacroIds)events.push_back({3*sr,id,1.});
+        events.push_back({3*sr,kTherapy,0.});
+        events.push_back({sr/2,kBypass,1.});
+        events.push_back({sr,kBypass,0.});
+        events.push_back({6*sr,kTherapy,1.});
+        std::stable_sort(events.begin(),events.end(),[](const Event& a,const Event& b){return a.sample<b.sample;});
+        for(int n=0;n<total;++n) {
+            if(n>=3*sr&&n<6*sr)continue; // listen for decay, not new excitation
+            const double t=double(n)/sr;
+            const float pulse=(n%(sr/4)<sr/100)?0.15f:0.f;
+            input.l[n]=.22f*tone(73.4,t)+.11f*tone(1241.,t)+pulse*float(2.*random()-1.);
+            input.r[n]=.19f*tone(97.,t)+.10f*tone(733.,t)-pulse*float(2.*random()-1.);
+        }
+        const auto run=[&](bool irregular) {
+            Processor p;
+            check(p.initialize(nullptr)==kResultOk,"P021 initialize");
+            Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,1024,double(sr)};
+            check(p.setupProcessing(setup)==kResultOk,"P021 setup");
+            ResizableMemoryIBStream state;writeState(state,-1,0.f,0.f,false);
+            check(p.setState(&state)==kResultOk&&p.setActive(true)==kResultOk,"P021 activate");
+            Stereo out(total);
+            std::size_t e=0;
+            int start=0,step=0;
+            constexpr std::array<int,7> sizes{3,17,127,1024,61,509,256};
+            double peak=0.,tailEnergy=0.;std::size_t exact=0;
+            while(start<total) {
+                const int count=std::min(total-start,irregular?sizes[step++%sizes.size()]:257);
+                Vst::ParameterChanges changes(11);
+                while(e<events.size()&&events[e].sample<start+count) {
+                    const auto& v=events[e++];
+                    check(v.sample>=start,"P021 event timeline");
+                    int32 index=0,point=0;
+                    auto* q=changes.addParameterData(v.id,index);
+                    check(q&&q->addPoint(v.sample-start,v.value,point)==kResultTrue,"P021 queue point");
+                }
+                float* ins[]{input.l.data()+start,input.r.data()+start};
+                float* outs[]{out.l.data()+start,out.r.data()+start};
+                Vst::AudioBusBuffers bi{},bo{};
+                bi.numChannels=2;bo.numChannels=2;bi.channelBuffers32=ins;bo.channelBuffers32=outs;
+                Vst::ProcessData data{};data.processMode=Vst::kRealtime;data.symbolicSampleSize=Vst::kSample32;
+                data.numSamples=count;data.numInputs=1;data.numOutputs=1;data.inputs=&bi;data.outputs=&bo;
+                data.inputParameterChanges=&changes;
+                check(p.process(data)==kResultOk,"P021 actual callback");
+                for(int n=start;n<start+count;++n) {
+                    const float l=out.l[n],r=out.r[n];
+                    check(std::isfinite(l)&&std::isfinite(r)&&std::abs(l)<4.f&&std::abs(r)<4.f,
+                          "P021 nonfinite or uncontrolled peak");
+                    peak=std::max({peak,std::abs(double(l)),std::abs(double(r))});
+                    if(n>=3*sr+kLatency&&n<6*sr)tailEnergy+=double(l)*l+double(r)*r;
+                    if((n>=sr/2+kLatency&&n<sr+kLatency)||n>=6*sr+sr/2+kLatency) {
+                        check(l==input.l[n-kLatency]&&r==input.r[n-kLatency],"P021 exact latency-matched bypass or therapy");
+                        ++exact;
+                    }
+                }
+                start+=count;
+            }
+            check(e==events.size()&&exact>0&&tailEnergy>0.,"P021 stress coverage");
+            check(p.setActive(false)==kResultOk&&p.terminate()==kResultOk,"P021 terminate");
+            std::printf("P021 STRESS rate=%d irregular=%d events=%zu frames=%d exact=%zu peak=%.6f tailEnergy=%.6f\n",
+                        sr,irregular?1:0,events.size(),total,exact,peak,tailEnergy);
+            return out;
+        };
+        const auto a=run(false),b=run(true);
+        check(identical(a,b),"P021 absolute automation depends on host buffer size");
+        std::printf("P021 STRESS PASS rate=%d all-nine dense automation and silence\n",sr);
+    }
+}
 } // namespace
 int main(int argc,char** argv){
     std::ofstream csv;
@@ -855,6 +940,7 @@ int main(int argc,char** argv){
     testObsessionWetLoop();
     testHostIntegrity();
     testAutomatedEndpoints();
+    testDenseAutomationStress();
     testPhaseAndTransients(exportWav?std::string(argv[1]):std::string{});
     int substantial=0,weak=0;
     for(unsigned input=0;input<kInputs.size();++input){

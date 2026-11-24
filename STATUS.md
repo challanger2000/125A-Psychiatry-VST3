@@ -28,6 +28,10 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.8**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P021 — actual processor dense automation stress (test source prepared)
+
+Added seven-second actual VST3 renders at 44.1/48/96 kHz, identical absolute multi-lane automation schedules across fixed and irregular buffers, bypass transitions, three seconds of silence and exact delayed THERAPY endpoint. Finite/peak guard and bit-exact cross-block comparison. **Test not yet run**; P020 CI remains separate.
+
 ## P020 — OBSESSION frozen-loop correction (v0.9.9; CI pending)
 
 P020 source now captures a complete valid grain, latches its length and repeat count, bounds its lifetime to the enlarged preallocated history, scales fades by sample rate and fades only the wet loop (no live dry leakage at 100%). Local C++17 test passed immutable full-wet capture at 44.1/48/96 kHz, block-size equivalence and all five synthetic proxy source gain ranges; actual VST3 tests added. **P019 now verified; P020 v0.9.9 CI triggered.**

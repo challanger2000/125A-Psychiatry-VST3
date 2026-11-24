@@ -4,6 +4,7 @@
 #include "vst3/processor.h"
 #include "vst3/controller.h"
 #include "vst3/ids.h"
+#include "vst3/monitor_model.h"
 
 #include "public.sdk/source/vst/utility/memoryibstream.h"
 #include "base/source/fstreamer.h"
@@ -276,6 +277,19 @@ int main(){
         CHECK(controller.setState(&oldUi)==kResultOk);
         CHECK(controller.isGermanUi());
         CHECK(!controller.isMotionEnabled());
+    }
+    // P022: the monitor represents effective macro settings, not audio level.
+    {
+        std::array<double,9> macros{};macros[3]=.8;macros[6]=.4;
+        const auto full=MonitorModel::make(macros,0.,0.);
+        CHECK(full.dominant==3&&full.peak==.8f&&full.levels[6]==.4f);
+        const auto half=MonitorModel::make(macros,.5,0.);
+        CHECK(half.dominant==3&&half.peak==.4f&&half.levels[6]==.2f);
+        const auto dry=MonitorModel::make(macros,1.,0.);
+        const auto bypass=MonitorModel::make(macros,0.,1.);
+        CHECK(dry.peak==0.f&&dry.total==0.f&&dry.wet==0.f&&!dry.bypass);
+        CHECK(bypass.peak==0.f&&bypass.total==0.f&&bypass.wet==0.f&&bypass.bypass);
+        CHECK(!(dry==bypass));
     }
     CHECK(controller.terminate()==kResultOk);
     CHECK(component.terminate()==kResultOk);

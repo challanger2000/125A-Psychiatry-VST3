@@ -1,5 +1,6 @@
 #include "controller.h"
 #include "ids.h"
+#include "monitor_model.h"
 
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/base/ustring.h"
@@ -144,9 +145,14 @@ void Controller::triggerLossOfControl() {
     std::uniform_real_distribution<double> chance(0.0,1.0);
     // If the host implements IComponentHandler2, group the nine related
     // parameter edits into a single automation/undo timestamp.
+    std::array<double,9> values{};
+    for(auto& value:values)value=chance(random_)<0.18?0.0:amount(random_);
+    if(std::none_of(values.begin(),values.end(),[](double v){return v>0.;}))
+        values[std::uniform_int_distribution<unsigned>(0,8)(random_)]=amount(random_);
     startGroupEdit();
-    for(const auto id:kMacroIds) {
-        const double value=chance(random_)<0.18 ? 0.0 : amount(random_);
+    for(std::size_t i=0;i<kMacroIds.size();++i) {
+        const auto id=kMacroIds[i];
+        const double value=values[i];
         beginEdit(id);
         setParamNormalized(id,value);
         performEdit(id,value);
@@ -163,25 +169,25 @@ class DiagnosticMonitor final : public VSTGUI::CView {
 public:
     explicit DiagnosticMonitor(Controller* controller)
         : VSTGUI::CView(VSTGUI::CRect(0,0,288,325)), controller_(controller) {
+        model_=readModel();
+        motion_=controller_->isMotionEnabled();
+        german_=controller_->isGermanUi();
         setWantsIdle(true);
     }
     void onIdle() override {
-        bool changed=false;
-        for(std::size_t i=0;i<amounts_.size();++i) {
-            const double n=controller_->getParamNormalized(kMacroIds[i]);
-            const float target=std::isfinite(n)
-                ? static_cast<float>(std::clamp(n,0.0,1.0)) : 0.f;
-            const float old=amounts_[i];
-            amounts_[i]+=0.12f*(target-old);
-            if(std::abs(old-amounts_[i])>0.00005f)changed=true;
-        }
-        // A slow, gentle sweep rather than an abrupt flash/strobe.
-        if(controller_->isMotionEnabled()){
+        const auto next=readModel();
+        const bool motion=controller_->isMotionEnabled(),german=controller_->isGermanUi();
+        const bool changed=!(next==model_)||motion!=motion_||german!=german_;
+        model_=next;motion_=motion;german_=german;
+        // In reduced-motion mode the frame is truly static, including after
+        // switching off motion or reopening the editor with saved settings.
+        if(motion_&&model_.peak>0.f) {
             tick_=(tick_+1)%1200u;
-            if(changed || tick_%3==0)invalid();
-        }else if(changed){
+            if(changed||tick_%3==0)invalid();
+        } else {
+            const bool reset=tick_!=0;
             tick_=0;
-            invalid();
+            if(changed||reset)invalid();
         }
     }
     void draw(VSTGUI::CDrawContext* dc) override {
@@ -207,13 +213,9 @@ public:
         // Scene selection shares the same nine real macro control values
         // as the FX processor; when several are active, the strongest is
         // the dominant image, other effects contribute contamination.
-        int chosen=0;
-        float top=0.f,total=0.f;
-        for(std::size_t i=0;i<amounts_.size();++i){
-            total+=amounts_[i];
-            if(amounts_[i]>top){top=amounts_[i];chosen=static_cast<int>(i);}
-        }
-        const float intensity=std::clamp(top,0.f,1.f);
+        const int chosen=model_.dominant;
+        const float top=model_.peak,total=model_.total;
+        const float intensity=top;
         const double phase=static_cast<double>(tick_)*0.04;
         // Film gate corners and registration marks.
         for(double sy:{.095,.905}){
@@ -340,8 +342,9 @@ public:
         fill(.075,.848,.925,.887,black);
         for(int i=0;i<9;++i){
             const double xx=.12+i*.084;
-            fill(xx,.860,xx+.052,.878,
-                 amounts_[static_cast<std::size_t>(i)]>.08f?green:dim);
+            fill(xx,.860,xx+.052,.878,dim);
+            const float level=model_.levels[static_cast<std::size_t>(i)];
+            if(level>0.f)fill(xx,.860,xx+.052*level,.878,green);
         }
         static constexpr const char* sceneEnglish[]{
             "WARD / CORRIDOR","OBSERVATION","DOUBLE EXPOSURE",
@@ -355,10 +358,17 @@ public:
         };
         const bool german=controller_->isGermanUi();
         char display[96]{};
-        std::snprintf(display,sizeof(display),"%s %02d  %s  %02d%%",
-                      german?"KAN":"CH",chosen+1,
-                      german?sceneGerman[chosen]:sceneEnglish[chosen],
-                      static_cast<int>(std::lround(intensity*100.f)));
+        if(model_.bypass)
+            std::snprintf(display,sizeof(display),"BYPASS  /  %s",german?"ORIGINAL":"DRY");
+        else if(model_.wet==0.f)
+            std::snprintf(display,sizeof(display),"%s  /  %s",german?"THERAPIE":"THERAPY",german?"ORIGINAL":"DRY");
+        else if(top==0.f)
+            std::snprintf(display,sizeof(display),"%s",german?"BEREIT  /  0%":"STANDBY  /  0%");
+        else
+            std::snprintf(display,sizeof(display),"%s %02d  %s  %02d%%",
+                          german?"KAN":"CH",chosen+1,
+                          german?sceneGerman[chosen]:sceneEnglish[chosen],
+                          static_cast<int>(std::lround(intensity*100.f)));
         dc->setFont(VSTGUI::kNormalFontSmall);
         dc->setFontColor(bright);
         dc->drawString(display,CRect(x(.075),y(.085),x(.925),y(.125)),
@@ -370,7 +380,15 @@ public:
     }
 private:
     Controller* controller_;
-    std::array<float,9> amounts_{};
+    MonitorModel readModel() const {
+        std::array<double,9> macros{};
+        for(std::size_t i=0;i<macros.size();++i)
+            macros[i]=controller_->getParamNormalized(kMacroIds[i]);
+        return MonitorModel::make(macros,controller_->getParamNormalized(kTherapy),
+                                 controller_->getParamNormalized(kBypass));
+    }
+    MonitorModel model_{};
+    bool motion_=false,german_=false;
     unsigned tick_=0;
 };
 

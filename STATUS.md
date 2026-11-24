@@ -28,6 +28,10 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.9**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P022 — control-driven CRT polish (source candidate)
+
+Monitor intensity follows all nine actual controls, inverse THERAPY and host Bypass; zero-state, bypass and therapy-dry captions are distinct. Static mode is truly static, initial values are read on editor creation, motion stops when all controls are neutral. Added deterministic monitor model assertions and actual EditorHost bypass/restore screenshot comparison. Removed engineering checkpoint labels from both templates. No archival photo assets added; not final visual acceptance. CI held until P021 finishes.
+
 ## P021 — actual processor dense automation stress (test source prepared)
 
 Added seven-second actual VST3 renders at 44.1/48/96 kHz, identical absolute multi-lane automation schedules across fixed and irregular buffers, bypass transitions, three seconds of silence and exact delayed THERAPY endpoint. Finite/peak guard and bit-exact cross-block comparison. **CI triggered** after P020 verification.

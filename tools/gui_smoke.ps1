@@ -45,7 +45,7 @@ $bundle=Get-ChildItem -LiteralPath $build -Recurse -Directory -Filter 'Psychiatr
     Where-Object { $_.FullName -match '[\\/]+VST3[\\/]+Release[\\/]' } |
     Sort-Object FullName | Select-Object -First 1
 if(-not $hostExe -or -not $bundle) { throw 'P009 GUI test: host or plugin bundle missing' }
-$proc=$null;$before=$null;$after=$null;$german=$null
+$proc=$null;$before=$null;$after=$null;$german=$null;$bypassed=$null;$restored=$null
 try {
     $arguments='--componentHandler "'+$bundle.FullName+'"'
     $proc=Start-Process -FilePath $hostExe.FullName -ArgumentList $arguments -PassThru
@@ -103,6 +103,27 @@ try {
     if($changed -lt 18 -or $sumDiff -lt 1600) {
         throw "P009 GUI test: LOSS OF CONTROL did not produce a visible CRT scene change"
     }
+    # Static control-driven monitor: toggle actual VST3 bypass and check
+    # the filled intensity bar becomes dark, then returns to its old state.
+    ClickClient $handle 435 505
+    Start-Sleep -Milliseconds 500
+    $bypassed=Screenshot 'P009-Editor-Bypassed.png'
+    ClickClient $handle 435 505
+    Start-Sleep -Milliseconds 500
+    $restored=Screenshot 'P009-Editor-Restored.png'
+    $activeSum=0;$bypassSum=0;$restoredSum=0
+    for($y=252;$y -le 258;$y+=2){
+        for($x=47;$x -le 53;$x+=2){
+            $px=$origin.X+685+$x;$py=$origin.Y+116+$y
+            $activeSum+=[int]$after.GetPixel($px,$py).R
+            $bypassSum+=[int]$bypassed.GetPixel($px,$py).R
+            $restoredSum+=[int]$restored.GetPixel($px,$py).R
+        }
+    }
+    Write-Host "P022 CRT active=$activeSum bypass=$bypassSum restored=$restoredSum"
+    if($activeSum-$bypassSum -lt 400 -or [math]::Abs($restoredSum-$activeSum) -gt 40){
+        throw 'P022 CRT intensity does not follow actual bypass or restore'
+    }
     # Click EN -> DE. The editor must survive and repaint both templates.
     ClickClient $handle 600 471
     Start-Sleep -Milliseconds 500
@@ -114,6 +135,8 @@ try {
     if($before){$before.Dispose()}
     if($after){$after.Dispose()}
     if($german){$german.Dispose()}
+    if($bypassed){$bypassed.Dispose()}
+    if($restored){$restored.Dispose()}
     if($proc -and -not $proc.HasExited){
         Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
     }

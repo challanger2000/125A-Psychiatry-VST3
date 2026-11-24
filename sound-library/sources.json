@@ -28,6 +28,48 @@
     "license": "CC-BY-4.0"
   },
   {
+    "path": "sound-library/originals/footsteps/FEETHmn_ShoeMetalRun_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/FEETHmn_ShoeMetalRun_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "0ee77fe3204ea9ea8a6304bcb7a0475222652e2b",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/footsteps/FEETHmn_ShoeMetalWalk_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/FEETHmn_ShoeMetalWalk_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "dcd9766473280e241798254fd469b34ffe908948",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/metal/METLHndl_ElectricBoxOpen_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/METLHndl_ElectricBoxOpen_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "e743d823d4ee12130841145cd9ddfeacfb72f21f",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/metal/METLImpt_MetalHitSurface_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/METLImpt_MetalHitSurface_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "1817e07deb1d386639f193779e4ea16e6f616de7",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/voices/VOXLaff_EvilLaugh_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/VOXLaff_EvilLaugh_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "8e3a18fee1cc70afc11d11898e7b91d82809d1d0",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/voices/VOXLaff_Female01Laugh_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/VOXLaff_Female01Laugh_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "549c6c5172eb41b04d229423c7eea7604bdac6f7",
+    "license": "CC-BY-4.0"
+  },
+  {
     "path": "sound-library/originals/whispers/VOXWhsp_WhispersCreepy_OS_01.ogg",
     "source_path": "corpora/oculus-audio-pack/ogg/VOXWhsp_WhispersCreepy_OS_01.ogg",
     "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",

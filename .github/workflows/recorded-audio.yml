@@ -8,6 +8,7 @@ on:
       - 'tools/recording_sources.json'
       - 'src/reactive_acoustic.*'
       - 'src/obsession.*'
+      - 'src/depression.*'
       - 'tools/prepare_acoustic_bank.py'
       - 'sound-library/**'
       - '.github/workflows/recorded-audio.yml'

@@ -73,6 +73,47 @@ int main() {
     const auto o2=check(obsessed,0.85f,0.08);
     CHECK(d2>d1 && o2>o1);
 
+    // P026g: a sustained two-tone input must lose high-frequency
+    // presence, not merely gain a tail or change overall volume.
+    {
+        constexpr int sr=48000;
+        std::vector<float> l(sr*2),r(l.size());
+        for(std::size_t i=0;i<l.size();++i){
+            const double p=6.283185307179586*i/sr;
+            l[i]=r[i]=static_cast<float>(.10*std::sin(125*p)+.10*std::sin(4000*p));
+        }
+        psychiatry::Depression fx;fx.prepare(sr);fx.setAmount(1.f);fx.reset();
+        run(fx,l,r,137);
+        auto mag=[&](int hz){
+            double a=0.,b=0.;
+            for(int i=sr;i<2*sr;++i){
+                const double p=6.283185307179586*hz*i/sr;
+                a+=l[i]*std::cos(p);b+=l[i]*std::sin(p);
+            }
+            return 2.*std::hypot(a,b)/sr;
+        };
+        const double low=mag(125),high=mag(4000);
+        CHECK(low>.045&&high<.35*low);
+        std::printf("P026g DEPRESSION low %.5f high %.5f ratio %.5f\n",low,high,high/low);
+    }
+    // Compare first impulse of a new signal with a corresponding impulse
+    // after a sustained bed. Same instantaneous peak, different history.
+    // Inspect the onset before the first 47ms FDN return can contribute.
+    {
+        constexpr int sr=48000,offset=sr/2,span=480;
+        auto probe=[&](bool bed){
+            std::vector<float> l(offset+span+64),r(l.size());
+            if(bed)for(int i=0;i<offset;++i)l[i]=r[i]=.22f;
+            for(int i=offset;i<offset+span;++i)l[i]=r[i]=.48f;
+            psychiatry::Depression fx;fx.prepare(sr);fx.setAmount(1.f);fx.reset();
+            run(fx,l,r,191);
+            double sum=0.;for(int i=offset+96;i<offset+span;++i)sum+=l[i]*l[i];
+            return std::sqrt(sum/(span-96));
+        };
+        const double fresh=probe(false),established=probe(true);
+        CHECK(fresh>0.01&&fresh<established);
+        std::printf("P026g DEPRESSION fresh/established onset RMS %.5f / %.5f\n",fresh,established);
+    }
     // Reverb must leave an audible tail after a nonzero signal.
     {
         psychiatry::Depression fx;fx.prepare(48000);fx.setAmount(1.f);fx.reset();

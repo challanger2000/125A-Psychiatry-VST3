@@ -19,3 +19,5 @@ P026d: P026c Linux decoded all six files and passed 7/7 DSP tests. Windows build
 P026d is now a verified technical checkpoint (v0.9.13, all four CI workflows successful; see STATUS). P026e v0.9.14 candidate replaces OBSESSION bit reduction with progressive filtered/saturated replay; preserve frozen capture and verify new test results. Remaining work: DEPRESSION, SCHIZOPHRENIA, MANIA, DISSOCIATION, HALLUCINATION and three new worlds, then circular GUI. No user audition yet.
 
 P026f: P026e DSP/EditorHost passed, Windows audio gain guard failed for drums at +6.789 dB. Corrected wet-only replay gain and added a percussion regression. Verify P026f CI before further DSP changes. Last fully verified v0.9.13.
+
+P026g: P026f v0.9.14 verified all four CI workflows; current DEPRESSION candidate v0.9.15 uses transient attenuation, slow leveling, processed dark body and subtle downward drift, less dominant hall. See docs/P026g.md. Verify all regressions before further edits; resonant filter/granular return not implemented in this pass. Next SCHIZOPHRENIA after DEPRESSION verification. No final DAW test until all worlds and GUI complete.

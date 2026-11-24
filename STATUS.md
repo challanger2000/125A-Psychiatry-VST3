@@ -21,6 +21,14 @@ User audition of v0.9.12 confirmed several usable effects above 50%, but rejecte
 
 
 
+## P026g — DEPRESSION candidate v0.9.15 (verification pending)
+
+[Implementation and test scope](docs/P026g.md): foreground transient attenuation, leveling and dark shelf, dual-readhead downward drift, less dominant FDN. No GUI or other world changes. P026f is the verified technical reference.
+
+## P026f — v0.9.14 verified technical checkpoint
+
+Exact source 81a0e821e41a22236f0bfbefe565ba99ae21b4c1: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45442484081), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45442484160), [recorded sources](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45442484382), [actual Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45442484881) all SUCCESS. Steinberg 47/47, 45/45 substantial full-wet cases, prior alias, phase, tail and state gates passed. OBSESSION percussion gain +5.07 dB (previous +6.789). Latest technical checkpoint, not a musical or Studio Pro acceptance.
+
 ## P026f — OBSESSION percussion gain correction (v0.9.14, pending verification)
 
 P026e exact source 62035ceec9eb99a9d4477f3bcf27f2384a84b575: [Windows/Linux DSP PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45436494194), [EditorHost PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45436493940), [actual Windows VST3 FAIL](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45436494016). Steinberg validator 47/47 and legacy state passed, as did the earlier audio-path gates; the full-wet P011 level guard failed on drums at +6.789 dB (limit +6 dB). Apply a continuous wet-only trim of 0.82 at 100% (-1.724 dB relative to P026e; predicted drum gain +5.065 dB, not yet measured). Preserve capture, filter, nonlinear transfer and fade. Add the exact P010 sparse percussion fixture to standalone OBSESSION regression; no thresholds weakened. Re-run Windows actual VST3 and recorded-source export. Latest fully verified checkpoint remains P026d/v0.9.13; no musical acceptance claimed.

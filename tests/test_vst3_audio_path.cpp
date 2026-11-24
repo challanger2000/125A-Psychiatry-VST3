@@ -121,7 +121,7 @@ Stereo padded(const Stereo& dry) {
 }
 Stereo render(const Stereo& dry,int macro,float amount,
               float therapy=0.f,bool bypass=false,bool inplace=false,double sampleRate=kRate,
-              bool compensateLatency=true) {
+              bool compensateLatency=true,const std::array<float,12>* combination=nullptr) {
     Processor p;
     check(p.initialize(nullptr)==kResultOk,"real VST3 initialize");
     Vst::ProcessSetup setup{};
@@ -131,7 +131,14 @@ Stereo render(const Stereo& dry,int macro,float amount,
     setup.sampleRate=sampleRate;
     check(p.setupProcessing(setup)==kResultOk,"real VST3 setupProcessing");
     ResizableMemoryIBStream state;
-    writeState(state,macro,amount,therapy,bypass);
+    if(combination){
+        IBStreamer w(&state,kLittleEndian);
+        check(w.writeInt32(kStateMagic)&&w.writeInt32(kStateVersion),"P027c combo header");
+        for(int i=0;i<9;++i)check(w.writeFloat((*combination)[i]),"P027c macro");
+        check(w.writeFloat(therapy)&&w.writeInt32(bypass?1:0),"P027c globals");
+        for(int i=9;i<12;++i)check(w.writeFloat((*combination)[i]),"P027c appended macro");
+        state.rewind();
+    }else writeState(state,macro,amount,therapy,bypass);
     check(p.setState(&state)==kResultOk,"real VST3 component state");
     check(p.setActive(true)==kResultOk,"real VST3 setActive");
     check(p.getLatencySamples()==kLatency,"P018 fixed reported latency");
@@ -999,11 +1006,70 @@ void testDenseAutomationStress() {
         std::printf("P021 STRESS PASS rate=%d all-twelve dense automation and silence\n",sr);
     }
 }
+// Prefix differences include interaction; not intrinsic single-stage gains.
+void auditCombinations(const Stereo& dry,const char* sourceName,
+                       const std::string& dir,std::ofstream& csv){
+    constexpr std::array<int,12> order{0,2,3,4,1,5,6,7,8,9,10,11};
+    using Amounts=std::array<float,12>;
+    const auto run=[&](const Amounts& amounts,float therapy=0.f,bool bypass=false){
+        return render(dry,-1,0.f,therapy,bypass,false,kRate,true,&amounts);
+    };
+    const auto record=[&](const char* type,int index,const Amounts& amounts,
+                          const Stereo& wet,double prior){
+        const auto m=measure(dry,wet);
+        check(m.peak<4.&&m.wetRms>1.e-7,"P027c uncontrolled peak or effectively silent combination");
+        csv<<sourceName<<','<<type<<','<<index;
+        for(float value:amounts)csv<<','<<value;
+        csv<<','<<m.changeDb<<','<<m.fullScaleDb<<','<<m.shapeResidual<<','<<m.changeDb-prior<<'\n';
+        std::printf("P027c %s %s %02d gain=%+.3f dB peak=%+.3f dBFS step=%+.3f dB\n",
+            sourceName,type,index,m.changeDb,m.fullScaleDb,m.changeDb-prior);
+        return m.changeDb;
+    };
+    Amounts amounts{};
+    double prior=0.;
+    for(int j=0;j<12;++j){
+        amounts[order[j]]=.5f;
+        const auto wet=run(amounts);
+        prior=record("prefix50",j+1,amounts,wet,prior);
+        if(j==11&&measure(dry,wet).peak<=1.)
+            writeWav(dir+"/P027c_"+sourceName+"_all50_RAW.wav",wet);
+    }
+    amounts.fill(.85f);
+    record("all85",0,amounts,run(amounts),0.);
+    constexpr std::array<Amounts,4> combinations{{
+        {{.24f,0.f,.72f,.35f,.16f,.48f,.66f,.12f,.53f,.41f,.28f,.75f}},
+        {{0.f,.56f,.23f,0.f,.74f,.62f,.19f,0.f,.43f,.67f,.38f,.55f}},
+        {{.76f,.14f,.51f,.61f,.25f,.20f,0.f,.73f,.32f,0.f,.60f,.42f}},
+        {{.32f,.78f,0.f,.48f,.55f,.33f,.12f,.62f,.70f,.17f,.53f,0.f}}
+    }};
+    for(int j=0;j<4;++j){
+        const auto wet=run(combinations[j]);
+        record("mixed",j+1,combinations[j],wet,0.);
+        if(j==0){
+            check(identical(dry,run(combinations[j],1.f)),"P027c combined THERAPY exact dry");
+            check(identical(dry,run(combinations[j],0.f,true)),"P027c combined bypass exact dry");
+            const auto half=run(combinations[j],.5f);
+            double worst=0.;
+            for(std::size_t i=0;i<dry.size();++i){
+                worst=std::max(worst,std::abs(double(half.l[i])-(double(dry.l[i])+double(wet.l[i]))*.5));
+                worst=std::max(worst,std::abs(double(half.r[i])-(double(dry.r[i])+double(wet.r[i]))*.5));
+            }
+            check(worst<=5.e-6,"P027c combined THERAPY midpoint");
+            if(measure(dry,wet).peak<=1.)writeWav(dir+"/P027c_"+sourceName+"_mixed1_RAW.wav",wet);
+        }
+    }
+}
+
 // P025: reference recordings decoded into fixed 48 kHz float stereo
 // outside the plug-in. Keep raw measurements separate from audition gain.
 void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
     std::ofstream csv(outputDir+"/P025_recorded_metrics.csv");
     check(csv.good(),"P025 CSV");
+    std::ofstream combo(outputDir+"/P027c_combination_metrics.csv");
+    check(combo.good(),"P027c CSV");
+    combo<<"source,case,index";
+    for(auto name:kMacroNames)combo<<','<<name;
+    combo<<",gain_db,peak_dbfs,gain_matched_residual,delta_vs_previous_db\n";
     csv<<"source,macro,amount,gain_db,peak_dbfs,raw_null_ratio,gain_matched_residual\n";
     constexpr std::array<const char*,4> names{"recorded_drums","recorded_guitar","recorded_vocal_foley","recorded_machine_room"};
     for(const char* name:names) {
@@ -1017,6 +1083,7 @@ void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
         check(in.good()&&in.peek()==std::char_traits<char>::eof(),"P025 recording length");
         check(identical(dry,render(dry,-1,0.f)),"P025 exact neutral");
         writeWav(outputDir+"/P025_"+name+"_DRY.wav",dry);
+        auditCombinations(dry,name,outputDir,combo);
         for(int fx=0;fx<12;++fx) {
             for(float amount:{.05f,.10f,.20f,.50f,1.f}){
                 const auto wet=render(dry,fx,amount);
@@ -1047,6 +1114,8 @@ void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
         }
     }
     check(csv.good(),"P025 metric write");
+    check(combo.good(),"P027c metric write");
+    std::puts("P027c COMBINATION AUDIT PASS: 68 recorded cases; exact combined THERAPY and bypass; gain flags for review");
     std::puts("P025 RECORDED AUDIO EXPORT PASS: 240 objective rows, 96 RMS-matched A/B files; human audition not claimed");
 }
 } // namespace

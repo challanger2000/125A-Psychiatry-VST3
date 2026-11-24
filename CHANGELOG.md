@@ -2,11 +2,16 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## P027c — recorded combination gain audit (factory v0.9.21 unchanged)
+
+- Actual VST3 prefix and mixed-macro measurements (68 additional recorded cases); combined THERAPY/bypass invariants.
+- P027b passed three triggered workflows; full-chain attenuation flagged for review. No product code changes; new CI pending.
+
 ## P027b — expanded functional audit (factory v0.9.21 unchanged)
 
 - Host integrity now covers all 12 effects as well as legacy 9, mono/stereo and 44.1/48/96 kHz; no production changes.
 - Objective matrix 168 cases; retain old nine-chain results and include new twelve-chain and three singles. Recorded QA triggers on actual processor/test changes.
-- New CI pending; no final listening approval.
+- Three triggered workflows passed; no final listening approval.
 
 ## 0.9.21 — P027a verified twelve-world randomizer (2026-11-24)
 

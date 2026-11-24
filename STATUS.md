@@ -1,12 +1,18 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026l / v0.9.20**. Latest verified controller checkpoint: P027a / v0.9.21. Current test-only audit candidate: P027b. Final GUI deferred. **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026l / v0.9.20**. Latest verified controller checkpoint: P027a / v0.9.21. Current test-only audit candidate: P027c. Final GUI deferred. **Only `main`**; no final or musical approval.
 
-## Current candidate — P027b expanded functional audit (same factory v0.9.21)
+## Current candidate — P027c actual recorded combination audit (factory v0.9.21 unchanged)
+
+P027b exact source `2ec24a14954f5d34f8376f1fe06fa2c371b08ca1`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45468719450), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45468719431), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45468719557) SUCCESS. DSP 8/8 on each OS; actual VST3 47/47 validator; 12 P019 host integrity scenarios PASS; 60/60 substantive full wet; recorded 240 rows and 96 A/B PASS. EditorHost did not trigger (no GUI/production changes). P006 168 cases, 15 review flags, zero safety-level violations. Full twelve at 50%: bass -20.16, drums -20.43, voice-like -21.82, atmosphere -19.93 dB. These are synthesized stimuli, not all source behavior. Nine-chain 50% bass -13.67, drums -12.23 dB. Remaining weak-onset PANIC and DEPRESSION flags are review items, not a reason to globally increase macro curves.
+
+P027c measures prefix gains in actual VST3 routing at 50%, full chain 85%, four fixed mixed settings per recorded source (68 rows). Verify combined THERAPY dry/midpoint and bypass; raw audition files where PCM16 would not clip. No product DSP changes or blanket loudness compensation; diagnose cumulative gain and creative attenuation before choosing targeted corrections. New CI pending.
+
+## Historical candidate — P027b expanded functional audit (same factory v0.9.21)
 
 P027a exact source `c94be5023b3e78dda3589d3ab07512d8ab817f0b`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45467293116), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45467293166), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45467293117) SUCCESS. Native controller/state CTest (including the 64-press randomizer test) passed; validator 47/47, endpoint matrix 60/60, dense automation and nine/twelve tail tests passed. Recorded workflow did not trigger for P027a; no new recorded evidence. Previous full four-workflow checkpoint P026l remains applicable to unchanged DSP source.
 
-P027b extends real processor host integrity across 9/12 effects, mono/stereo, 44.1/48/96 kHz, variable and oversized blocks, in-place, independent instances, restart, exact compensated dry and audible-effect delta. Standalone P006 measurement matrix now 168 cases (12 singles plus old nine and new twelve chains, four sources, three intensities); original level gates unchanged. Recorded workflow also watches actual processor and test changes. No production code or factory version changes. New CI pending. No human listening or final GUI approval.
+P027b extends real processor host integrity across 9/12 effects, mono/stereo, 44.1/48/96 kHz, variable and oversized blocks, in-place, independent instances, restart, exact compensated dry and audible-effect delta. Standalone P006 measurement matrix now 168 cases (12 singles plus old nine and new twelve chains, four sources, three intensities); original level gates unchanged. Recorded workflow also watches actual processor and test changes. No production code or factory version changes. CI subsequently passed as recorded above. No human listening or final GUI approval.
 
 ## Historical candidate — P027a / v0.9.21
 

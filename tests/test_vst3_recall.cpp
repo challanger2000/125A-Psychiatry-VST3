@@ -91,7 +91,7 @@ static void writeLegacy(ResizableMemoryIBStream& memory,int version,bool invalid
         CHECK(stream.writeFloat(0.61f));     // obsession
         CHECK(stream.writeFloat(0.73f));     // psychosis
         CHECK(stream.writeFloat(0.82f));     // therapy
-    } else if(version==4) {
+    } else if(version>=4) {
         CHECK(stream.writeFloat(dep));       // depression
         CHECK(stream.writeFloat(0.37f));     // paranoia
         CHECK(stream.writeFloat(0.24f));     // schizophrenia
@@ -104,6 +104,7 @@ static void writeLegacy(ResizableMemoryIBStream& memory,int version,bool invalid
         CHECK(stream.writeFloat(0.82f));     // therapy
     }
     CHECK(stream.writeInt32(1));             // bypass
+    if(version>=5){CHECK(stream.writeFloat(.18f));CHECK(stream.writeFloat(.42f));CHECK(stream.writeFloat(.67f));}
     memory.rewind();
 }
 static void equals(float actual,float expected){
@@ -123,7 +124,7 @@ int main(){
     constexpr std::array<Vst::ParamID,10> params{
         kDepression,kParanoia,kSchizophrenia,kMania,kPanic,
         kDissociation,kObsession,kHallucination,kPsychosis,kTherapy};
-    for(int version=1;version<=4;++version) {
+    for(int version=1;version<=5;++version) {
         ResizableMemoryIBStream state;
         writeLegacy(state,version);
         CHECK(component.setState(&state)==kResultOk);
@@ -159,11 +160,16 @@ int main(){
             equals(v,expected[i]);
         }
         CHECK(read.readInt32(bypass)&&bypass==1);
-        CHECK(roundtrip.getCursor()==52); // 8 header + 10 float32 + 4 bypass
+        const std::array<Vst::ParamID,3> extra{kDelirium,kCatatonia,kAmnesia};
+        const std::array<float,3> targets{.18f,.42f,.67f};
+        for(std::size_t i=0;i<extra.size();++i){float v=-1.f;CHECK(read.readFloat(v));
+            const float target=version==5?targets[i]:0.f;
+            equals(v,target);equals(static_cast<float>(controller.getParamNormalized(extra[i])),target);}
+        CHECK(roundtrip.getCursor()==64); // v4 prefix + 3 float32
     }
     {
         ResizableMemoryIBStream corrupt;
-        writeLegacy(corrupt,4,true);
+        writeLegacy(corrupt,5,true);
         CHECK(component.setState(&corrupt)==kResultFalse);
         corrupt.rewind();
         CHECK(controller.setComponentState(&corrupt)==kResultFalse);
@@ -188,6 +194,39 @@ int main(){
         CHECK(component.setState(&future)==kResultFalse);
         future.rewind();
         CHECK(controller.setComponentState(&future)==kResultFalse);
+    }
+    // New v5 tail is mandatory and must fail closed if truncated or nonfinite.
+    {
+        ResizableMemoryIBStream baseline;
+        writeLegacy(baseline,5);
+        CHECK(component.setState(&baseline)==kResultOk);
+        baseline.rewind();CHECK(controller.setComponentState(&baseline)==kResultOk);
+        for(int bad=0;bad<4;++bad) {
+            ResizableMemoryIBStream corrupted;
+            IBStreamer w(&corrupted,kLittleEndian);
+            CHECK(w.writeInt32(kStateMagic)&&w.writeInt32(5));
+            for(int i=0;i<10;++i)CHECK(w.writeFloat(.2f));
+            CHECK(w.writeInt32(0));
+            if(bad<3) {
+                for(int i=0;i<bad;++i)CHECK(w.writeFloat(.9f));
+            } else {
+                CHECK(w.writeFloat(.9f)&&w.writeFloat(std::numeric_limits<float>::quiet_NaN())&&w.writeFloat(.9f));
+            }
+            corrupted.rewind();CHECK(component.setState(&corrupted)==kResultFalse);
+            corrupted.rewind();CHECK(controller.setComponentState(&corrupted)==kResultFalse);
+            equals(static_cast<float>(controller.getParamNormalized(kDelirium)),.18f);
+            equals(static_cast<float>(controller.getParamNormalized(kCatatonia)),.42f);
+            equals(static_cast<float>(controller.getParamNormalized(kAmnesia)),.67f);
+            ResizableMemoryIBStream saved;
+            CHECK(component.getState(&saved)==kResultOk);saved.rewind();
+            IBStreamer r(&saved,kLittleEndian);int32 v=0;
+            CHECK(r.readInt32(v)&&r.readInt32(v)&&v==5);
+            float f=0.f;for(int i=0;i<10;++i)CHECK(r.readFloat(f));
+            CHECK(r.readInt32(v)&&v==1);
+            CHECK(r.readFloat(f));equals(f,.18f);
+            CHECK(r.readFloat(f));equals(f,.42f);
+            CHECK(r.readFloat(f));equals(f,.67f);
+        }
     }
     // The controller randomizes the nine existing macro IDs only. Legacy
     // project values are valid, so we can check both preservation and change.
@@ -293,6 +332,6 @@ int main(){
     }
     CHECK(controller.terminate()==kResultOk);
     CHECK(component.terminate()==kResultOk);
-    std::puts("P006 VST3 state PASS: versions 1,2,3,4; controller/processor sync; truncation, NaN and future versions rejected");
+    std::puts("P006 VST3 state PASS: versions 1,2,3,4,5; controller/processor sync; truncation, NaN and future versions rejected");
     return 0;
 }

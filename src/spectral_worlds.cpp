@@ -142,17 +142,25 @@ void Dissociation::process(float* const* io,unsigned channels,std::size_t frames
 void Hallucination::prepare(double sr) {
     rate_=saneRate(sr);
     step_=coeff(15.,rate_);
-    for(std::size_t ch=0;ch<2;++ch)
+    constexpr std::array<double,3> formants{520.,1120.,2460.};
+    for(std::size_t ch=0;ch<2;++ch) {
         state_[ch].echo.assign(std::max<std::size_t>(64,
             static_cast<std::size_t>(rate_*(ch?0.139:0.113))),0.f);
+        for(std::size_t k=0;k<formants.size();++k)
+            state_[ch].g[k]=static_cast<float>(std::tan(3.14159265358979323846*
+                std::min(.32*rate_,formants[k]*(ch?1.035:.985))/rate_));
+    }
+    reverse_.prepare(rate_);
     reset();
 }
 void Hallucination::reset() noexcept {
+    reverse_.reset();
     for(auto& s:state_) {
         s.analytic.fill(0.f);
         std::fill(s.echo.begin(),s.echo.end(),0.f);
         s.analyticWrite=s.echoWrite=0;
         s.phase=s.formantLow=s.formantHigh=0.f;
+        s.ic1={};s.ic2={};
     }
     smoothed_=amount_;
 }
@@ -164,6 +172,8 @@ void Hallucination::process(float* const* io,unsigned channels,std::size_t frame
     for(std::size_t i=0;i<frames;++i) {
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
+        reverse_.beginFrame(m,channels);
+        const float grainWeight=reverse_.weight();
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
             const float raw=io[ch][i],x=sane(raw);
@@ -196,18 +206,33 @@ void Hallucination::process(float* const* io,unsigned channels,std::size_t frame
             s.formantLow+=a*(shifted-s.formantLow);
             s.formantHigh+=b*(shifted-s.formantHigh);
             const float otherVoice=s.formantHigh-s.formantLow;
+            constexpr std::array<float,3> damping{.22f,.16f,.12f};
+            float resonance=0.f;
+            for(std::size_t k=0;k<damping.size();++k) {
+                const float g=s.g[k],r=damping[k];
+                const float a1=1.f/(1.f+g*(g+r));
+                const float v1=a1*(s.ic1[k]+g*(shifted-s.ic2[k]));
+                const float v2=s.ic2[k]+g*v1;
+                s.ic1[k]=2.f*v1-s.ic1[k];s.ic2[k]=2.f*v2-s.ic2[k];
+                resonance+=r*v1;
+            }
+            const float phantom=.62f*otherVoice+.38f*resonance+
+                .12f*m*resonance*shifted;
+            const float backwards=reverse_.processChannel(ch,phantom,m,grainWeight);
             const float echo=s.echo[s.echoWrite];
             s.echo[s.echoWrite]=std::tanh(0.28f*x+0.62f*echo+
-                                       0.26f*otherVoice);
+                                       0.26f*phantom);
             if(++s.echoWrite>=s.echo.size())s.echoWrite=0;
             const float transformed=std::tanh(0.57f*shifted+
-                (0.24f+0.20f*m)*otherVoice+0.28f*echo);
+                (0.24f+0.20f*m)*otherVoice+0.28f*echo+
+                m*(.18f*resonance+.10f*backwards+.10f*resonance*shifted));
             // P011: analytic phase/echo paths lost ~5-7.5 dB on P010
             // source proxies. Apply gradual makeup ONLY to the effected
             // signal. At 100%, the output remains pure wet (no dry blend).
             const float makeup=1.f+0.65f*m*m;
-            if(m>0.f)io[ch][i]=x+m*(makeup*transformed-x);
+            if(m>0.f)io[ch][i]=m==1.f?makeup*transformed:x+m*(makeup*transformed-x);
         }
+        reverse_.endFrame();
     }
 }
 } // namespace psychiatry

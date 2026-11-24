@@ -6,6 +6,7 @@
 #include "obsession.hpp"
 #include "three_worlds.hpp"
 #include "spectral_worlds.hpp"
+#include "creative_worlds.hpp"
 
 #include <array>
 #include <vector>
@@ -46,6 +47,9 @@ private:
     psychiatry::Schizophrenia schizophrenia_{};
     psychiatry::Dissociation dissociation_{};
     psychiatry::Hallucination hallucination_{};
+    psychiatry::Delirium delirium_{};
+    psychiatry::Catatonia catatonia_{};
+    psychiatry::Amnesia amnesia_{};
     psychiatry::Paranoia::Settings paranoiaSettings_{};
     float depressionAmount_=0.f;
     float obsessionAmount_=0.f;
@@ -55,6 +59,7 @@ private:
     float schizophreniaAmount_=0.f;
     float dissociationAmount_=0.f;
     float hallucinationAmount_=0.f;
+    float deliriumAmount_=0.f,catatoniaAmount_=0.f,amnesiaAmount_=0.f;
     float therapyAmount_=0.f;
     float wetSmoothed_=1.f;
     float wetStep_=0.001f;
@@ -70,7 +75,7 @@ private:
         std::array<Pending,kLatency+1> items{};
         std::size_t head=0,count=0;
     };
-    std::array<PendingLane,11> pending_{};
+    std::array<PendingLane,14> pending_{};
     std::uint64_t clock_=0;
     void dispatchPending() noexcept;
     std::uint64_t nextDue() const noexcept;

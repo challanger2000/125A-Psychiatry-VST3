@@ -121,13 +121,13 @@ jobs:
           & $auditor.FullName "artifacts"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $rows = @(Import-Csv "artifacts/P010_actual_vst3_audio_metrics.csv")
-          if ($rows.Count -ne 180) { throw "Expected 5 sources x 9 macros x 4 positions = 180 measured real VST3 audio rows" }
+          if ($rows.Count -ne 240) { throw "Expected 5 sources x 12 macros x 4 positions = 240 measured real VST3 audio rows" }
           if (-not (Test-Path "artifacts/P012_alias_and_cpu_metrics.csv")) {
             throw "P012 missing actual VST3 alias and CPU report"
           }
           $intermod = @(Import-Csv "artifacts/P015_multirate_intermod_metrics.csv")
-          if ($intermod.Count -ne 75) {
-            throw "P015 expected 27 wet-peak rows plus 48 high-band product rows, got $($intermod.Count)"
+          if ($intermod.Count -ne 84) {
+            throw "P015 expected 36 wet-peak rows plus 48 high-band product rows, got $($intermod.Count)"
           }
           $phase = @(Import-Csv "artifacts/P016_phase_metrics.csv")
           $transient = @(Import-Csv "artifacts/P016_transient_metrics.csv")

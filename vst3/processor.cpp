@@ -86,6 +86,7 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
         schizophrenia_.prepare(setup.sampleRate);
         dissociation_.prepare(setup.sampleRate);
         hallucination_.prepare(setup.sampleRate);
+        delirium_.prepare(setup.sampleRate);catatonia_.prepare(setup.sampleRate);amnesia_.prepare(setup.sampleRate);
         depression_.setAmount(depressionAmount_);
         paranoia_.setSettings(paranoiaSettings_);
         obsession_.setAmount(obsessionAmount_);
@@ -95,6 +96,7 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
         schizophrenia_.setAmount(schizophreniaAmount_);
         dissociation_.setAmount(dissociationAmount_);
         hallucination_.setAmount(hallucinationAmount_);
+        delirium_.setAmount(deliriumAmount_);catatonia_.setAmount(catatoniaAmount_);amnesia_.setAmount(amnesiaAmount_);
         for(auto& channel:original_)
             channel.assign(static_cast<std::size_t>(setup.maxSamplesPerBlock),0.f);
         wetStep_=static_cast<float>(1.-std::exp(-1./(0.012*setup.sampleRate)));
@@ -117,6 +119,7 @@ tresult PLUGIN_API Processor::setActive(TBool state) {
         schizophrenia_.reset();
         dissociation_.reset();
         hallucination_.reset();
+        delirium_.reset();catatonia_.reset();amnesia_.reset();
         wetSmoothed_=1.f-therapyAmount_;
     }
     return AudioEffect::setActive(state);
@@ -137,6 +140,7 @@ void Processor::resetTimeline() noexcept {
     applyDSP(4,panicAmount_);applyDSP(5,dissociationAmount_);
     applyDSP(6,obsessionAmount_);applyDSP(7,hallucinationAmount_);
     applyDSP(8,psychosisAmount_);applyDSP(9,therapyAmount_);applyDSP(10,bypass_?1.f:0.f);
+    applyDSP(11,deliriumAmount_);applyDSP(12,catatoniaAmount_);applyDSP(13,amnesiaAmount_);
 }
 void Processor::applyDSP(unsigned lane,float v) noexcept {
     switch(lane) {
@@ -151,6 +155,9 @@ void Processor::applyDSP(unsigned lane,float v) noexcept {
         case 8: psychosis_.setAmount(v);break;
         case 9: therapyDSP_=v;break;
         case 10: bypassDSP_=v>=0.5f;break;
+        case 11: delirium_.setAmount(v);break;
+        case 12: catatonia_.setAmount(v);break;
+        case 13: amnesia_.setAmount(v);break;
     }
 }
 void Processor::apply(Vst::ParamID id,Vst::ParamValue value) noexcept {
@@ -168,10 +175,13 @@ void Processor::apply(Vst::ParamID id,Vst::ParamValue value) noexcept {
         case kPsychosis: psychosisAmount_=v;lane=8;break;
         case kTherapy: therapyAmount_=v;lane=9;break;
         case kBypass: bypass_=v>=0.5f;lane=10;break;
+        case kDelirium: deliriumAmount_=v;lane=11;break;
+        case kCatatonia: catatoniaAmount_=v;lane=12;break;
+        case kAmnesia: amnesiaAmount_=v;lane=13;break;
         default: return;
     }
     constexpr std::uint64_t D=psychiatry::detail::kLinearPhaseLatency;
-    constexpr std::array<std::uint64_t,11> offsets{0,3*D,D,D,2*D,3*D,3*D,3*D,3*D,4*D,4*D};
+    constexpr std::array<std::uint64_t,14> offsets{0,3*D,D,D,2*D,3*D,3*D,3*D,3*D,4*D,4*D,4*D,4*D,4*D};
     auto& q=pending_[lane];
     const auto due=clock_+offsets[lane];
     if(q.count && q.items[(q.head+q.count-1)%q.items.size()].due==due) {
@@ -254,6 +264,9 @@ bool Processor::processSpan(Vst::ProcessData& data,
                                    static_cast<std::size_t>(size));
             psychosis_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                                static_cast<std::size_t>(size));
+            delirium_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),static_cast<std::size_t>(size));
+            catatonia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),static_cast<std::size_t>(size));
+            amnesia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),static_cast<std::size_t>(size));
             for(int32 i=0;i<size;++i) {
                 wetSmoothed_=psychiatry::detail::smoothToward(wetSmoothed_,1.f-therapyDSP_,wetStep_);
                 const float w=std::clamp(wetSmoothed_,0.f,1.f);
@@ -327,6 +340,7 @@ tresult PLUGIN_API Processor::setState(IBStream* state) {
     int32 magic=0,version=0,bypass=0;
     float d=0.f,p=0.f,schizo=0.f,m=0.f,panic=0.f,
           diss=0.f,o=0.f,hall=0.f,psychosis=0.f,therapy=0.f;
+    float delirium=0.f,catatonia=0.f,amnesia=0.f;
     if(!s.readInt32(magic)||!s.readInt32(version)||
        magic!=kStateMagic || version<1 || version>kStateVersion)
         return kResultFalse;
@@ -351,7 +365,8 @@ tresult PLUGIN_API Processor::setState(IBStream* state) {
            !s.readFloat(o)||!s.readFloat(hall)||!s.readFloat(psychosis)||
            !s.readFloat(therapy)||!s.readInt32(bypass))return kResultFalse;
     }
-    const float vals[]{d,p,schizo,m,panic,diss,o,hall,psychosis,therapy};
+    if(version>=5&&(!s.readFloat(delirium)||!s.readFloat(catatonia)||!s.readFloat(amnesia)))return kResultFalse;
+    const float vals[]{d,p,schizo,m,panic,diss,o,hall,psychosis,therapy,delirium,catatonia,amnesia};
     for(const auto value:vals)
         if(!std::isfinite(value))return kResultFalse;
     depressionAmount_=static_cast<float>(normalized(d));
@@ -363,6 +378,9 @@ tresult PLUGIN_API Processor::setState(IBStream* state) {
     obsessionAmount_=static_cast<float>(normalized(o));
     hallucinationAmount_=static_cast<float>(normalized(hall));
     psychosisAmount_=static_cast<float>(normalized(psychosis));
+    deliriumAmount_=static_cast<float>(normalized(delirium));
+    catatoniaAmount_=static_cast<float>(normalized(catatonia));
+    amnesiaAmount_=static_cast<float>(normalized(amnesia));
     therapyAmount_=static_cast<float>(normalized(therapy));
     bypass_=(bypass!=0);
     depression_.setAmount(depressionAmount_);
@@ -374,6 +392,7 @@ tresult PLUGIN_API Processor::setState(IBStream* state) {
     obsession_.setAmount(obsessionAmount_);
     hallucination_.setAmount(hallucinationAmount_);
     psychosis_.setAmount(psychosisAmount_);
+    delirium_.setAmount(deliriumAmount_);catatonia_.setAmount(catatoniaAmount_);amnesia_.setAmount(amnesiaAmount_);
     pending_={};
     therapyDSP_=therapyAmount_;bypassDSP_=bypass_;
     wetSmoothed_=1.f-therapyAmount_;
@@ -394,7 +413,8 @@ tresult PLUGIN_API Processor::getState(IBStream* state) {
        !s.writeFloat(hallucinationAmount_)||
        !s.writeFloat(psychosisAmount_)||
        !s.writeFloat(therapyAmount_)||
-       !s.writeInt32(bypass_?1:0))return kResultFalse;
+       !s.writeInt32(bypass_?1:0)||!s.writeFloat(deliriumAmount_)||
+       !s.writeFloat(catatoniaAmount_)||!s.writeFloat(amnesiaAmount_))return kResultFalse;
     return kResultOk;
 }
 } // namespace psychiatry::vst3

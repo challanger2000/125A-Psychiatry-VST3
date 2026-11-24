@@ -3,6 +3,7 @@
 #include "spectral_worlds.hpp"
 #include "obsession.hpp"
 #include "three_worlds.hpp"
+#include "creative_worlds.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -66,6 +67,9 @@ struct Chain {
     psychiatry::Obsession obsession;
     psychiatry::Hallucination hallucination;
     psychiatry::Psychosis psychosis;
+    psychiatry::Delirium delirium;
+    psychiatry::Catatonia catatonia;
+    psychiatry::Amnesia amnesia;
 
     void setup(float intensity){
         depression.prepare(48000);
@@ -77,10 +81,12 @@ struct Chain {
         obsession.prepare(48000);
         hallucination.prepare(48000);
         psychosis.prepare(48000);
+        delirium.prepare(48000);catatonia.prepare(48000);amnesia.prepare(48000);
         set(intensity);
         depression.reset();paranoia.reset();schizophrenia.reset();
         mania.reset();panic.reset();dissociation.reset();obsession.reset();
         hallucination.reset();psychosis.reset();
+        delirium.reset();catatonia.reset();amnesia.reset();
     }
     void set(float amount) noexcept {
         depression.setAmount(amount);
@@ -96,6 +102,7 @@ struct Chain {
         obsession.setAmount(amount);
         hallucination.setAmount(amount);
         psychosis.setAmount(amount);
+        delirium.setAmount(amount);catatonia.setAmount(amount);amnesia.setAmount(amount);
     }
     void process(float* const* p,std::size_t n) noexcept {
         depression.process(p,2,n);
@@ -107,6 +114,7 @@ struct Chain {
         obsession.process(p,2,n);
         hallucination.process(p,2,n);
         psychosis.process(p,2,n);
+        delirium.process(p,2,n);catatonia.process(p,2,n);amnesia.process(p,2,n);
     }
 };
 void run(Chain& c,Stereo& signal,std::size_t block){
@@ -146,11 +154,11 @@ int main(){
     run(first,wet,137);
     trackAllocations=false;
     const auto ended=std::chrono::steady_clock::now();
-    CHECK(allocations.load()==0 && "nine-macro audio callback must not allocate");
+    CHECK(allocations.load()==0 && "twelve-macro audio callback must not allocate");
     run(second,wetOther,1024);
     CHECK(wet.l==wetOther.l && wet.r==wetOther.r && "full chain block invariant");
     const double change=delta(alignedDry,wet);
-    CHECK(change>0.20 && "nine-worlds combined must make a perceptible signal change");
+    CHECK(change>0.20 && "twelve-worlds combined must make a perceptible signal change");
     float peak=0.f;
     double sum=0.;
     for(std::size_t i=0;i<wet.l.size();++i) {
@@ -177,7 +185,7 @@ int main(){
         CHECK(std::abs(stop.l[i])<2.f && std::abs(stop.r[i])<2.f);
     }
     const auto millis=std::chrono::duration_cast<std::chrono::milliseconds>(ended-start).count();
-    std::printf("P005 chain PASS: 9 DSP processors, no heap inside render; "
+    std::printf("P005 chain PASS: 12 DSP processors, no heap inside render; "
                 "3 sec audio took %lld ms (runner performance only), "
                 "wet/dry delta=%.3f, peak=%.3f\n",
                 static_cast<long long>(millis),change,peak);

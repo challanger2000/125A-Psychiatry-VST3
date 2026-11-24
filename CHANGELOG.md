@@ -2,6 +2,13 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.19 — P026k twelve-world sound candidate (2026-11-24)
+
+- HALLUCINATION adds parallel detuned resonances, source-dependent cross-modulation and a low-level displaced grain branch.
+- DELIRIUM, CATATONIA, AMNESIA implemented and wired to stable new IDs 109–111, project state v5 with legacy prefix and defaults.
+- Twelve-world actual processor/recorded-source matrix and focused new-world tests. Fixed existing 96 sample alignment retained; creative history/freeze onset is intentionally delayed. Existing nine-knob custom interface/monitor/randomizer still provisional.
+- Candidate verification pending; no listening acceptance claimed.
+
 ## 0.9.18 — P026j candidate (2026-11-24)
 
 - DISSOCIATION: continuous overlapping causal forward/reverse grains, independent stereo source schedules, short diffusion; replaces static reverse loop.

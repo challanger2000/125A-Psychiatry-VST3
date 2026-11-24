@@ -53,8 +53,10 @@ private:
         std::vector<float> echo;
         std::size_t echoWrite=0;
         float phase=0.f,formantLow=0.f,formantHigh=0.f;
+        std::array<float,3> ic1{},ic2{},g{};
     };
     std::array<Channel,2> state_{};
+    detail::DissociationGrains reverse_{};
     double rate_=48000.;
     float amount_=0.f,smoothed_=0.f,step_=0.001f;
 };

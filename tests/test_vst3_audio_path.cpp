@@ -30,12 +30,12 @@ constexpr double kPi=3.14159265358979323846;
 constexpr int kRate=48000;
 constexpr int kFrames=60000; // 1.25 sec, sufficient for 0.2sec reverse segments
 constexpr int kBlock=256;
-constexpr std::array<Vst::ParamID,9> kMacroIds{
+constexpr std::array<Vst::ParamID,12> kMacroIds{
     kDepression,kParanoia,kSchizophrenia,kMania,kPanic,
-    kDissociation,kObsession,kHallucination,kPsychosis};
-constexpr std::array<const char*,9> kMacroNames{
+    kDissociation,kObsession,kHallucination,kPsychosis,kDelirium,kCatatonia,kAmnesia};
+constexpr std::array<const char*,12> kMacroNames{
     "DEPRESSION","PARANOIA","SCHIZOPHRENIA","MANIA","PANIC",
-    "DISSOCIATION","OBSESSION","HALLUCINATION","PSYCHOSIS"};
+    "DISSOCIATION","OBSESSION","HALLUCINATION","PSYCHOSIS","DELIRIUM","CATATONIA","AMNESIA"};
 constexpr std::array<const char*,5> kInputs{
     "synth_bass","drums","guitar","voice_like","atmosphere"};
 struct Stereo {
@@ -102,6 +102,7 @@ void writeState(ResizableMemoryIBStream& state,int macro,float amount,
     for(unsigned i=0;i<9;++i)
         check(w.writeFloat(static_cast<int>(i)==macro?amount:0.f),"macro state");
     check(w.writeFloat(therapy)&&w.writeInt32(bypass?1:0),"therapy/bypass state");
+    for(int i=9;i<12;++i)check(w.writeFloat(i==macro?amount:0.f),"v5 macro state");
     state.rewind();
 }
 constexpr int kLatency=static_cast<int>(Processor::kLatency);
@@ -223,6 +224,9 @@ Stereo pureWetReference(const Stereo& dry,int effect) {
     psychiatry::Obsession o;directSimple(o,ref,effect==6?1.f:0.f);
     psychiatry::Hallucination h;directSimple(h,ref,effect==7?1.f:0.f);
     psychiatry::Psychosis z;directSimple(z,ref,effect==8?1.f:0.f);
+    psychiatry::Delirium dl;directSimple(dl,ref,effect==9?1.f:0.f);
+    psychiatry::Catatonia ct;directSimple(ct,ref,effect==10?1.f:0.f);
+    psychiatry::Amnesia am;directSimple(am,ref,effect==11?1.f:0.f);
     return compensate(ref,dry.size());
 }
 double spectralBandDistance(const Stereo& a,const Stereo& b) {
@@ -423,17 +427,18 @@ void testHighBandAliasing(const std::string& dir) {
     // Both all-disabled and nine-at-85%-wet paths are timed on *the same*
     // ProcessData path as the DAW. We publish max block time as evidence.
     const Stereo signal=source(0);
-    for(float level:{0.f,.85f,1.f}) {
+    for(bool twelve:{false,true})for(float level:{0.f,.85f,1.f}) {
         Processor p;
         check(p.initialize(nullptr)==kResultOk,"P012 realtime initialize");
         Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,kBlock,kRate};
         check(p.setupProcessing(setup)==kResultOk,"P012 realtime setup");
         ResizableMemoryIBStream state;
         IBStreamer sw(&state,kLittleEndian);
-        check(sw.writeInt32(kStateMagic)&&sw.writeInt32(kStateVersion),
-              "P012 nine FX state header");
+        check(sw.writeInt32(kStateMagic)&&sw.writeInt32(twelve?kStateVersion:4),
+              "P012 FX state header");
         for(int i=0;i<9;++i)check(sw.writeFloat(level),"P012 macro amount");
         check(sw.writeFloat(0.f)&&sw.writeInt32(0),"P012 therapy and bypass");
+        if(twelve)for(int i=0;i<3;++i)check(sw.writeFloat(level),"P026k appended FX");
         state.rewind();
         check(p.setState(&state)==kResultOk,"P012 nine FX state load");
         check(p.setActive(true)==kResultOk,"P012 realtime activate");
@@ -471,9 +476,9 @@ void testHighBandAliasing(const std::string& dir) {
         check(p.setActive(false)==kResultOk,"P012 realtime deactivate");
         check(p.terminate()==kResultOk,"P012 realtime terminate");
         const double rt=elapsed/(static_cast<double>(kFrames)/kRate);
-        std::printf("P012 REAL VST3 CPU nine_fx=%.2f  time=%.4fs xRealtime=%.4f max_callback_ms=%.4f peak=%.4f\n",
-                    level,elapsed,rt,maxBlockMs,peak);
-        if(csv.good())csv<<"cpu_all_nine,"<<level
+        std::printf("P012 REAL VST3 CPU macros=%d amount=%.2f time=%.4fs xRealtime=%.4f max_callback_ms=%.4f peak=%.4f\n",
+                    twelve?12:9,level,elapsed,rt,maxBlockMs,peak);
+        if(csv.good())csv<<(twelve?"cpu_all_twelve,":"cpu_all_nine,")<<level
             <<",,,,,"<<(kFrames/static_cast<double>(kRate))
             <<","<<elapsed<<","<<rt<<","<<peak<<"\n";
         if(level==0.f)for(int n=0;n<kFrames;++n)
@@ -511,7 +516,7 @@ void testMultirateIntermod(const std::string& dir) {
         const double amp15=toneMagnitude(input,15000.,warm,sr,sr);
         const double reference=std::hypot(amp14,amp15);
         check(amp14>.17 && amp15>.17,"P015 source fundamentals invalid");
-        for(int fx=0;fx<9;++fx) {
+        for(int fx=0;fx<12;++fx) {
             // The 0% and global THERAPY=100% invariants are verified
             // for EVERY macro at EACH host sample rate, not just at 48k.
             const Stereo zero=render(input,fx,0.f,0.f,false,false,sr);
@@ -703,7 +708,7 @@ void testHostIntegrity() {
         check(p.setupProcessing(st)==kResultOk,"P019 host setup");
         ResizableMemoryIBStream state;
         IBStreamer writer(&state,kLittleEndian);
-        check(writer.writeInt32(kStateMagic)&&writer.writeInt32(kStateVersion),"P019 state header");
+        check(writer.writeInt32(kStateMagic)&&writer.writeInt32(4),"P019 state header");
         for(int i=0;i<9;++i)check(writer.writeFloat(amount),"P019 macro");
         check(writer.writeFloat(therapy)&&writer.writeInt32(0),"P019 therapy");
         state.rewind();
@@ -763,7 +768,7 @@ void testExtendedDry() {
     Stereo x(8);
     x.l={0.f,1.e-30f,-1.e-30f,20.f,-20.f,.25f,-.25f,0.f};
     x.r=x.l;
-    for(int fx=0;fx<9;++fx) {
+    for(int fx=0;fx<12;++fx) {
         check(identical(x,render(x,fx,0.f)),"P016 finite headroom 0% exact Dry");
         check(identical(x,render(x,fx,1.f,1.f)),"P016 finite headroom THERAPY exact Dry");
     }
@@ -773,7 +778,7 @@ void testExtendedDry() {
 // intentional smoothing interval without resetting the processor.
 void testAutomatedEndpoints() {
     for(int sr:{44100,48000,96000}) {
-        for(int fx=0;fx<9;++fx) {
+        for(int fx=0;fx<12;++fx) {
             for(bool global:{false,true}) {
                 Processor p;
                 check(p.initialize(nullptr)==kResultOk,"P017 initialize");
@@ -840,16 +845,17 @@ void testAutomatedEndpoints() {
 // P023: an actual host receives a nonzero tail declaration, and the
 // full serial chain is exercised until that advertised bound has elapsed.
 void testReportedTail() {
-    for(int sr:{44100,48000,96000}) {
+    for(bool twelve:{false,true})for(int sr:{44100,48000,96000}) {
         Processor p;
         check(p.initialize(nullptr)==kResultOk,"P023 init");
         Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,1024,double(sr)};
         check(p.setupProcessing(setup)==kResultOk,"P023 setup");
         ResizableMemoryIBStream state;
         IBStreamer writer(&state,kLittleEndian);
-        check(writer.writeInt32(kStateMagic)&&writer.writeInt32(kStateVersion),"P023 state");
+        check(writer.writeInt32(kStateMagic)&&writer.writeInt32(twelve?kStateVersion:4),"P023 state");
         for(int i=0;i<9;++i)check(writer.writeFloat(1.f),"P023 macro");
         check(writer.writeFloat(0.f)&&writer.writeInt32(0),"P023 mix");
+        if(twelve)for(int i=0;i<3;++i)check(writer.writeFloat(1.f),"P026k tail extra macro");
         state.rewind();
         check(p.setState(&state)==kResultOk&&p.setActive(true)==kResultOk,"P023 activate");
         const auto reported=p.getTailSamples();
@@ -899,7 +905,7 @@ void testReportedTail() {
         // The final complete second and extra latency must be below -100 dBFS.
         check(peaks[29]<=1.e-5&&peaks[30]<=1.e-5,"P023 declared tail too short or residual feedback");
         check(p.setActive(false)==kResultOk&&p.terminate()==kResultOk,"P023 terminate");
-        std::printf("P023 TAIL PASS rate=%d reported=%u\n",sr,reported);
+        std::printf("P023 TAIL PASS rate=%d macros=%d reported=%u\n",sr,twelve?12:9,reported);
     }
 }
 
@@ -948,7 +954,7 @@ void testDenseAutomationStress() {
             double peak=0.,tailEnergy=0.;std::size_t exact=0;
             while(start<total) {
                 const int count=std::min(total-start,irregular?sizes[step++%sizes.size()]:257);
-                Vst::ParameterChanges changes(11);
+                Vst::ParameterChanges changes(14);
                 while(e<events.size()&&events[e].sample<start+count) {
                     const auto& v=events[e++];
                     check(v.sample>=start,"P021 event timeline");
@@ -985,7 +991,7 @@ void testDenseAutomationStress() {
         };
         const auto a=run(false),b=run(true);
         check(identical(a,b),"P021 absolute automation depends on host buffer size");
-        std::printf("P021 STRESS PASS rate=%d all-nine dense automation and silence\n",sr);
+        std::printf("P021 STRESS PASS rate=%d all-twelve dense automation and silence\n",sr);
     }
 }
 // P025: reference recordings decoded into fixed 48 kHz float stereo
@@ -1006,7 +1012,7 @@ void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
         check(in.good()&&in.peek()==std::char_traits<char>::eof(),"P025 recording length");
         check(identical(dry,render(dry,-1,0.f)),"P025 exact neutral");
         writeWav(outputDir+"/P025_"+name+"_DRY.wav",dry);
-        for(int fx=0;fx<9;++fx) {
+        for(int fx=0;fx<12;++fx) {
             for(float amount:{.05f,.10f,.20f,.50f,1.f}){
                 const auto wet=render(dry,fx,amount);
                 const auto m=measure(dry,wet);
@@ -1036,7 +1042,7 @@ void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
         }
     }
     check(csv.good(),"P025 metric write");
-    std::puts("P025 RECORDED AUDIO EXPORT PASS: 180 objective rows, 72 RMS-matched A/B files; human audition not claimed");
+    std::puts("P025 RECORDED AUDIO EXPORT PASS: 240 objective rows, 96 RMS-matched A/B files; human audition not claimed");
 }
 } // namespace
 int main(int argc,char** argv){
@@ -1071,7 +1077,7 @@ int main(int argc,char** argv){
         const Stereo bypass=render(dry,3,1.f,0.f,true);
         check(identical(dry,bypass),"native Bypass must be bit-exact dry");
         if(input==0 && exportWav)writeWav(std::string(argv[1])+"/P010_DRY_Bass.wav",dry);
-        for(int effect=0;effect<9;++effect){
+        for(int effect=0;effect<12;++effect){
             const Stereo zero=render(dry,effect,0.f);
             check(identical(dry,zero),"individual 0% is not bit-exact dry");
             for(const float amount:{.20f,.50f,.75f,1.f}){
@@ -1100,11 +1106,13 @@ int main(int argc,char** argv){
                     // P011 guard: a distinctive 100%-wet effect is not an
                     // excuse for massive unintentional gain swings.
                     // This is deliberately per source and per macro.
-                    if(m.changeDb< -8.0 || m.changeDb> 6.0) {
+                    // Keep the existing nine-world limits; deliberate spectral hold and
+                    // erasure have a separate conservative minimum-energy gate.
+                    if(m.changeDb<(effect<9?-8.0:-24.0) || m.changeDb>6.0) {
                         std::fprintf(stderr,
                             "P011 FULL-WET LEVEL REGRESSION %s %s gain=%+.3f dB\n",
                             kInputs[input],kMacroNames[effect],m.changeDb);
-                        check(false,"P011 100% effect gain outside -8/+6 dB audit bounds");
+                        check(false,"P011/P026k 100% effect gain outside declared per-world audit bounds");
                     }
                     if(m.shapeResidual>=.035 && m.nullRatio>=.06)
                         ++substantial;
@@ -1128,7 +1136,7 @@ int main(int argc,char** argv){
             if(input==0)checkTherapy(dry,effect);
         }
     }
-    std::printf("P010 VST3 audio processor endpoint invariants PASS; substantive full-wet cases=%d/45, WEAK=%d; negative gain-placebo control PASS; sample-accurate automation PASS\n",
+    std::printf("P010 VST3 audio processor endpoint invariants PASS; substantive full-wet cases=%d/60, WEAK=%d; negative gain-placebo control PASS; sample-accurate automation PASS\n",
         substantial,weak);
     // Real counterexample must fail, not be disguised by loudness. Zero effect,
     // exact dry, therapy endpoints, placebo negatives always fail CTest.

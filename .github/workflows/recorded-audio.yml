@@ -53,8 +53,8 @@ jobs:
           if (-not $auditor) { throw "Missing actual VST3 processor harness" }
           & $auditor.FullName --recordings recorded-input recorded-output
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@(Import-Csv recorded-output/P025_recorded_metrics.csv).Count -ne 180) { throw "Missing recorded metrics" }
-          if (@(Get-ChildItem recorded-output -Filter '*_AB.wav').Count -ne 72) { throw "Missing recorded A/B comparisons" }
+          if (@(Import-Csv recorded-output/P025_recorded_metrics.csv).Count -ne 240) { throw "Missing recorded metrics" }
+          if (@(Get-ChildItem recorded-output -Filter '*_AB.wav').Count -ne 96) { throw "Missing recorded A/B comparisons" }
       - uses: actions/upload-artifact@v4
         with:
           name: P025-Recorded-Listening-Comparisons

@@ -1,8 +1,14 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest three-workflow technical checkpoint: **P026i / factory v0.9.17**; latest four-workflow checkpoint: **P026h / v0.9.16**; P025 recorded-source QA / factory v0.9.12 is the, **previous nine-world technical baseline; user audition requires revision, not final or approved**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026j / v0.9.18**. Current development candidate: P026k / v0.9.19. **Only `main`**; no final or musical approval.
 
-## Current checkpoint — P026i / v0.9.17 verified in three workflows; P026j / v0.9.18 candidate
+## Current checkpoint — P026j / v0.9.18 verified; P026k / v0.9.19 twelve-world audio candidate
+
+P026j exact source `a3d805afdccd6daf623b2a211a7bb83961d67b1b`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45458793401), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45458793305), [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45458793490), [recorded audio](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45458793320) all SUCCESS. Cumulative MANIA and DISSOCIATION recorded-source gate passed. Musical audition remains open.
+
+P026k is one consolidated sound-first batch: HALLUCINATION resonant source-derived voice/reverse diffusion, DELIRIUM variable-speed history reads, CATATONIA phase-propagating FFT freeze, AMNESIA time and band erasure. All twelve DSP engines wired into VST3 with new IDs 109–111, v5 appending three floats after the legacy v4 prefix, and host automation. Existing nine-knob custom GUI, monitor and randomizer are intentionally provisional; the three new parameters are visible in the host generic parameter list. The twelve-knob GUI and full twelve-world randomizer/monitor are the next separate visual milestone, not yet implemented. New tests and expanded 12-world actual processor/recorded-source matrix. All four candidate CI results pending; exact-blob isolated C++17 new-world tests and three negative variants executed as documented. No local full checkout or human listening claim. See [P026k](docs/P026k.md).
+
+## Historical checkpoint — P026i / v0.9.17 verified in three workflows; P026j / v0.9.18 candidate
 
 P026i source `02a91c5fa837e816c99b83fe80a155978673f6d3`: [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45457364438), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45457364257), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45457364319) SUCCESS. Recorded audio workflow did not trigger because the path filter omitted three_worlds; not verified for this SHA. Correct filter to src/** so all DSP updates run it. Do not call v0.9.17 a four-workflow pass.
 

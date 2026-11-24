@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(PsychiatryAudioPrototype VERSION 0.9.18 LANGUAGES CXX)
+project(PsychiatryAudioPrototype VERSION 0.9.19 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -72,6 +72,10 @@ add_test(NAME P005_SpectralWorlds COMMAND test_spectral_worlds)
 
 add_executable(render_spectral_worlds tools/render_spectral_worlds.cpp)
 target_link_libraries(render_spectral_worlds PRIVATE psychiatry_audio)
+
+add_executable(test_creative_worlds tests/test_creative_worlds.cpp)
+target_link_libraries(test_creative_worlds PRIVATE psychiatry_audio)
+add_test(NAME P026k_CreativeWorlds COMMAND test_creative_worlds)
 
 add_executable(test_full_chain tests/test_full_chain.cpp)
 target_link_libraries(test_full_chain PRIVATE psychiatry_audio)

@@ -70,7 +70,47 @@ double probe(FX& fx,float amount,double minDifference) {
     if(amount==0.f) CHECK(wet.l==dry.l && wet.r==dry.r);
     return change;
 }
+// P026a behavioral checks: silence, source-driven events, bass harmonics.
+void revisedWorlds() {
+    constexpr int sr=48000;
+    psychiatry::Panic p;p.prepare(sr);p.setAmount(1.f);p.reset();
+    Stereo silence{Audio(sr),Audio(sr)};
+    render(p,silence,127);
+    CHECK(p.impulses()==0);
+    for(float v:silence.l)CHECK(v==0.f);
+    Stereo bass{Audio(sr*2),Audio(sr*2)};
+    for(std::size_t i=0;i<bass.l.size();++i)
+        bass.l[i]=bass.r[i]=.25f*std::sin(6.283185307179586*55.*i/sr);
+    auto shaken=bass;render(p,shaken,127);
+    CHECK(p.impulses()>=4);
+    double minRms=1.,maxRms=0.;
+    for(int i=sr/4;i<sr*2-960;i+=960){
+        double sum=0.;
+        for(int j=0;j<960;++j)sum+=shaken.l[i+j]*shaken.l[i+j];
+        const double rms=std::sqrt(sum/960.);
+        minRms=std::min(minRms,rms);maxRms=std::max(maxRms,rms);
+    }
+    CHECK(maxRms>minRms*1.5);
+    CHECK(shaken.l==shaken.r);
+    psychiatry::Psychosis z;z.prepare(sr);z.setAmount(1.f);z.reset();
+    render(z,silence,131);for(float v:silence.l)CHECK(v==0.f);
+    auto distorted=bass;render(z,distorted,131);
+    auto magnitude=[&](int harmonic) {
+        double a=0.,b=0.;
+        for(int n=sr;n<2*sr;++n){
+            double phase=6.283185307179586*55.*harmonic*n/sr;
+            a+=distorted.l[n]*std::cos(phase);b+=distorted.l[n]*std::sin(phase);
+        }
+        return 2.*std::hypot(a,b)/sr;
+    };
+    const double fundamental=magnitude(1),third=magnitude(3),fifth=magnitude(5);
+    CHECK(fundamental>.10); // avoid loss of EBM bass foundation
+    CHECK(std::hypot(third,fifth)>.08*fundamental);
+    std::printf("P026a PANIC events=%llu rms range %.4f..%.4f; PSYCHOSIS 55Hz %.4f H3 %.4f H5 %.4f\n",
+       static_cast<unsigned long long>(p.impulses()),minRms,maxRms,fundamental,third,fifth);
+}
 int main() {
+    revisedWorlds();
     psychiatry::Mania mania;
     psychiatry::Panic panic;
     psychiatry::Psychosis psychosis;

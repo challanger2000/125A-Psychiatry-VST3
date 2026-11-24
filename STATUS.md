@@ -19,6 +19,10 @@ User audition of v0.9.12 confirmed several usable effects above 50%, but rejecte
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
 - All Windows Actions artefacts are temporary engineering packages, not release installers.
 
+## P026a — new PANIC / PSYCHOSIS DSP candidate (verification pending)
+
+The first implementation pass is in `src/three_worlds.*`, with focused tests and [design/verification notes](docs/P026a.md). No GUI or other world changes. P024/P025 remain the last verified baseline; the new candidate is not accepted or released.
+
 ## Actual audio code in the VST3
 
 **All nine sound-world prototypes are implemented**: DEPRESSION, PARANOIA, SCHIZOPHRENIA, MANIA, PANIC, DISSOCIATION, OBSESSION, HALLUCINATION and PSYCHOSIS. Each is a dedicated compound DSP engine, not an inert parameter. Distortion is **one ingredient inside relevant effect worlds**, especially PSYCHOSIS, rather than the universal plugin core.

@@ -21,10 +21,16 @@ float pole(double hz,double sr) noexcept {
 bool valid(float* const* audio,unsigned c) noexcept {
     return audio && audio[0] && (c==1 || (c==2 && audio[1]));
 }
-float fold(float sample,float amount) noexcept {
-    // A bounded nonlinear "fractured mirror" shaper, smoothly introduced.
-    const float folded=std::sin(1.5707963268f*sample);
-    return sample + amount*(folded-sample);
+// Continuous triangle wavefolder: alternating turning points at odd integers.
+float fold(float x) noexcept {
+    const float p=x+1.f-4.f*std::floor((x+1.f)*0.25f);
+    return 1.f-std::abs(p-2.f);
+}
+float smooth01(float x) noexcept {
+    x=std::clamp(x,0.f,1.f);return x*x*(3.f-2.f*x);
+}
+float asymClip(float x,float bias) noexcept {
+    return std::clamp(x+bias,-1.f,1.f)-bias;
 }
 }
 
@@ -91,92 +97,84 @@ void Mania::process(float* const* audio,unsigned channels,std::size_t frames) no
     }
 }
 
-void Panic::prepare(double sr) noexcept {
+// P026a: source-derived irregular shocks, no audible oscillator.
+void Panic::prepare(double sr) {
     rate_=rate(sr);step_=pole(15.,rate_);
-    for(auto& c:state_)c.saturation.prepare();
+    for(auto& c:state_) {
+        c.history.assign(static_cast<std::size_t>(std::ceil(rate_*.21))+4,0.f);
+        c.saturation.prepare();
+    }
     reset();
 }
 void Panic::reset() noexcept {
-    // Do not overwrite the prepared biquad coefficients when resetting.
-    for(auto& c:state_){
-        c.fast=c.slow=c.phase=c.envelope=c.tremorPhase=0.f;
-        c.last=c.slowHigh=0.f;
-        c.cooldown=0;
-        c.saturation.reset();
-        c.dryDelay.reset();
+    for(auto& c:state_) {
+        std::fill(c.history.begin(),c.history.end(),0.f);
+        c.body=c.edge=0.f;c.saturation.reset();c.dryDelay.reset();
     }
-    state_[0].rng=0xCA125A11u;state_[1].rng=0x8BA92AE7u;
-    smoothed_=amount_;mixDelay_.reset(smoothed_*(1.5f-0.5f*smoothed_));impulseCount_=0;
+    fast_=slow_=depth_=0.f;write_=0;age_=length_=cooldown_=kind_=0;
+    rng_=0xCA125A11u;impulseCount_=0;
+    smoothed_=amount_;mixDelay_.reset(smoothed_*(1.5f-.5f*smoothed_));
 }
 void Panic::setAmount(float a) noexcept {amount_=norm(a);}
 void Panic::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
-    if(!valid(audio,channels))return;
-    const float fa=pole(330.,rate_),sa=pole(14.,rate_);
-    const float highpass=pole(220.,rate_);
-    const float decay=static_cast<float>(std::exp(-1./(rate_*0.028)));
-    const auto cooldown=static_cast<unsigned>(rate_*0.030);
-    const float invRate=static_cast<float>(1./rate_);
+    if(!valid(audio,channels)||state_[0].history.empty())return;
+    const float fa=pole(85.,rate_),sa=pole(5.,rate_);
+    const float bpLow=pole(220.,rate_),bpHigh=pole(2400.,rate_);
+    const auto cap=state_[0].history.size();
+    const auto random=[this]() noexcept {
+        rng_^=rng_<<13;rng_^=rng_>>17;rng_^=rng_<<5;
+        return static_cast<float>(rng_>>8)*(1.f/16777216.f);
+    };
+    const auto samples=[this](float seconds) noexcept {
+        return std::max(1u,static_cast<unsigned>(seconds*rate_));
+    };
     for(std::size_t i=0;i<frames;++i) {
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
-        // Smooth onset boost; P006 reported a marginal 20% PANIC response
-        // on clean synth bass. Preserve both endpoints and audio smoothing.
-        const float m=smoothed_*(1.5f-0.5f*smoothed_);
+        const float m=smoothed_*(1.5f-.5f*smoothed_);
         const float mix=mixDelay_.process(m);
-        for(unsigned ch=0;ch<channels;++ch) {
-            auto& s=state_[ch];
-            const float raw=audio[ch][i];
-            const float x=sane(raw);
-            const float delayedRaw=s.dryDelay.process(raw);
-            const float delayed=sane(delayedRaw);
-            const float level=std::abs(x);
-            s.fast+=fa*(level-s.fast);
-            s.slow+=sa*(level-s.slow);
-            if(s.cooldown>0)--s.cooldown;
-            const float trigger=s.fast-s.slow;
-            if(m>0.01f && s.cooldown==0 &&
-               trigger>(0.11f-0.06f*m) && s.fast>0.06f) {
-                s.envelope=std::min(1.f,0.55f+trigger);
-                s.cooldown=cooldown;
-                ++impulseCount_;
-            }
-            s.envelope*=decay;
-            const float sirenHz=700.f+1600.f*m+1300.f*s.envelope;
-            s.phase+=invRate*sirenHz;
-            s.phase-=std::floor(s.phase);
-            s.tremorPhase+=invRate*sirenHz*0.037f;
-            s.tremorPhase-=std::floor(s.tremorPhase);
-            s.slowHigh+=highpass*(x-s.slowHigh);
-            const float piercing=x-s.slowHigh;
-            // A bounded, input-triggered 'electric' shock. Noise is emitted
-            // only during transient events; silence does not become hiss.
-            s.rng^=s.rng<<13;s.rng^=s.rng>>17;s.rng^=s.rng<<5;
-            const float noise=static_cast<float>(s.rng & 0xffffu)*(1.f/32768.f)-1.f;
-            const float siren=std::sin(kTau*s.phase);
-            const float pulse=s.envelope*(0.65f*siren+0.12f*noise);
-            const float tremor=0.80f + 0.20f*std::sin(kTau*s.tremorPhase);
-            // P014: protect the fast transient/electric shaper from
-            // third-harmonic foldback. Oversample ONLY the wet excitation
-            // and saturator, then use a separately filtered decimator.
-            // This introduces no additional original/Dry signal at 100%.
-            const float excitation=x*(1.f+0.25f*m)+
-                0.85f*m*pulse+0.4f*m*piercing;
-            const float wet=s.saturation.process(excitation,[](float up) noexcept {
-                return std::tanh(up);
-            });
-            // P011: energetic electric transients should not win a blind
-            // level comparison simply by being ~+4.5 dB louder on voice.
-            // Smooth macro-dependent wet-only trim, unity at 0%.
-            const float levelTrim=1.f/(1.f+0.25f*m*m);
-            const float transformed=levelTrim*wet*(1.f-0.35f*m*(1.f-tremor));
-            audio[ch][i]=mix==0.f?delayedRaw:(mix==1.f?transformed:delayed+mix*(transformed-delayed));
+        float level=0.f;
+        for(unsigned ch=0;ch<channels;++ch)level=std::max(level,std::abs(sane(audio[ch][i])));
+        fast_+=fa*(level-fast_);slow_+=sa*(level-slow_);
+        if(cooldown_)--cooldown_;
+        const bool onset=fast_>std::max(.0015f,slow_*1.42f+.0006f);
+        if(!length_ && !cooldown_ && m>.015f && fast_>.0015f &&
+           (onset || (m>.55f && slow_>.002f))) {
+            kind_=static_cast<unsigned>(random()*3.f);
+            length_=samples(.018f+(.035f+.038f*m)*random());
+            cooldown_=length_+samples((.10f+.24f*random())*(1.f-.48f*m));
+            depth_=.65f+.35f*random();age_=0;++impulseCount_;
         }
+        float env=0.f,lag=0.f,drop=0.f;
+        if(length_) {
+            const float u=static_cast<float>(age_)/static_cast<float>(length_);
+            env=smooth01(u/.10f)*smooth01((1.f-u)/.24f)*depth_;
+            lag=kind_==2 ? 2.f*static_cast<float>(age_) :
+                static_cast<float>(rate_)*(.002f+.014f*m)*smooth01(u/.7f);
+            drop=kind_==0 ? .88f : .36f;
+        }
+        for(unsigned ch=0;ch<channels;++ch) {
+            auto& c=state_[ch];
+            const float raw=audio[ch][i],x=sane(raw),dry=c.dryDelay.process(raw);
+            c.history[write_]=x;
+            const float d=std::clamp(lag,0.f,static_cast<float>(cap-3));
+            const auto whole=static_cast<std::size_t>(d);
+            const float frac=d-static_cast<float>(whole);
+            const auto a=(write_+cap-whole)%cap,b=(a+cap-1)%cap;
+            const float fragment=c.history[a]+frac*(c.history[b]-c.history[a]);
+            c.body+=bpLow*(x-c.body);c.edge+=bpHigh*((x-c.body)-c.edge);
+            const float e=m*env;
+            const float exc=(1.f-e*drop)*x+e*(kind_==0?.10f:.48f)*(fragment-x)
+                           +(.08f*m+.70f*e)*c.edge;
+            const float wet=c.saturation.process(exc,[](float up) noexcept {return std::tanh(up);});
+            audio[ch][i]=mix==0.f?dry:(mix==1.f?wet:sane(dry)+mix*(wet-sane(dry)));
+        }
+        if(++write_==cap)write_=0;
+        if(length_ && ++age_>=length_){age_=length_=0;}
     }
 }
 
 void Psychosis::prepare(double sr) noexcept {
-    rate_=rate(sr);
-    step_=pole(16.,rate_);
-    reset();
+    rate_=rate(sr);step_=pole(16.,rate_);reset();
 }
 void Psychosis::reset() noexcept {
     state_={};smoothed_=amount_;mixDelay_.reset(smoothed_);
@@ -184,43 +182,42 @@ void Psychosis::reset() noexcept {
 void Psychosis::setAmount(float a) noexcept {amount_=norm(a);}
 void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
     if(!valid(audio,channels))return;
-    const float lowPole=pole(170.,rate_);
-    const float midPole=pole(2050.,rate_);
-    const float envPole=pole(20.,rate_);
+    const float lowPole=pole(145.,rate_),midPole=pole(1750.,rate_);
+    const float focusPole=pole(620.,rate_),envPole=pole(12.,rate_);
+    const float dcPole=pole(5.,rate_);
     for(std::size_t i=0;i<frames;++i) {
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
-        const float m=smoothed_;
-        const float mix=mixDelay_.process(m);
+        const float m=smoothed_,mix=mixDelay_.process(m);
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
-            const float raw=audio[ch][i];
-            const float x=sane(raw);
-            const float delayedRaw=s.dryDelay.process(raw);
-            const float delayed=sane(delayedRaw);
-            s.low+=lowPole*(x-s.low);
-            s.lowMid+=midPole*(x-s.lowMid);
-            const float low=s.low;
-            const float mid=s.lowMid-low;
-            const float high=x-s.lowMid;
+            const float raw=audio[ch][i],x=sane(raw),dry=s.dryDelay.process(raw);
+            s.low+=lowPole*(x-s.low);s.lowMid+=midPole*(x-s.lowMid);
+            s.focus+=focusPole*(s.lowMid-s.focus);
+            const float low=s.low,mid=s.lowMid-low,high=x-s.lowMid;
+            const float emphasis=(s.lowMid-s.focus)*(.65f*m);
             s.driveEnvelope+=envPole*(std::abs(x)-s.driveEnvelope);
-            const float dynamic=0.2f*std::clamp(s.driveEnvelope,0.f,1.f);
+            const float ref=std::clamp(2.1f*s.driveEnvelope,.035f,.48f);
             const auto upL=s.up[0].process(low);
-            const auto upM=s.up[1].process(mid);
+            const auto upM=s.up[1].process(mid+emphasis);
             const auto upH=s.up[2].process(high);
             std::array<float,2> shaped{};
             for(int os=0;os<2;++os) {
-                const float l=std::tanh(upL[os]*(1.f+4.f*m+dynamic));
-                const float mm=std::tanh(upM[os]*(1.f+12.f*m+dynamic));
-                const float h=std::tanh(upH[os]*(1.f+6.f*m+dynamic));
-                const float folded=fold(mm,(m>0.25f)?(m-0.25f)*0.92f:0.f);
-                const float im=std::tanh((upM[os]*upH[os])*8.f*m);
-                shaped[os]=0.60f*l+0.75f*folded+0.42f*h+0.28f*m*im;
+                const float l=upL[os]/ref,md=upM[os]/ref;
+                const float bass=ref*(.58f*std::tanh(l*(1.f+2.8f*m))+
+                                      .42f*asymClip(l*(1.f+3.8f*m),.12f*m));
+                const float drive=md*(1.f+9.f*m*m)+l*(2.5f*m*m);
+                const float clip=asymClip(drive,.23f*m),folded=fold(drive);
+                const float foldMix=.43f*m*m;
+                const float fracture=ref*(clip*(1.f-foldMix)+folded*foldMix);
+                const float h=std::tanh(upH[os]*(1.f+.65f*m));
+                const float im=ref*.26f*m*m*std::tanh(4.f*l*md);
+                const float sum=.78f*bass+.67f*fracture+.72f*h+im;
+                shaped[os]=.90f*std::tanh(sum/.90f);
             }
-            const float decimated=s.down.process(shaped[0],shaped[1]);
-            // Preserve the calibrated wet-only gain structure from P006.
-            const float automaticGain=1.f/(1.f+1.30f*m*m);
-            const float transformed=0.72f*automaticGain*decimated;
-            audio[ch][i]=mix==0.f?delayedRaw:(mix==1.f?transformed:delayed+mix*(transformed-delayed));
+            const float wet=s.down.process(shaped[0],shaped[1]);
+            s.dc+=dcPole*(wet-s.dc);
+            const float y=wet-s.dc;
+            audio[ch][i]=mix==0.f?dry:(mix==1.f?y:sane(dry)+mix*(y-sane(dry)));
         }
     }
 }

@@ -28,13 +28,13 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.9**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P022 — control-driven CRT polish (source candidate)
+## P022 — control-driven CRT polish (v0.9.10; CI pending)
 
-Monitor intensity follows all nine actual controls, inverse THERAPY and host Bypass; zero-state, bypass and therapy-dry captions are distinct. Static mode is truly static, initial values are read on editor creation, motion stops when all controls are neutral. Added deterministic monitor model assertions and actual EditorHost bypass/restore screenshot comparison. Removed engineering checkpoint labels from both templates. No archival photo assets added; not final visual acceptance. The bundle now uses the product name, verifies its actual x64 binary and includes pinned VST3 SDK/VSTGUI license notices. Plugin package and metrology are separate artifacts. CI held until P021 finishes.
+Monitor intensity follows all nine actual controls, inverse THERAPY and host Bypass; zero-state, bypass and therapy-dry captions are distinct. Static mode is truly static, initial values are read on editor creation, motion stops when all controls are neutral. Added deterministic monitor model assertions and actual EditorHost bypass/restore screenshot comparison. Removed engineering checkpoint labels from both templates. No archival photo assets added; not final visual acceptance. The bundle now uses the product name, verifies its actual x64 binary and includes pinned VST3 SDK/VSTGUI license notices. Plugin package and metrology are separate artifacts. P021 actual audio/state/build CTest steps passed; export remains in progress. P022 CI triggered with a distinct workflow name so P021 export can finish.
 
 ## P021 — actual processor dense automation stress (test source prepared)
 
-Added seven-second actual VST3 renders at 44.1/48/96 kHz, identical absolute multi-lane automation schedules across fixed and irregular buffers, bypass transitions, three seconds of silence and exact delayed THERAPY endpoint. Finite/peak guard and bit-exact cross-block comparison. **CI triggered** after P020 verification.
+Added seven-second actual VST3 renders at 44.1/48/96 kHz, identical absolute multi-lane automation schedules across fixed and irregular buffers, bypass transitions, three seconds of silence and exact delayed THERAPY endpoint. Finite/peak guard and bit-exact cross-block comparison. Actual Windows audio CTest passed in run 45305211996; full metric export is still pending. Windows/Linux DSP run 45305212003 SUCCESS.
 
 ## P020 — verified OBSESSION frozen loop
 

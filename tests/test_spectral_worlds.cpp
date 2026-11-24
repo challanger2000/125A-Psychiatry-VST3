@@ -116,8 +116,8 @@ int main() {
         Stereo x{Audio(64,0.4f),Audio(64,-0.4f)};
         render(fx,x,17);
         for(std::size_t n=0;n<x.l.size();++n) {
-            CHECK(std::abs(x.l[n]-std::tanh(0.33f*0.4f))<1.e-6f);
-            CHECK(std::abs(x.r[n]-std::tanh(-0.33f*0.4f))<1.e-6f);
+            CHECK(std::abs(x.l[n]-1.10f*std::tanh(0.33f*0.4f))<1.e-6f);
+            CHECK(std::abs(x.r[n]-1.10f*std::tanh(-0.33f*0.4f))<1.e-6f);
         }
     }
     // The original frozen grain must not change during recapture.

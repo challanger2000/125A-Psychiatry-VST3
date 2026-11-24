@@ -667,8 +667,8 @@ void testWetStartup() {
         std::fill(x.r.begin(),x.r.end(),-.4f);
         const auto y=render(x,2,1.f,0.f,false,false,sr);
         for(std::size_t n=0;n<x.size();++n) {
-            check(std::abs(y.l[n]-std::tanh(.33f*.4f))<1.e-6f,"P019 SCHIZOPHRENIA wet from first sample");
-            check(std::abs(y.r[n]-std::tanh(-.33f*.4f))<1.e-6f,"P019 SCHIZOPHRENIA stereo wet from first sample");
+            check(std::abs(y.l[n]-1.10f*std::tanh(.33f*.4f))<1.e-6f,"P019 SCHIZOPHRENIA wet from first sample");
+            check(std::abs(y.r[n]-1.10f*std::tanh(-.33f*.4f))<1.e-6f,"P019 SCHIZOPHRENIA stereo wet from first sample");
         }
     }
 }

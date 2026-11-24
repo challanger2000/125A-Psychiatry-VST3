@@ -82,7 +82,11 @@ void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frame
             const float transformed=std::tanh(0.33f*x+0.48f*high+
                 0.42f*low+0.16f*m*spectral+0.18f*m*conflict);
             // Zero-initialized history needs no dry startup bypass.
-            if(m>0.f)io[ch][i]=m==1.f?transformed:x+m*(transformed-x);
+            // P019 measured atmosphere full-wet -8.386 dB after removing
+            // the dry startup shortcut. Apply 0.83 dB of wet-only makeup
+            // at full intensity, not an extra original signal.
+            const float wet=transformed*(1.f+0.10f*m*m);
+            if(m>0.f)io[ch][i]=m==1.f?wet:x+m*(wet-x);
             if(++s.write>=s.ring.size())s.write=0;
             s.phase+=invRate/0.057f;
             if(s.phase>=1.f)s.phase-=1.f;

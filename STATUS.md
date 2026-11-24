@@ -30,7 +30,7 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 
 ## P022 — control-driven CRT polish (source candidate)
 
-Monitor intensity follows all nine actual controls, inverse THERAPY and host Bypass; zero-state, bypass and therapy-dry captions are distinct. Static mode is truly static, initial values are read on editor creation, motion stops when all controls are neutral. Added deterministic monitor model assertions and actual EditorHost bypass/restore screenshot comparison. Removed engineering checkpoint labels from both templates. No archival photo assets added; not final visual acceptance. CI held until P021 finishes.
+Monitor intensity follows all nine actual controls, inverse THERAPY and host Bypass; zero-state, bypass and therapy-dry captions are distinct. Static mode is truly static, initial values are read on editor creation, motion stops when all controls are neutral. Added deterministic monitor model assertions and actual EditorHost bypass/restore screenshot comparison. Removed engineering checkpoint labels from both templates. No archival photo assets added; not final visual acceptance. The bundle now uses the product name, verifies its actual x64 binary and includes pinned VST3 SDK/VSTGUI license notices. Plugin package and metrology are separate artifacts. CI held until P021 finishes.
 
 ## P021 — actual processor dense automation stress (test source prepared)
 

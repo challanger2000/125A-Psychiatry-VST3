@@ -76,8 +76,12 @@ if(PSYCHIATRY_BUILD_VST3)
   set(SMTG_CREATE_PLUGIN_LINK OFF CACHE BOOL "" FORCE)
   add_subdirectory("${PSYCHIATRY_VST3_SDK_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/steinberg-sdk")
   smtg_enable_vst3_sdk()
+  # Keep the CMake target stable, but name the actual VST3 package and
+  # Windows binary after the product, using the pinned SDK package API.
   smtg_add_vst3plugin(PsychiatryPrototype
-      vst3/ids.h
+      PACKAGE_NAME "125A PSYCHIATRY"
+      SOURCES_LIST
+      vst3/ids.h vst3/monitor_model.h
       vst3/processor.h vst3/processor.cpp
       vst3/controller.h vst3/controller.cpp
       vst3/entry.cpp
@@ -89,8 +93,16 @@ if(PSYCHIATRY_BUILD_VST3)
   target_link_libraries(PsychiatryPrototype PRIVATE psychiatry_audio sdk vstgui_support)
   # The actual .uidesc MUST be staged inside the built Windows VST3 bundle.
   # It is not enough to include the file in the CMake source list alone.
+  # Preserve the exact notices from the pinned SDK and VSTGUI checkouts
+  # in every distributed binary bundle (MIT and BSD-style respectively).
+  configure_file("${PSYCHIATRY_VST3_SDK_DIR}/LICENSE.txt"
+      "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VST3-SDK.txt" COPYONLY)
+  configure_file("${PSYCHIATRY_VST3_SDK_DIR}/vstgui4/LICENSE"
+      "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VSTGUI.txt" COPYONLY)
   smtg_target_add_plugin_resources(PsychiatryPrototype
-      RESOURCES resource/psychiatry.uidesc)
+      RESOURCES resource/psychiatry.uidesc
+      "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VST3-SDK.txt"
+      "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VSTGUI.txt")
   smtg_target_configure_version_file(PsychiatryPrototype)
 
   # Exercise processor and controller state decoding against the genuine

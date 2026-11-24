@@ -82,20 +82,18 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "artifacts" | Out-Null
-          $bundles = @(Get-ChildItem -Path "build-vst3" -Recurse -Directory -Filter "*.vst3")
-          $files = @(Get-ChildItem -Path "build-vst3" -Recurse -File -Filter "*.vst3")
-          if ($bundles.Count -eq 0 -and $files.Count -eq 0) {
-            throw "No built VST3 bundle/file found - CI must not claim success"
+          $bundles = @(Get-ChildItem -Path "build-vst3" -Recurse -Directory -Filter "125A PSYCHIATRY.vst3" |
+            Where-Object { $_.FullName -match '[\\/]VST3[\\/]Release[\\/]' })
+          if ($bundles.Count -ne 1) { throw "Expected exactly one branded Windows VST3 bundle, got $($bundles.Count)" }
+          $chosen = $bundles[0]
+          $binary = Join-Path $chosen.FullName "Contents/x86_64-win/125A PSYCHIATRY.vst3"
+          if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) { throw "Branded x64 binary missing" }
+          foreach ($license in @("LICENSE-VST3-SDK.txt","LICENSE-VSTGUI.txt")) {
+            $notice = @(Get-ChildItem -LiteralPath $chosen.FullName -Recurse -File -Filter $license)
+            if ($notice.Count -ne 1) { throw "Missing or duplicate third-party license: $license" }
           }
-          if ($bundles.Count -gt 0) {
-            $chosen = $bundles | Sort-Object FullName | Select-Object -First 1
-            Copy-Item -LiteralPath $chosen.FullName -Destination "artifacts" -Recurse -Force
-            Write-Host "Staged bundle:" $chosen.FullName
-          } else {
-            $chosen = $files | Sort-Object FullName | Select-Object -First 1
-            Copy-Item -LiteralPath $chosen.FullName -Destination "artifacts" -Force
-            Write-Host "Staged VST3:" $chosen.FullName
-          }
+          Copy-Item -LiteralPath $chosen.FullName -Destination "artifacts" -Recurse -Force
+          Write-Host "Staged branded plugin:" $chosen.FullName
           Get-ChildItem artifacts -Recurse | Select-Object FullName,Length
       - name: Export real VST3 per-macro audio comparisons and metrology CSV
         shell: pwsh
@@ -138,6 +136,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 125A-PSYCHIATRY-P021-Stress-NOT-FINAL
-          path: artifacts/**
+          path: artifacts/125A PSYCHIATRY.vst3/**
           if-no-files-found: error
           retention-days: 7

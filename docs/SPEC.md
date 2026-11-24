@@ -1,5 +1,9 @@
 # 125A PSYCHIATRY — Product and DSP Specification
-Version: **concept baseline** · Updated: **2026-11-24** · Implementation: **v0.9.12, P024 product and P025 recorded-source QA verified; final DAW acceptance candidate**. See [STATUS](../STATUS.md) for authoritative progress.
+Version: **concept baseline** · Updated: **2026-11-24** · Implementation: **v0.9.12, P024/P025 technical baseline; user audition requires P026 revision**. See [STATUS](../STATUS.md) for authoritative progress.
+
+## Current design precedence
+
+[Confirmed P026 sound-design revision](P026-SOUND-DESIGN.md) supersedes conflicting nine-world, GUI, macro-curve and bitcrushing guidance below. The following original specification describes the earlier baseline. Target: twelve distinct worlds; sound first, PSYCHOSIS brutal EBM/Industrial distortion without bitcrushing or sample-rate reduction, cold clinical circular GUI after sound. Read P026 fully before further development.
 
 ## Intent
 Windows x64 VST3 **insert audio effect**, not an instrument. Dark, extreme, purposeful sound design for Gothic, Darkwave, EBM, Industrial, Thriller and Horror. It should create powerful sounds from ordinary source material. Not a conventional multi-effect with theatrical labels: every knob is a **curated multi-algorithm macro**, whose processors and routing evolve together.

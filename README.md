@@ -4,7 +4,11 @@
 
 > **Current verified engineering checkpoint: P025 recorded-source QA / factory v0.9.12**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Original fictional grayscale CRT scenes verified; not archival photographs. Studio Pro acceptance remains open.**
 
-## Nine equally important effect worlds
+## Current development direction
+
+**P026 is the current design authority.** The first Studio Pro audition requires a sound-design revision, not release approval. Read [START-HERE.md](START-HERE.md) and [P026 sound design](docs/P026-SOUND-DESIGN.md). Twelve distinct macros, brutal EBM/Industrial PSYCHOSIS without bitcrushing or sample-rate reduction, cold clinical circular GUI with central bull's-eye, THERAPY and LOSS OF CONTROL; sound first. Existing v0.9.12 remains the verified nine-world comparison baseline.
+
+## Nine equally important effect worlds (v0.9.12 baseline)
 
 | EN | DE | Character |
 |---|---|---|

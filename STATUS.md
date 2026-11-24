@@ -1,10 +1,10 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified gate: **P025 recorded-source QA / factory v0.9.12**, **portable candidate for final target-DAW acceptance, not a public release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified gate: **P025 recorded-source QA / factory v0.9.12**, **previous nine-world technical baseline; user audition requires revision, not final or approved**. **Only `main`**; do not create temporary development branches.
 
 ## P026 — revised sound-design baseline (not implemented)
 
-User audition of v0.9.12 confirmed several usable effects above 50%, but rejected the character of PANIC and PSYCHOSIS; DEPRESSION and SCHIZOPHRENIA require character review. Placeholder artwork and current MOTION are not accepted. No global macro-curve boost requested. [P026 sound design](docs/P026-SOUND-DESIGN.md) defines proposed 12 distinct multi-stage worlds, routing, priorities and differential acceptance criteria. Sound first, GUI later. Existing verified v0.9.12 remains the technical reference, not an accepted final product.
+User audition of v0.9.12 confirmed several usable effects above 50%, but rejected the character of PANIC and PSYCHOSIS; DEPRESSION and SCHIZOPHRENIA require character review. Placeholder artwork and current MOTION are not accepted. No global macro-curve boost requested. [P026 sound design](docs/P026-SOUND-DESIGN.md) is the confirmed 12-world design and takes precedence over older specification text: brutal EBM/Industrial PSYCHOSIS without bitcrushing/sample-rate reduction; bitcrushing generally disfavored; cold clinical circular 12-knob GUI with central bull's-eye, THERAPY and LOSS OF CONTROL. Detailed effect topology and audible differentiation must be considered before implementation. Sound first, GUI later. Existing verified v0.9.12 remains the technical reference, not an accepted final product.
 
 ## Latest verified build and fixed references
 

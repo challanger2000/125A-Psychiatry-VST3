@@ -30,7 +30,7 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 
 ## P025 — recorded-source audition (CI pending)
 
-Pinned CC0 VCSL percussion and Meta acoustic guitar recordings; Oculus CC BY 4.0 vocal foley and room-tone recordings (with attribution). Fixture preparer verifies Git blob hashes; converts and arranges 4-second inputs plus 2-second tails. Actual Processor::process renders all nine at 5/10/20/50/100%, writes 180 objective rows and 72 RMS-matched dry/wet pairs at 50/100%. No fixtures in product, no human listening claim. P024 fully verified; separate recorded-source workflow triggered. Vocal foley is breathing/laughter, not speech or singing.
+Pinned CC0 VCSL percussion and Meta acoustic guitar recordings; Oculus CC BY 4.0 vocal foley and room-tone recordings (with attribution). Fixture preparer verifies Git blob hashes; converts and arranges 4-second inputs plus 2-second tails. Actual Processor::process renders all nine at 5/10/20/50/100%, writes 180 objective rows and 72 RMS-matched dry/wet pairs at 50/100%. No fixtures in product, no human listening claim. P024 fully verified, including manual inspection of actual EditorHost screenshot. Initial P025 workflow 45312161044 failed before source preparation (missing FFmpeg); pinned QA-only bundled decoder added, retry triggered. Vocal foley is breathing/laughter, not speech or singing.
 
 ## P024 — verified original grayscale CRT artwork
 

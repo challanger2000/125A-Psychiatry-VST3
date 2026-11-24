@@ -1,6 +1,6 @@
 """Download pinned, licensed engineering fixtures; never include them in product.
 Run: python tools/prepare_recordings.py <temporary-directory>
-Requires ffmpeg on PATH. Input provenance verified using Git blob SHA-1.
+Requires imageio-ffmpeg==0.6.0 (bundled decoder, QA only). Input provenance verified using Git blob SHA-1.
 """
 import array
 import hashlib
@@ -11,6 +11,9 @@ import subprocess
 import sys
 from urllib.parse import quote
 from urllib.request import urlopen, Request
+import imageio_ffmpeg
+
+FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
 
 RATE = 48000
 N = RATE * 4
@@ -29,7 +32,7 @@ for row in manifest:
     assert digest == row["git_blob_sha1"], (name, digest)
     local = out / (name + Path(row["path"]).suffix)
     local.write_bytes(blob)
-    pcm = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(local), "-t", "8", "-ar", str(RATE), "-ac", "2", "-f", "f32le", "-"])
+    pcm = subprocess.check_output([FFMPEG, "-v", "error", "-i", str(local), "-t", "8", "-ar", str(RATE), "-ac", "2", "-f", "f32le", "-"])
     values = array.array("f")
     values.frombytes(pcm)
     if sys.byteorder != "little":

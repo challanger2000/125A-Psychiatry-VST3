@@ -19,7 +19,8 @@ jobs:
       - name: Prepare pinned recorded sources
         shell: pwsh
         run: |
-          Get-Command ffmpeg -ErrorAction Stop
+          python -m pip install --disable-pip-version-check imageio-ffmpeg==0.6.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/prepare_recordings.py recorded-input
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Fetch pinned SDK

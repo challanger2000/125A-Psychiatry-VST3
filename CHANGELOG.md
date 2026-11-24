@@ -2,6 +2,10 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## P021 — stress verification (factory 0.9.9)
+
+- [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45305211996) and [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45305212003) passed. Six actual processor renders with dense automation, silent input, native bypass and exact compensated THERAPY; bit-identical results across buffer layouts at each of three rates. No DSP change.
+
 ## 0.9.9 — P020 (2026-11-24)
 
 - OBSESSION complete grain capture, immutable repeat lifetime, sample-rate-scaled wet-only fade, exact wet endpoint.

@@ -897,6 +897,7 @@ void testReportedTail() {
                 }
             }
         }
+        std::fprintf(stderr,"P023 excitation rate=%d macros=%d active_peak=%.9g first_tail_peak=%.9g\n",sr,twelve?12:9,activePeak,peaks[0]);
         check(activePeak>.01&&peaks[0]>.001,"P023 meaningful source and tail");
         for(std::size_t i=0;i<peaks.size();++i)
             std::printf("P023 TAIL rate=%d second=%zu peak=%.9g rms=%.9g\n",sr,i+1,peaks[i],

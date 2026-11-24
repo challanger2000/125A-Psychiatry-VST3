@@ -1,8 +1,14 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026j / v0.9.18**. Current development candidate: P026k / v0.9.19. **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026j / v0.9.18**. Current development candidate: P026l / v0.9.20. **Only `main`**; no final or musical approval.
 
-## Current checkpoint — P026j / v0.9.18 verified; P026k / v0.9.19 twelve-world audio candidate
+## Current checkpoint — P026l / v0.9.20 candidate
+
+P026k exact source `485223691aa1f399df439ed51dc2a08d10ac1dac`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45460684862), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45460681915) and [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45460682047) SUCCESS; [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45460681890) FAIL in P023 all-twelve meaningful excitation/tail assertion. MSVC plugin and legacy/v5 state passed. No full approval.
+
+P026l adds CATATONIA stronger-source reacquisition to avoid locking an almost silent leading edge, a focused quiet-onset regression, and detailed tail diagnostics without relaxing gates. See [P026l](docs/P026l.md). All candidate CI pending. The new [P027 design](docs/P027-GUI-DESIGN.md) is owner-approved visual direction; original art archive preserved in chat, not yet uploaded as repository binaries. No filmstrips/layout yet. Sound verification first.
+
+## Historical checkpoint — P026j / v0.9.18 verified; P026k / v0.9.19 twelve-world audio candidate
 
 P026j exact source `a3d805afdccd6daf623b2a211a7bb83961d67b1b`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45458793401), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45458793305), [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45458793490), [recorded audio](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45458793320) all SUCCESS. Cumulative MANIA and DISSOCIATION recorded-source gate passed. Musical audition remains open.
 

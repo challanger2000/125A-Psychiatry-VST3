@@ -50,6 +50,17 @@ int main(){
         for(int hz=1260;hz<=1340;hz+=2)fresh=std::max(fresh,magnitude(freeze,sr/2,sr,sr,hz));
         CHECK(held>.025&&held>5.*fresh);
         CHECK(magnitude(changed,sr/2,sr,sr,1300.)>.20);
+        // Causal upstream effects may initially emit only a very faint
+        // leading edge. Hold must not suppress a substantially stronger
+        // source for the full 2.8 seconds. Old unconditional capture fails.
+        Audio quietOnset=input;
+        for(int n=0;n<sr/4;++n)quietOnset[n]*=.001f;
+        const auto acquired=render<psychiatry::Catatonia>(quietOnset,sr,1.f,173);
+        double recovered=0.;
+        for(int hz=660;hz<=740;hz+=2)
+            recovered=std::max(recovered,magnitude(acquired,sr/2,sr,sr,hz));
+        CHECK(recovered>.025);
+        std::printf("P026l stronger source reacquisition %d Hz magnitude %.6f\n",sr,recovered);
         Audio dc(4*sr,.3f);const auto missing=render<psychiatry::Amnesia>(dc,sr,1.f,137);
         const auto extremes=std::minmax_element(missing.begin()+sr/2,missing.end());
         CHECK(*extremes.first<.012f&&*extremes.second>.27f);

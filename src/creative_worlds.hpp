@@ -110,7 +110,7 @@ public:
         for(auto& c:state_) {
             std::fill(c.history.begin(),c.history.end(),0.f);std::fill(c.ola.begin(),c.ola.end(),0.f);
             std::fill(c.previous.begin(),c.previous.end(),C{});std::fill(c.held.begin(),c.held.end(),C{});
-            c.age=0;c.active=false;c.previousValid=false;
+            c.age=0;c.captureEnergy=0.;c.active=false;c.previousValid=false;
         }
     }
     void process(float* const* p,unsigned channels,std::size_t n) noexcept {
@@ -128,7 +128,7 @@ public:
                 ticks_=0;
                 for(unsigned ch=0;ch<channels;++ch) {
                     auto& c=state_[ch];
-                    if(m_==0.f){c.active=false;c.previousValid=false;c.age=0;continue;}
+                    if(m_==0.f){c.active=false;c.previousValid=false;c.age=0;c.captureEnergy=0.;continue;}
                     frame(c);
                 }
             }
@@ -139,6 +139,7 @@ private:
         std::vector<float> history,ola;
         std::vector<C> work,previous,held,rotation;
         std::size_t age=0;
+        double captureEnergy=0.;
         bool active=false,previousValid=false;
     };
     void fft(std::vector<C>& a,bool inverse) noexcept {
@@ -162,11 +163,19 @@ private:
         double energy=0.;
         for(std::size_t k=0;k<size_;++k) {
             const float x=c.history[(write_+k)%size_];
-            energy+=double(x)*x;c.work[k]=C(x*window_[k],0.f);
+            const float tapered=x*window_[k];
+            energy+=double(tapered)*tapered;c.work[k]=C(tapered,0.f);
         }
         fft(c.work,false);
         const auto hold=std::max<std::size_t>(1,static_cast<std::size_t>((.15+2.65*m_*m_)*sr_/double(hop_)));
-        const bool capture=filled_==size_&&(!c.active||c.age>=hold)&&energy>double(size_)*1.e-14;
+        // A nearly silent leading edge (e.g. after other causal time effects)
+        // must not monopolize a 2.8 s hold. Reacquire only when the incoming
+        // frame has materially more energy than the original captured frame.
+        // Compare to capture energy, NOT the decaying current held energy;
+        // otherwise an equal-level new tone would break a deliberate freeze.
+        const bool stronger=c.active&&energy>8.*c.captureEnergy;
+        const bool capture=filled_==size_&&(!c.active||c.age>=hold||stronger)
+            &&energy>double(size_)*1.e-14;
         for(std::size_t k=0;k<c.held.size();++k) {
             const C now=c.work[k];
             if(capture) {
@@ -185,7 +194,7 @@ private:
             c.previous[k]=now;
         }
         c.previousValid=energy>double(size_)*1.e-14;
-        if(capture){c.active=true;c.age=0;}
+        if(capture){c.active=true;c.age=0;c.captureEnergy=energy;}
         else if(c.age<1000000u)++c.age;
         if(!c.active)return;
         c.work[0]=C(c.held[0].real(),0.f);

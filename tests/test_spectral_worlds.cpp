@@ -1,4 +1,5 @@
 #include "spectral_worlds.hpp"
+#include "spectral_crossfade.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -66,6 +67,32 @@ double probe(FX& fx,float amount,double minDifference) {
     return change;
 }
 int main() {
+    // Independent analytic oracle: equal-energy orthogonal tones mixed
+    // linearly lose 3.0103 dB. The midpoint restores 1.9382 dB, not all
+    // dynamics. A reverted linear law must fail this regression.
+    {
+        using psychiatry::detail::spectralCrossfade;
+        CHECK(spectralCrossfade(.2f,-.7f,0.f)==.2f);
+        CHECK(spectralCrossfade(.2f,-.7f,1.f)==-.7f);
+        double oldEnergy=0.,newEnergy=0.,inputEnergy=0.;
+        for(int i=0;i<48000;++i){
+            const float x=.4f*std::sin(6.283185307179586*700.*i/48000.);
+            const float y=.4f*std::sin(6.283185307179586*1100.*i/48000.);
+            const float old=.5f*x+.5f*y;
+            const float adjusted=spectralCrossfade(x,y,.5f);
+            oldEnergy+=double(old)*old;newEnergy+=double(adjusted)*adjusted;
+            inputEnergy+=double(x)*x;
+        }
+        const double restored=10.*std::log10(newEnergy/oldEnergy);
+        CHECK(restored>1.93&&restored<1.95);
+        CHECK(newEnergy<inputEnergy);
+        for(int i=0;i<=100;++i){
+            const float m=i/100.f;
+            CHECK(spectralCrossfade(0.f,0.f,m)==0.f);
+            CHECK(std::abs(spectralCrossfade(.8f,.8f,m))<=1.000001f);
+        }
+        std::printf("P027d spectral blend: midpoint recovery %.4f dB, endpoints exact\n",restored);
+    }
     psychiatry::Schizophrenia schizophrenia;
     psychiatry::Dissociation dissociation;
     psychiatry::Hallucination hallucination;

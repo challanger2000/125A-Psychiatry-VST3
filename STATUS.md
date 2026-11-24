@@ -1,12 +1,18 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026l / v0.9.20**. Latest verified controller checkpoint: P027a / v0.9.21. Current test-only audit candidate: P027c. Final GUI deferred. **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026l / v0.9.20**. Latest verified controller checkpoint: P027a / v0.9.21. Current development candidate: P027d / v0.9.22. Final GUI deferred. **Only `main`**; no final or musical approval.
 
-## Current candidate — P027c actual recorded combination audit (factory v0.9.21 unchanged)
+## Current candidate — P027d / v0.9.22 spectral midpoint correction
+
+P027c exact source `c7f424092fed2465df227c4f148e0a1c1095f5e5`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45470028527), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45470028540), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45470028649) SUCCESS. EditorHost did not trigger. 68 recorded combinations, combined THERAPY endpoints/midpoint and bypass PASS, 240 individual rows/96 A/B. All 12 at 50%: -20.624/-20.780/-21.318/-19.377 dB (drums/guitar/vocal/machine). Mixed vectors -11.618 to -16.382 dB. Prefix stage 2 SCHIZOPHRENIA -2.384 to -6.286 dB, stage 8 HALLUCINATION -4.414 to -4.969 dB. These are interaction-dependent, not isolated gain.
+
+SCHIZOPHRENIA and HALLUCINATION only: partial power compensation of their inner dry/transformed crossfades, 0 and 100% unchanged, +1.938 dB at 50%, no dynamic normalization or feedback gain. This is a conservative mixing-law hypothesis, not proof of the cause of all attenuation. Preserve creative CATATONIA/AMNESIA loss, THERAPY and all other algorithms. Added analytic regression and pinned real-processor prefix 2 improvement oracle; all existing gates unchanged. Full CI pending; no local build or audition claimed.
+
+## Historical candidate — P027c actual recorded combination audit (factory v0.9.21 unchanged)
 
 P027b exact source `2ec24a14954f5d34f8376f1fe06fa2c371b08ca1`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45468719450), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45468719431), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45468719557) SUCCESS. DSP 8/8 on each OS; actual VST3 47/47 validator; 12 P019 host integrity scenarios PASS; 60/60 substantive full wet; recorded 240 rows and 96 A/B PASS. EditorHost did not trigger (no GUI/production changes). P006 168 cases, 15 review flags, zero safety-level violations. Full twelve at 50%: bass -20.16, drums -20.43, voice-like -21.82, atmosphere -19.93 dB. These are synthesized stimuli, not all source behavior. Nine-chain 50% bass -13.67, drums -12.23 dB. Remaining weak-onset PANIC and DEPRESSION flags are review items, not a reason to globally increase macro curves.
 
-P027c measures prefix gains in actual VST3 routing at 50%, full chain 85%, four fixed mixed settings per recorded source (68 rows). Verify combined THERAPY dry/midpoint and bypass; raw audition files where PCM16 would not clip. No product DSP changes or blanket loudness compensation; diagnose cumulative gain and creative attenuation before choosing targeted corrections. New CI pending.
+P027c measures prefix gains in actual VST3 routing at 50%, full chain 85%, four fixed mixed settings per recorded source (68 rows). Verify combined THERAPY dry/midpoint and bypass; raw audition files where PCM16 would not clip. No product DSP changes or blanket loudness compensation; diagnose cumulative gain and creative attenuation before choosing targeted corrections. CI subsequently passed as recorded above.
 
 ## Historical candidate — P027b expanded functional audit (same factory v0.9.21)
 

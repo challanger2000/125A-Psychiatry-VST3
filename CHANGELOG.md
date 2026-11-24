@@ -2,6 +2,11 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.22 — P027d spectral midpoint correction candidate
+
+- Partial power compensation for SCHIZOPHRENIA and HALLUCINATION crossfades only, midpoint +1.938 dB; endpoints unchanged.
+- Analytic and actual recorded prefix regression; prior safety gates unchanged. P027c passed three triggered workflows. New CI pending.
+
 ## P027c — recorded combination gain audit (factory v0.9.21 unchanged)
 
 - Actual VST3 prefix and mixed-macro measurements (68 additional recorded cases); combined THERAPY/bypass invariants.

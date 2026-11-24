@@ -1031,6 +1031,19 @@ void auditCombinations(const Stereo& dry,const char* sourceName,
         amounts[order[j]]=.5f;
         const auto wet=run(amounts);
         prior=record("prefix50",j+1,amounts,wet,prior);
+        if(j==1){
+            // Actual pinned P027c prefix 2 values, unchanged input and
+            // upstream DEPRESSION. Midpoint correction should recover
+            // ~1.938 dB on every source. Do not permit silently reverting.
+            double baseline=0.;
+            const std::string name=sourceName;
+            if(name=="recorded_drums")baseline=-6.528;
+            else if(name=="recorded_guitar")baseline=-2.314;
+            else if(name=="recorded_vocal_foley")baseline=-4.465;
+            else if(name=="recorded_machine_room")baseline=-1.332;
+            else check(false,"P027d unknown pinned baseline");
+            check(prior-baseline>1.85&&prior-baseline<2.03,"P027d actual schizophrenia midpoint recovery");
+        }
         if(j==11&&measure(dry,wet).peak<=1.)
             writeWav(dir+"/P027c_"+sourceName+"_all50_RAW.wav",wet);
     }

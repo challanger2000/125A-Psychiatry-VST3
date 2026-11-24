@@ -1,5 +1,6 @@
 #include "spectral_worlds.hpp"
 #include "parameter_smoothing.hpp"
+#include "spectral_crossfade.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -109,7 +110,7 @@ void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frame
             // Immediate transformed body retains the proven full-wet
             // startup contract, without a dry bypass during ring fill.
             const float wet=transformed*(1.f+.10f*m*m);
-            if(m>0.f)io[ch][i]=m==1.f?wet:x+m*(wet-x);
+            if(m>0.f)io[ch][i]=detail::spectralCrossfade(x,wet,m);
             if(++s.write>=s.ring.size())s.write=0;
         }
     }
@@ -230,7 +231,7 @@ void Hallucination::process(float* const* io,unsigned channels,std::size_t frame
             // source proxies. Apply gradual makeup ONLY to the effected
             // signal. At 100%, the output remains pure wet (no dry blend).
             const float makeup=1.f+0.65f*m*m;
-            if(m>0.f)io[ch][i]=m==1.f?makeup*transformed:x+m*(makeup*transformed-x);
+            if(m>0.f)io[ch][i]=detail::spectralCrossfade(x,makeup*transformed,m);
         }
         reverse_.endFrame();
     }

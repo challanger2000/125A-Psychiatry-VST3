@@ -21,6 +21,14 @@ User audition of v0.9.12 confirmed several usable effects above 50%, but rejecte
 
 
 
+## P026h — SCHIZOPHRENIA candidate v0.9.16 (verification pending)
+
+[Design and test scope](docs/P026h.md): independent three pitch voices, much shorter causal readhead delays, separate spectral coloring, stereo divergence and bounded pairwise nonlinear products. No other macro, PDC, GUI or state change.
+
+## P026g — v0.9.15 technical checkpoint
+
+Exact source 78b239a654c187e3525fff31133f4c8be53a769e: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45446438095), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45446438026), [actual Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45446437930), [recorded source audio](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45446437990) all SUCCESS. No human audition or final acceptance. DEPRESSION's proposed resonant filter and granular return remain deferred pending musical assessment.
+
 ## P026g — DEPRESSION candidate v0.9.15 (verification pending)
 
 [Implementation and test scope](docs/P026g.md): foreground transient attenuation, leveling and dark shelf, dual-readhead downward drift, less dominant FDN. No GUI or other world changes. P026f is the verified technical reference.

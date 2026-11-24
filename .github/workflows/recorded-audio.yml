@@ -9,6 +9,7 @@ on:
       - 'src/reactive_acoustic.*'
       - 'src/obsession.*'
       - 'src/depression.*'
+      - 'src/spectral_worlds.*'
       - 'tools/prepare_acoustic_bank.py'
       - 'sound-library/**'
       - '.github/workflows/recorded-audio.yml'

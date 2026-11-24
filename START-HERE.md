@@ -21,3 +21,5 @@ P026d is now a verified technical checkpoint (v0.9.13, all four CI workflows suc
 P026f: P026e DSP/EditorHost passed, Windows audio gain guard failed for drums at +6.789 dB. Corrected wet-only replay gain and added a percussion regression. Verify P026f CI before further DSP changes. Last fully verified v0.9.13.
 
 P026g: P026f v0.9.14 verified all four CI workflows; current DEPRESSION candidate v0.9.15 uses transient attenuation, slow leveling, processed dark body and subtle downward drift, less dominant hall. See docs/P026g.md. Verify all regressions before further edits; resonant filter/granular return not implemented in this pass. Next SCHIZOPHRENIA after DEPRESSION verification. No final DAW test until all worlds and GUI complete.
+
+P026h: v0.9.15 P026g all four CI workflows passed. SCHIZOPHRENIA v0.9.16 candidate replaces the shared long-lag pitch paths with three independent short-grain voices. See docs/P026h.md. Verify all four workflows before continuing. Next MANIA, DISSOCIATION, HALLUCINATION, then DELIRIUM/CATATONIA/AMNESIA and GUI. No final listening acceptance yet.

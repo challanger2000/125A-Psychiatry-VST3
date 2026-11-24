@@ -28,68 +28,89 @@ float linearRead(const std::vector<float>& ring,std::size_t write,float delay) n
 }
 } // namespace
 
+namespace {
+// Independent voice periods and interval targets. Two complementary
+// Hann heads per voice, not shared modulation or a fixed slapback delay.
+constexpr std::array<float,3> kVoiceSeconds{.034f,.047f,.029f};
+constexpr std::array<float,3> kVoiceSemitones{7.f,-7.f,3.f};
+constexpr std::array<float,3> kVoiceStart{.23f,.61f,.11f};
+constexpr std::array<float,3> kVoiceLow{650.f,850.f,480.f};
+constexpr std::array<float,3> kVoiceHigh{3000.f,1800.f,2200.f};
+}
+
 void Schizophrenia::prepare(double sr) {
     rate_=saneRate(sr);
     step_=coeff(18.,rate_);
     for(auto& s:state_)s.ring.assign(
-        std::max<std::size_t>(256,static_cast<std::size_t>(0.230*rate_)),0.f);
+        std::max<std::size_t>(64,static_cast<std::size_t>(std::ceil(.070*rate_))+4),0.f);
     reset();
 }
 void Schizophrenia::reset() noexcept {
-    for(auto& s:state_) {
+    for(unsigned ch=0;ch<state_.size();++ch) {
+        auto& s=state_[ch];
         std::fill(s.ring.begin(),s.ring.end(),0.f);
-        s.write=s.filled=0;
-        s.phase=s.formantLow=s.formantHigh=0.f;
+        s.write=0;s.voices={};
+        for(std::size_t k=0;k<s.voices.size();++k) {
+            const float phase=kVoiceStart[k]+(ch?.17f:0.f);
+            s.voices[k].phase=phase>=1.f?phase-1.f:phase;
+        }
     }
     smoothed_=amount_;
 }
 void Schizophrenia::setAmount(float v) noexcept {amount_=norm(v);}
 void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frames) noexcept {
     if(!valid(io,channels)||state_[0].ring.empty())return;
-    const float invRate=static_cast<float>(1./rate_);
-    const float a=coeff(500.,rate_),b=coeff(2400.,rate_);
-    const float grain=static_cast<float>(rate_*0.057);
-    const float lag=2.0f*grain+5.f;
+    std::array<float,3> grain{},phaseStep{},lowPole{},highPole{};
+    for(std::size_t k=0;k<grain.size();++k) {
+        grain[k]=std::max(4.f,static_cast<float>(rate_*kVoiceSeconds[k]));
+        phaseStep[k]=1.f/grain[k];
+        lowPole[k]=coeff(kVoiceLow[k],rate_);
+        highPole[k]=coeff(kVoiceHigh[k],rate_);
+    }
+    const float baseLag=std::max(1.f,static_cast<float>(rate_*.002));
     for(std::size_t i=0;i<frames;++i) {
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
+        std::array<float,3> ratio{};
+        for(std::size_t k=0;k<ratio.size();++k)
+            ratio[k]=std::exp2(kVoiceSemitones[k]*m/12.f);
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
             const float raw=io[ch][i],x=sane(raw);
             s.ring[s.write]=x;
-            if(s.filled<s.ring.size())++s.filled;
-            const float phase=s.phase;
-            const float phase2=std::fmod(phase+0.5f,1.f);
-            const float up=std::pow(2.f,(5.5f*m+(ch?0.2f:0.f))/12.f);
-            const float down=std::pow(2.f,(-4.5f*m+(ch?0.2f:0.f))/12.f);
-            // Each pair is read by two overlapping grain heads. The delays
-            // are modulated so the slopes approximate pitch ratios. The window
-            // suppresses readhead reset clicks.
-            const auto voice=[&](float ratio) noexcept -> float {
-                const auto read=[&](float position) noexcept -> float {
-                    const float delay=lag+(ratio-1.f)*grain*(1.f-position);
-                    const float window=0.5f-0.5f*std::cos(kTau*position);
-                    return window*linearRead(s.ring,s.write,delay);
+            std::array<float,3> voice{};
+            for(std::size_t k=0;k<voice.size();++k) {
+                auto& v=s.voices[k];
+                const float p=v.phase,q=p<.5f?p+.5f:p-.5f;
+                const float excursion=std::abs(ratio[k]-1.f)*grain[k];
+                const auto read=[&](float phase) noexcept {
+                    const float lag=baseLag+excursion*(ratio[k]>=1.f?1.f-phase:phase);
+                    return linearRead(s.ring,s.write,lag);
                 };
-                return read(phase)+read(phase2);
-            };
-            const float high=voice(up);
-            const float low=voice(down);
-            s.formantLow+=a*(low-s.formantLow);
-            s.formantHigh+=b*(high-s.formantHigh);
-            const float spectral=(low-s.formantLow)+(high-s.formantHigh);
-            const float conflict=std::tanh(3.0f*high*low);
-            const float transformed=std::tanh(0.33f*x+0.48f*high+
-                0.42f*low+0.16f*m*spectral+0.18f*m*conflict);
-            // Zero-initialized history needs no dry startup bypass.
-            // P019 measured atmosphere full-wet -8.386 dB after removing
-            // the dry startup shortcut. Apply 0.83 dB of wet-only makeup
-            // at full intensity, not an extra original signal.
-            const float wet=transformed*(1.f+0.10f*m*m);
+                const float w=.5f-.5f*std::cos(kTau*p);
+                const float sample=w*read(p)+(1.f-w)*read(q);
+                v.phase+=phaseStep[k];if(v.phase>=1.f)v.phase-=1.f;
+                v.low+=lowPole[k]*(sample-v.low);
+                v.high+=highPole[k]*(sample-v.high);
+                // Different spectral envelopes, not three identical copies.
+                voice[k]=k==0?.65f*sample+.35f*(v.high-v.low):
+                         k==1?.45f*sample+.55f*v.low:
+                              .45f*sample+.55f*(v.high-v.low);
+            }
+            const float high=voice[0],low=voice[1],middle=voice[2];
+            // Stereo voices pull in opposing directions; mono retains
+            // all three. Limited pairwise product makes the timbres collide.
+            const float side=channels==1?0.f:(ch==0?1.f:-1.f);
+            const float conflict=.16f*std::tanh(3.f*high*low)+
+                                 .08f*std::tanh(3.f*low*middle);
+            const float transformed=std::tanh(.33f*x+
+                (.52f+.13f*side*m)*high+(.56f-.14f*side*m)*low+
+                (.36f+.06f*side*m)*middle+m*conflict);
+            // Immediate transformed body retains the proven full-wet
+            // startup contract, without a dry bypass during ring fill.
+            const float wet=transformed*(1.f+.10f*m*m);
             if(m>0.f)io[ch][i]=m==1.f?wet:x+m*(wet-x);
             if(++s.write>=s.ring.size())s.write=0;
-            s.phase+=invRate/0.057f;
-            if(s.phase>=1.f)s.phase-=1.f;
         }
     }
 }

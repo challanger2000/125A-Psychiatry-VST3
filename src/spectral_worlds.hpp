@@ -14,10 +14,13 @@ public:
     void setAmount(float amount) noexcept;
     void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
 private:
+    struct Voice {
+        float phase=0.f,low=0.f,high=0.f;
+    };
     struct Channel {
         std::vector<float> ring;
-        std::size_t write=0,filled=0;
-        float phase=0.f,formantLow=0.f,formantHigh=0.f;
+        std::size_t write=0;
+        std::array<Voice,3> voices{};
     };
     std::array<Channel,2> state_{};
     double rate_=48000.;

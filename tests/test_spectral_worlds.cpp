@@ -120,6 +120,50 @@ int main() {
             CHECK(std::abs(x.r[n]-1.10f*std::tanh(-0.33f*0.4f))<1.e-6f);
         }
     }
+    // P026h: a single 700 Hz tone must generate three separated
+    // pitch regions. A gain-only or fixed-delay output cannot pass.
+    // Short windowed heads spread energy into nearby sidebands, so
+    // inspect peak magnitude within each distinct target region.
+    {
+        constexpr int sr=48000;
+        Stereo x{Audio(sr*2),Audio(sr*2)};
+        for(std::size_t i=0;i<x.l.size();++i)
+            x.l[i]=x.r[i]=.15f*std::sin(6.283185307179586*700.*i/sr);
+        auto dry=x;
+        psychiatry::Schizophrenia fx;fx.prepare(sr);fx.setAmount(1.f);fx.reset();
+        // Mono eliminates pan as a possible explanation of spectral change.
+        for(std::size_t i=0;i<x.l.size();i+=127) {
+            float* p[]={x.l.data()+i};
+            fx.process(p,1,std::min<std::size_t>(127,x.l.size()-i));
+        }
+        const auto peak=[&](const Audio& samples,int centre){
+            double best=0.;
+            for(int hz=centre-45;hz<=centre+45;++hz){
+                double a=0.,b=0.;
+                const double d=6.283185307179586*hz/sr;
+                const double cs=std::cos(d),sn=std::sin(d);
+                double c=1.,s=0.;
+                for(int n=sr;n<2*sr;++n){
+                    a+=samples[n]*c;b+=samples[n]*s;
+                    const double next=c*cs-s*sn;
+                    s=s*cs+c*sn;c=next;
+                }
+                best=std::max(best,2.*std::hypot(a,b)/sr);
+            }
+            return best;
+        };
+        for(int centre:{467,832,1049}) {
+            const double original=peak(dry.l,centre);
+            const double shifted=peak(x.l,centre);
+            CHECK(original<.0001&&shifted>.018);
+            std::printf("P026h SCHIZOPHRENIA band %d Hz dry %.6f wet %.6f\n",centre,original,shifted);
+        }
+        Stereo stereo=dry;
+        fx.reset();render(fx,stereo,193);
+        double lr=0.;
+        for(int n=sr;n<2*sr;++n)lr+=std::abs(stereo.l[n]-stereo.r[n]);
+        CHECK(lr/sr>.01);
+    }
     // The original frozen grain must not change during recapture.
     {
         constexpr double sr=48000.;

@@ -30,7 +30,7 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 
 ## P019 — spectral memory and PANIC oscillator fixes (CI pending)
 
-Source factory 0.9.8: SCHIZOPHRENIA processes zero-initialized history immediately instead of bypassing the effect for ~171 ms; DISSOCIATION captures independently and publishes only at a grain boundary; PANIC uses an independent, correctly wrapping tremor oscillator. New start-of-stream and frozen-grain isolation regressions, plus hard phase-cancellation bounds derived from P018. P018 remains latest verified until CI completes.
+Source factory 0.9.8: SCHIZOPHRENIA processes zero-initialized history immediately instead of bypassing the effect for ~171 ms; DISSOCIATION captures independently and publishes only at a grain boundary; PANIC uses an independent, correctly wrapping tremor oscillator. New start-of-stream and frozen-grain isolation regressions, plus hard phase-cancellation bounds derived from P018. P018 remains latest verified until CI completes. First Linux run detected full-wet rounding leakage during the new capture-isolation test; direct wet assignment corrects that. Additional real processor mono/stereo, in-place, variable-block, independent instance and restart regressions are included.
 
 ## P018 — verified phase-aligned oversampling and fixed PDC
 

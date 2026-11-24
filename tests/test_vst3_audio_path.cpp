@@ -672,6 +672,75 @@ void testWetStartup() {
         }
     }
 }
+// P019: explicit raw host buffer, mono, instance isolation and restart checks.
+void testHostIntegrity() {
+    constexpr int total=48000;
+    constexpr int maxBlock=1024;
+    const auto src=source(1);
+    const auto setup=[&](Processor& p,int channels,float amount,float therapy){
+        check(p.initialize(nullptr)==kResultOk,"P019 host init");
+        auto layout=channels==1?Vst::SpeakerArr::kMono:Vst::SpeakerArr::kStereo;
+        check(p.setBusArrangements(&layout,1,&layout,1)==kResultTrue,"P019 bus arrangement");
+        Vst::ProcessSetup st{Vst::kRealtime,Vst::kSample32,maxBlock,kRate};
+        check(p.setupProcessing(st)==kResultOk,"P019 host setup");
+        ResizableMemoryIBStream state;
+        IBStreamer writer(&state,kLittleEndian);
+        check(writer.writeInt32(kStateMagic)&&writer.writeInt32(kStateVersion),"P019 state header");
+        for(int i=0;i<9;++i)check(writer.writeFloat(amount),"P019 macro");
+        check(writer.writeFloat(therapy)&&writer.writeInt32(0),"P019 therapy");
+        state.rewind();
+        check(p.setState(&state)==kResultOk&&p.setActive(true)==kResultOk,"P019 host activate");
+    };
+    const auto block=[&](Processor& p,const Stereo& input,Stereo& output,int at,int count,int channels,bool inplace){
+        auto* l=const_cast<float*>(input.l.data())+at;
+        auto* r=const_cast<float*>(input.r.data())+at;
+        if(inplace) {
+            std::copy_n(l,count,output.l.data()+at);
+            if(channels==2)std::copy_n(r,count,output.r.data()+at);
+            l=output.l.data()+at;r=output.r.data()+at;
+        }
+        float* in[]{l,r};float* out[]{output.l.data()+at,output.r.data()+at};
+        Vst::AudioBusBuffers bi{},bo{};
+        bi.numChannels=channels;bo.numChannels=channels;bi.channelBuffers32=in;bo.channelBuffers32=out;
+        Vst::ProcessData data{};data.processMode=Vst::kRealtime;data.symbolicSampleSize=Vst::kSample32;
+        data.numSamples=count;data.numInputs=1;data.numOutputs=1;data.inputs=&bi;data.outputs=&bo;
+        check(p.process(data)==kResultOk,"P019 actual host callback");
+        for(int n=at;n<at+count;++n) {
+            check(std::isfinite(output.l[n])&&std::abs(output.l[n])<4.f,"P019 host finite left");
+            if(channels==2)check(std::isfinite(output.r[n])&&std::abs(output.r[n])<4.f,"P019 host finite right");
+        }
+    };
+    for(int channels:{1,2}) {
+        Processor a,b,isolated;
+        setup(a,channels,.85f,.25f);setup(b,channels,.85f,.25f);setup(isolated,channels,0.f,1.f);
+        Stereo outA(total),outB(total),outIso(total),other=source(4);
+        int pos=0,step=0;
+        constexpr std::array<int,5> sizes{17,127,1024,3,256};
+        while(pos<total) {
+            const int n=std::min(sizes[step++%sizes.size()],total-pos);
+            block(a,src,outA,pos,n,channels,true);
+            block(isolated,other,outIso,pos,n,channels,false);
+            pos+=n;
+        }
+        for(int n=0;n<total;n+=251)block(b,src,outB,n,std::min(251,total-n),channels,false);
+        check(outA.l==outB.l,"P019 in-place/variable-block/instance left equivalence");
+        if(channels==2)check(outA.r==outB.r,"P019 in-place/variable-block/instance right equivalence");
+        for(int n=0;n<total;++n) {
+            check(outIso.l[n]==(n>=kLatency?other.l[n-kLatency]:0.f),"P019 independent dry left");
+            if(channels==2)check(outIso.r[n]==(n>=kLatency?other.r[n-kLatency]:0.f),"P019 independent dry right");
+        }
+        check(a.setActive(false)==kResultOk&&a.setActive(true)==kResultOk,"P019 restart");
+        Stereo restart(total);
+        for(int n=0;n<total;n+=511)block(a,src,restart,n,std::min(511,total-n),channels,false);
+        check(restart.l==outB.l,"P019 deterministic restart left");
+        if(channels==2)check(restart.r==outB.r,"P019 deterministic restart right");
+        for(auto* p:{&a,&b,&isolated}) {
+            check(p->setActive(false)==kResultOk,"P019 deactivate");
+            check(p->terminate()==kResultOk,"P019 terminate");
+        }
+        std::printf("P019 HOST INTEGRITY PASS channels=%d, variable blocks, in-place, isolated instances, exact compensated dry, restart\n",channels);
+    }
+}
 void testExtendedDry() {
     Stereo x(8);
     x.l={0.f,1.e-30f,-1.e-30f,20.f,-20.f,.25f,-.25f,0.f};
@@ -765,6 +834,7 @@ int main(int argc,char** argv){
     testMultirateIntermod(exportWav?std::string(argv[1]):std::string{});
     testExtendedDry();
     testWetStartup();
+    testHostIntegrity();
     testAutomatedEndpoints();
     testPhaseAndTransients(exportWav?std::string(argv[1]):std::string{});
     int substantial=0,weak=0;

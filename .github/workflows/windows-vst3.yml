@@ -1,4 +1,4 @@
-name: P023 Windows VST3 Tail Decay Audit
+name: P024 Windows VST3 Raster CRT Audit
 
 on:
   push:
@@ -133,7 +133,7 @@ jobs:
       - name: Attach P010 actual-processor audio metrology (not a release)
         uses: actions/upload-artifact@v4
         with:
-          name: P023-Real-VST3-Tail-Metrics
+          name: P024-Real-VST3-Integrity-Metrics
           path: |
             artifacts/P010_*
             artifacts/P012_*
@@ -144,7 +144,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P023-Tail-NOT-FINAL
+          name: 125A-PSYCHIATRY-P024-CRT-NOT-FINAL
           path: plugin-package/
           if-no-files-found: error
           retention-days: 7

@@ -2,6 +2,10 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.11 — P023 (2026-11-24)
+
+- Host tail declaration corrected: 30 seconds plus latency, measured all-nine decay at 44.1/48/96 kHz. [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45307623931), [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45307623916), [GUI](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45307623955) SUCCESS. No DSP algorithm change.
+
 ## 0.9.10 — P022 (2026-11-24)
 
 - Monitor follows actual macro intensity, THERAPY, Bypass; truly static reduced-motion mode. Real bypass/restore screenshot proof 2340/240/2340.

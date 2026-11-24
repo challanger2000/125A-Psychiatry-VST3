@@ -1,5 +1,5 @@
 # 125A PSYCHIATRY — Product and DSP Specification
-Version: **concept baseline** · Updated: **2026-11-24** · Implementation: **v0.9.10, P022 verified; NOT a product release**. See [STATUS](../STATUS.md) for authoritative progress.
+Version: **concept baseline** · Updated: **2026-11-24** · Implementation: **v0.9.11, P023 verified; NOT a product release**. See [STATUS](../STATUS.md) for authoritative progress.
 
 ## Intent
 Windows x64 VST3 **insert audio effect**, not an instrument. Dark, extreme, purposeful sound design for Gothic, Darkwave, EBM, Industrial, Thriller and Horror. It should create powerful sounds from ordinary source material. Not a conventional multi-effect with theatrical labels: every knob is a **curated multi-algorithm macro**, whose processors and routing evolve together.
@@ -89,7 +89,7 @@ An aesthetic of old clinical instruments, analog measurement devices, institutio
 - Prioritize public-domain/CC0 objects, rooms and equipment; independently validate copyright, credit terms, privacy/personality rights and suitability of each item before shipping; keep an asset provenance register.
 - Avoid presenting identifiable historic patients as disposable shock imagery.
 - Image decoding/loading and animation stay off the audio thread. Provide an option to reduce motion / avoid rapid flashes. Display must not affect audio timing, quality, or processing.
-- **No images are cleared for bundling yet.**
+- **Nine original fictional grayscale scenes committed in P024; no external images or genuine historical photographs used. Runtime verification pending.**
 
 ## Quality and product acceptance
 1. Every macro must produce a **clearly distinct, immediately perceptible** effect in isolation; not a Colderator-style nearly inaudible knob.
@@ -106,7 +106,7 @@ An aesthetic of old clinical instruments, analog measurement devices, institutio
 - GitHub Actions should eventually build and test the *actual plugin*; a documentation-only green check is not a substitute for audio tests.
 - Keep product name **125A PSYCHIATRY**, English default and DE/EN GUI labels.
 - No personal names/account links in released GUI, installers or packaged metadata. Public repo hosting identity may still be visible on GitHub.
-- Latest verified checkpoint **P022 / 0.9.10**. Fixed 96-sample reported latency; neutral, bypass and dry are exact after host compensation. Realistic musical audition, final GUI and Studio Pro acceptance remain open. STATUS.md is the authoritative current build record.
+- Latest verified checkpoint **P023 / 0.9.11**. Fixed 96-sample reported latency; neutral, bypass and dry are exact after host compensation. Realistic musical audition, final GUI and Studio Pro acceptance remain open. STATUS.md is the authoritative current build record.
 
 ## External references (inspiration, not dependencies)
 Sugar Bytes Turnado; UJAM Finisher series; Devious Machines Infiltrator; Freakshow Industries; Zopke Sounds PARANORMAL; remaincalm PARANOIA; de la Mancha therapy; Wavesfactory Whispers (visual reference). Do not copy proprietary code, imagery, presets, or product identity.

@@ -28,6 +28,10 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.7**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P019 — spectral memory and PANIC oscillator fixes (CI pending)
+
+Source factory 0.9.8: SCHIZOPHRENIA processes zero-initialized history immediately instead of bypassing the effect for ~171 ms; DISSOCIATION captures independently and publishes only at a grain boundary; PANIC uses an independent, correctly wrapping tremor oscillator. New start-of-stream and frozen-grain isolation regressions, plus hard phase-cancellation bounds derived from P018. P018 remains latest verified until CI completes.
+
 ## P018 — verified phase-aligned oversampling and fixed PDC
 
 Factory **0.9.7**, tested `1cb6df8d9462c6edf4a673151dc7ca4a3203afdc`. [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639454), [official Win32 EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639417) all **SUCCESS**. 47/47 validator, 7/7 standalone DSP groups per OS, 0/120 quality flags, 54 automation endpoints, 45/45 full-wet reference cases.

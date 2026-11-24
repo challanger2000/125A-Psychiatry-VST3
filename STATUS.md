@@ -1,8 +1,14 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified gate: **P025 recorded-source QA / factory v0.9.12**, **previous nine-world technical baseline; user audition requires revision, not final or approved**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified gate: **P026h / factory v0.9.16**; P025 recorded-source QA / factory v0.9.12 is the, **previous nine-world technical baseline; user audition requires revision, not final or approved**. **Only `main`**; do not create temporary development branches.
 
-## P026 — revised sound-design baseline (not implemented)
+## Current checkpoint — P026h / v0.9.16 verified; P026i / v0.9.17 candidate
+
+P026h exact source `d1fa2c6e4f4ac360866105672ba960fa9c0deac6`: [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45447624240), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45447622118), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45447622131), [recorded-source audio](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45447622166) all SUCCESS. 47/47 validator and 7/7 standalone groups. Quality CSV: seven review flags, zero safety-level violations. Four 20% weak-onset flags (DEPRESSION bass; PANIC bass, voice, atmosphere), one 50% PANIC voice flag, two combined 50% all-nine attenuation flags (bass -13.4695 dB, drums -14.0969 dB). None concern SCHIZOPHRENIA. Do not globally boost macro curves. Combined level balance remains open. No musical approval.
+
+P026i MANIA: actual band-limited two-repeat retriggers, common stereo clock, moving resonant bandpass, existing oversampled chopper/ring/feedback; see [design and verification](docs/P026i.md). Full CI pending. No other effect algorithms, GUI, fixed latency, state or parameter IDs changed. Next DISSOCIATION after verification, then HALLUCINATION, three new worlds, and GUI.
+
+## P026 — historical revised sound-design baseline
 
 User audition of v0.9.12 confirmed several usable effects above 50%, but rejected the character of PANIC and PSYCHOSIS; DEPRESSION and SCHIZOPHRENIA require character review. Placeholder artwork and current MOTION are not accepted. No global macro-curve boost requested. [P026 sound design](docs/P026-SOUND-DESIGN.md) is the confirmed 12-world design and takes precedence over older specification text: brutal EBM/Industrial PSYCHOSIS without bitcrushing/sample-rate reduction; bitcrushing generally disfavored; cold clinical circular 12-knob GUI with central bull's-eye, THERAPY and LOSS OF CONTROL. Detailed effect topology and audible differentiation must be considered before implementation. Sound first, GUI later. Existing verified v0.9.12 remains the technical reference, not an accepted final product.
 

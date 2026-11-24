@@ -34,14 +34,16 @@ float asymClip(float x,float bias) noexcept {
 }
 }
 
-void Mania::prepare(double sr) noexcept {
+void Mania::prepare(double sr) {
     rate_=rate(sr);step_=pole(13.,rate_);
+    retrigger_.prepare(rate_);
     for(auto& s:state_)s.saturation.prepare();
     reset();
 }
 void Mania::reset() noexcept {
+    retrigger_.reset();
     for(auto& s:state_) {
-        s.phase=s.feedback=s.fast=s.slow=0.f;
+        s.feedback=0.f;
         s.saturation.reset();
         s.dryDelay.reset();
     }
@@ -49,51 +51,36 @@ void Mania::reset() noexcept {
 }
 void Mania::setAmount(float a) noexcept {amount_=norm(a);}
 void Mania::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
-    if(!valid(audio,channels))return;
-    const auto invRate=static_cast<float>(1./rate_);
-    const auto fast= pole(92.,rate_),slow=pole(4.,rate_);
+    if(!valid(audio,channels)||!retrigger_.ready())return;
     for(std::size_t i=0;i<frames;++i) {
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         const float mix=mixDelay_.process(m);
+        float level=0.f;
+        for(unsigned ch=0;ch<channels;++ch)level=std::max(level,std::abs(sane(audio[ch][i])));
+        const float oscillator=retrigger_.tick(level,m);
+        const float pulse=.5f+.5f*oscillator;
+        const float hardPulse=pulse*pulse*(3.f-2.f*pulse);
+        const float chopper=(1.f-m)*pulse+m*hardPulse;
+        const float feedback=.30f+.36f*m;
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
-            const float raw=audio[ch][i];
-            const float x=sane(raw);
-            const float delayedRaw=s.dryDelay.process(raw);
-            const float delayed=sane(delayedRaw);
-            // Onsets accelerate the restless internal clock. Unlike generic
-            // tremolo, envelope, feedback and ring sidebands interact.
-            const float level=std::abs(x);
-            s.fast+=fast*(level-s.fast);
-            s.slow+=slow*(level-s.slow);
-            const float urgency=std::clamp(4.f*(s.fast-s.slow),0.f,1.f);
-            const float hz=2.6f + 3.0f*m + 47.f*m*m + 18.f*m*urgency;
-            s.phase+=invRate*hz;
-            if(s.phase>=1.f) s.phase-=1.f;
-            const float oscillator=std::sin(kTau*s.phase);
-            const float pulse=0.5f+0.5f*oscillator;
-            const float hardPulse=pulse*pulse*(3.f-2.f*pulse);
-            const float chopper=(1.f-m)*pulse+m*hardPulse;
-            const float feedback=0.30f+0.36f*m;
-            // P013: 2x nonlinear ring/feedback excitation with anti-alias
-            // filtering before downsampling, with no bypass/Dry injection.
-            const float driven=s.saturation.process(x,[&](float up) noexcept {
+            const float raw=audio[ch][i],x=sane(raw);
+            const float delayedRaw=s.dryDelay.process(raw),delayed=sane(delayedRaw);
+            const float exc=retrigger_.excite(ch,x,m,pulse);
+            // Preserve the existing oversampled nonlinear feedback and chopper.
+            const float driven=s.saturation.process(exc,[&](float up) noexcept {
                 const float y=std::tanh((1.f+2.5f*m)*up+feedback*s.feedback);
                 s.feedback=y;
                 return y;
             });
-            const float ring=driven*(0.4f+0.6f*oscillator);
-            const float manipulated=(0.45f+0.55f*chopper)*driven+
-                 (0.22f+0.30f*m)*ring;
-            // P006: isolate level from intensity. The original MANIA
-            // generated +9..10 dB RMS rise and >0 dBFS peaks on normalized
-            // sources at 85%. Reduce gain progressively as drive rises;
-            // keep pulse/ring speed and timbral changes intact.
+            const float ring=driven*(.4f+.6f*oscillator);
+            const float manipulated=(.45f+.55f*chopper)*driven+(.22f+.30f*m)*ring;
             const float automaticGain=1.f/(1.f+2.55f*m*m);
             const float transformed=automaticGain*manipulated;
             audio[ch][i]=mix==0.f?delayedRaw:(mix==1.f?transformed:delayed+mix*(transformed-delayed));
         }
+        retrigger_.advance();
     }
 }
 

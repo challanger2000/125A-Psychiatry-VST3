@@ -2,6 +2,11 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.17 — P026i candidate (2026-11-24)
+
+- MANIA: input-reactive stereo-linked clock, real tapered two-repeat source fragment, moving resonant bandpass and retained oversampled feedback/chopper. New regression for retrigger density and replay after source stops. No fixed latency, state or ID change.
+- Isolated C++ probes passed; actual repository CI pending. P026h remains verified.
+
 ## P025 — recorded-source verification (factory 0.9.12)
 
 - [Recorded audio QA](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45312252550) SUCCESS, 180 measured rows and 72 RMS-matched A/B WAVs. Peak ≤ −1.943 dBFS; no changes to product source or bundle. Final DAW acceptance candidate remains v0.9.12.

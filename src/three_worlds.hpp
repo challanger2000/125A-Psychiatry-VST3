@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include "linear_phase_2x.hpp"
+#include "mania_retrigger.hpp"
 
 namespace psychiatry {
 
@@ -13,16 +14,18 @@ namespace psychiatry {
 
 class Mania final {
 public:
-    void prepare(double sampleRate) noexcept;
+    void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount) noexcept;
     void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
+    std::uint64_t retriggers() const noexcept {return retrigger_.events();}
 private:
     struct Channel {
-        float phase=0.f,feedback=0.f,fast=0.f,slow=0.f;
+        float feedback=0.f;
         detail::LinearPhaseOversample2x saturation{};
         detail::FixedDelay<detail::kLinearPhaseLatency> dryDelay{};
     };
+    detail::ManiaRetrigger retrigger_{};
     std::array<Channel,2> state_{};
     detail::FixedDelay<detail::kLinearPhaseLatency> mixDelay_{};
     float amount_=0.f,smoothed_=0.f,step_=0.001f;

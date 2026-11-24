@@ -109,8 +109,46 @@ void revisedWorlds() {
     std::printf("P026a PANIC events=%llu rms range %.4f..%.4f; PSYCHOSIS 55Hz %.4f H3 %.4f H5 %.4f\n",
        static_cast<unsigned long long>(p.impulses()),minRms,maxRms,fundamental,third,fifth);
 }
+// P026i: prove source replay beyond FIR latency and short filter decay,
+// and increasing capture rate rather than just faster amplitude modulation.
+void maniaRetriggerContract() {
+    for(int sr:{44100,48000,96000}) {
+        std::uint64_t previous=0;
+        for(float m:{.3f,.7f,1.f}) {
+            psychiatry::Mania f;f.prepare(sr);f.setAmount(m);f.reset();
+            Stereo tone{Audio(2*sr),Audio(2*sr)};
+            for(std::size_t i=0;i<tone.l.size();++i)
+                tone.l[i]=tone.r[i]=.3f*std::sin(6.283185307179586*117.*i/sr);
+            render(f,tone,137);
+            CHECK(tone.l==tone.r);
+            CHECK(f.retriggers()>previous);previous=f.retriggers();
+            for(float x:tone.l)CHECK(std::isfinite(x)&&std::abs(x)<1.f);
+        }
+        psychiatry::Mania f;f.prepare(sr);f.setAmount(1.f);f.reset();
+        Stereo zeros{Audio(sr),Audio(sr)};
+        render(f,zeros,127);CHECK(f.retriggers()==0);
+        for(float x:zeros.l)CHECK(x==0.f);
+        f.reset();
+        int i=0;
+        for(;i<sr&&f.retriggers()==0;++i) {
+            float x=.3f*std::sin(6.283185307179586*117.*i/sr);
+            float* mono[]{&x};f.process(mono,1,1);
+        }
+        CHECK(f.retriggers()==1);
+        double sum=0.;
+        for(int n=0;n<sr/20;++n) {
+            float x=0.f;float* mono[]{&x};f.process(mono,1,1);
+            if(n>=sr*15/1000&&n<sr*22/1000)sum+=x*x;
+        }
+        const double rms=std::sqrt(sum/(sr*.007));
+        CHECK(rms>.003); // replay remains after input has gone silent
+        std::printf("P026i MANIA %d Hz: full events=%llu, repeat RMS %.6f\n",
+          sr,static_cast<unsigned long long>(previous),rms);
+    }
+}
 int main() {
     revisedWorlds();
+    maniaRetriggerContract();
     psychiatry::Mania mania;
     psychiatry::Panic panic;
     psychiatry::Psychosis psychosis;

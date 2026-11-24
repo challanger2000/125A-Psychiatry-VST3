@@ -1,0 +1,131 @@
+{
+  "status": "draft for owner review; not active",
+  "canvas": {
+    "width": 1280,
+    "height": 960
+  },
+  "zoom": [
+    50,
+    75,
+    100,
+    125,
+    150,
+    200
+  ],
+  "observation": {
+    "cx": 640,
+    "cy": 460,
+    "outerDiameter": 480,
+    "openingDiameter": 420
+  },
+  "macroDiameter": 100,
+  "macros": [
+    {
+      "name": "DEPRESSION",
+      "id": 100,
+      "x": 640,
+      "y": 145,
+      "upper": true
+    },
+    {
+      "name": "PARANOIA",
+      "id": 101,
+      "x": 798,
+      "y": 187,
+      "upper": true
+    },
+    {
+      "name": "SCHIZOPHRENIA",
+      "id": 102,
+      "x": 913,
+      "y": 303,
+      "upper": true
+    },
+    {
+      "name": "MANIA",
+      "id": 103,
+      "x": 955,
+      "y": 460,
+      "upper": false
+    },
+    {
+      "name": "PANIC",
+      "id": 104,
+      "x": 913,
+      "y": 618,
+      "upper": false
+    },
+    {
+      "name": "DISSOCIATION",
+      "id": 105,
+      "x": 798,
+      "y": 733,
+      "upper": false
+    },
+    {
+      "name": "OBSESSION",
+      "id": 106,
+      "x": 640,
+      "y": 775,
+      "upper": false
+    },
+    {
+      "name": "HALLUCINATION",
+      "id": 107,
+      "x": 483,
+      "y": 733,
+      "upper": false
+    },
+    {
+      "name": "PSYCHOSIS",
+      "id": 108,
+      "x": 367,
+      "y": 618,
+      "upper": false
+    },
+    {
+      "name": "DELIRIUM",
+      "id": 109,
+      "x": 325,
+      "y": 460,
+      "upper": false
+    },
+    {
+      "name": "CATATONIA",
+      "id": 110,
+      "x": 367,
+      "y": 303,
+      "upper": true
+    },
+    {
+      "name": "AMNESIA",
+      "id": 111,
+      "x": 482,
+      "y": 187,
+      "upper": true
+    }
+  ],
+  "therapy": {
+    "cx": 330,
+    "cy": 853,
+    "diameter": 120
+  },
+  "lossOfControl": {
+    "x": 890,
+    "y": 800,
+    "w": 220,
+    "h": 58
+  },
+  "fan": {
+    "cx": 1177,
+    "cy": 89,
+    "diameter": 126
+  },
+  "brand": {
+    "x": 36,
+    "y": 26,
+    "w": 220,
+    "h": 82
+  },
+  "notes": "The XML uses rectangular stand-ins for the circular window and fan. SVG shows intended circular geometry. No final art or zoom implementation."
+}

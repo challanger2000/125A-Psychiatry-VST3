@@ -1,12 +1,16 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified four-workflow and controller checkpoint: **P027f / v0.9.24**. Current test-only candidate: P027g. Final GUI deferred. **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified functional baseline: **P027g / v0.9.24**. Current GUI design draft: P028a (not integrated). **Only `main`**; no final or musical approval.
 
-## Current candidate — P027g integrated functionality gate (factory v0.9.24 unchanged)
+## Current task — P028a layout review
+
+See [geometry draft](docs/gui-layout/README.md). P027g passed all four workflows; functional baseline frozen. No production changes. Owner review of exact geometry before art.
+
+## Verified P027g integrated functionality gate (factory v0.9.24 unchanged)
 
 P027f exact source `88254962264c1d361f4b09a8e631f114e5ceeb75`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45479875147), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45479875048), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45479875182), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45479875053) all SUCCESS. Twelve-world monitor regression and provisional mapping verified by their existing gates; unique final images and twelve physical controls not yet integrated.
 
-P027g adds actual controller -> IComponentHandler edits -> SDK host parameter queues -> actual Processor::process -> saved component/UI state -> new processor/controller -> bit-exact restarted audio. Start from 12 active worlds; assert explicit zeros, real live audio change, preserved THERAPY/bypass/language/motion, exact restored values (float state precision), non-silent matching audio after reset. No production or graphical changes. New CI pending. If green, functional baseline is frozen for the approved P027 final GUI implementation; do not keep adding unrelated audit-only phases or change DSP without specific evidence. Musical and final Studio Pro acceptance remain unverified.
+P027g adds actual controller -> IComponentHandler edits -> SDK host parameter queues -> actual Processor::process -> saved component/UI state -> new processor/controller -> bit-exact restarted audio. Start from 12 active worlds; assert explicit zeros, real live audio change, preserved THERAPY/bypass/language/motion, exact restored values (float state precision), non-silent matching audio after reset. No production or graphical changes. All four workflows passed. Functional baseline is frozen for the approved P027 final GUI implementation; do not keep adding unrelated audit-only phases or change DSP without specific evidence. Musical and final Studio Pro acceptance remain unverified.
 
 ## Historical candidate — P027f / v0.9.24 twelve-world image state
 

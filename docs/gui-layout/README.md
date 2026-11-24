@@ -1,0 +1,7 @@
+# P028a — geometry review draft
+
+P027g source `fb416405fedc29e47de7a9ee78dc2b786ecd8afe` passed all four workflows: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45482658707), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45482658731), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45482658749), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45482658775). Functional baseline frozen at v0.9.24. No final DAW or musical approval.
+
+Owner requests step-by-step visual review. Create editable VSTGUI geometry draft and matching SVG preview before faceplate generation. Draft is deliberately not compiled or installed; existing plugin and DSP untouched. The XML's circular elements are rectangular placeholders. Logical size 1280×960; 12 identical 100 px macro controls on radius 315 around (640,460), window outer Ø480, inner Ø420. This is smaller than aspirational 60–65% width to keep actual clock positions clear. THERAPY Ø120; fan upper right; logo upper left. Zoom steps 50/75/100/125/150/200 proposed, not implemented. No artwork placement or final textures until owner approves geometry. Previous generated faceplate not accepted for geometry. Transfer binary artwork by correctly structured ZIP if direct upload unavailable. No new CI needed to assess this non-runtime draft.
+
+Files: psychiatry-layout-draft.uidesc, geometry.svg, geometry.json.

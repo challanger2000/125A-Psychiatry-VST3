@@ -1,0 +1,44 @@
+[
+  {
+    "path": "sound-library/originals/breath/HMNBrth_FemaleBreathing_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/HMNBrth_FemaleBreathing_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "328f743b1a7388403f7d84e46fad1c6328370246",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/breath/HMNBrth_MaleBreathing_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/HMNBrth_MaleBreathing_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "4ff6476254c5283919ed3f4b86fe4c64302a33c4",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/creaks/WOODFric_CreaksCreepy_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/WOODFric_CreaksCreepy_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "6eb2c2d7a6421d78a4f8e288273523fcbc482578",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/doors/DOORKnck_OfficeDoorKnock_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/DOORKnck_OfficeDoorKnock_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "34c964594cf5e3121bdf04b26041abcde22f1f78",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/whispers/VOXWhsp_WhispersCreepy_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/VOXWhsp_WhispersCreepy_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "f65de84e0f0c9146093241b003e4771750c6aa27",
+    "license": "CC-BY-4.0"
+  },
+  {
+    "path": "sound-library/originals/whispers/VOXWhsp_WhispersCreepyReverb_OS_01.ogg",
+    "source_path": "corpora/oculus-audio-pack/ogg/VOXWhsp_WhispersCreepyReverb_OS_01.ogg",
+    "source_commit": "514c926efecdb3c7812bf00eedf8e5c8d61dd681",
+    "git_blob_sha1": "2f755ad5984853b420ee66258aa7e3eec8019fdc",
+    "license": "CC-BY-4.0"
+  }
+]

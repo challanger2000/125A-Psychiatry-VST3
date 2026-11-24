@@ -11,3 +11,6 @@ Additional CC0 candidates (not downloaded; network blocked):
 - metal footsteps: https://opengameart.org/content/metal-footsteps-on-concrete
 
 Verify source rights and content before adoption. No NC/ND or ambiguous royalty-free libraries. No real patient recordings. Prefer atonal, varied recordings; no recognizable music. PARANOIA: whispers, knocks, steps; HALLUCINATION/SCHIZOPHRENIA: fragmented voices; PANIC: breath/metal; DEPRESSION/CATATONIA: drone; MANIA/OBSESSION: mechanisms; remaining worlds as musically warranted. PSYCHOSIS distortion-first. Input-reactive layers controlled by same macro, no extra controls; no autonomous sound on silence, exact 0% and THERAPY dry, bounded tails, no realtime allocations or external dependencies.
+
+## Verified inventory
+23 actual OGG files, 2408594 bytes, all manifest hashes match the committed Git blobs. The machine-room recording AMBInd_RoomToneMachineRoom_LOOP_01 was not imported: the connector's binary source check failed; omit until verified. Other machinery and underwater ambience are present. No decoded PCM or human listening test performed. The above CC0 candidates remain links only. Original sources are stored unchanged and not in the VST3 build. Clock recordings can be used for OBSESSION/MANIA; underwater ambience for DISSOCIATION/DELIRIUM; glass/metal accents for PANIC. All assignments remain candidates.

@@ -28,6 +28,10 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.7**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P020 — OBSESSION frozen-loop correction (candidate; local regression passed)
+
+P020 source now captures a complete valid grain, latches its length and repeat count, bounds its lifetime to the enlarged preallocated history, scales fades by sample rate and fades only the wet loop (no live dry leakage at 100%). Local C++17 test passed immutable full-wet capture at 44.1/48/96 kHz, block-size equivalence and all five synthetic proxy source gain ranges; actual VST3 tests added. **No final build claim; P019 CI is allowed to complete before P020 is triggered.**
+
 ## P019 — spectral memory and PANIC oscillator fixes (CI pending)
 
 Source factory 0.9.8: SCHIZOPHRENIA processes zero-initialized history immediately instead of bypassing the effect for ~171 ms; DISSOCIATION captures independently and publishes only at a grain boundary; PANIC uses an independent, correctly wrapping tremor oscillator. New start-of-stream and frozen-grain isolation regressions, plus hard phase-cancellation bounds derived from P018. P018 remains latest verified until CI completes. First Linux run detected full-wet rounding leakage during the new capture-isolation test; direct wet assignment corrects that. Additional real processor mono/stereo, in-place, variable-block, independent instance and restart regressions passed in run 45296592022; that run failed the unchanged full-wet level gate on atmosphere SCHIZOPHRENIA (-8.386 dB). A smooth +0.828 dB full-wet makeup is now added and the original guard retained. Corrected full run pending.

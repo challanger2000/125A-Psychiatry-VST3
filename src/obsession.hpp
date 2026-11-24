@@ -18,9 +18,10 @@ private:
     struct Sample {float l=0.f,r=0.f;};
     std::vector<Sample> history_;
     std::size_t cursor_=0, filled_=0, start_=0, phase_=0, loopLength_=1;
-    unsigned repeats_=0;
+    unsigned repeats_=0,repeatsPerCapture_=2;
+    bool captured_=false;
     std::uint64_t retriggers_=0;
     double rate_=48000.;
-    float target_=0.f, smoothed_=0.f, step_=0.001f, reducer_=0.f;
+    float target_=0.f, smoothed_=0.f, step_=0.001f;
 };
 } // namespace psychiatry

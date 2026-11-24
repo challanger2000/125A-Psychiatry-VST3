@@ -92,6 +92,35 @@ int main() {
         run(fx,l,r,19);
         CHECK(fx.retriggers()>5 && "loop engine must actually retrigger");
     }
+    // P020: startup and loop edges are genuinely full wet. Subsequent
+    // changes in live input cannot alter the already captured repeat group.
+    for(double sr:{44100.,48000.,96000.}) {
+        const auto grain=static_cast<std::size_t>(sr*(.275-.257));
+        const auto total=grain*5;
+        psychiatry::Obsession a,b;
+        a.prepare(sr);b.prepare(sr);a.setAmount(1.f);b.setAmount(1.f);a.reset();b.reset();
+        std::vector<float> l(total,.3f),r=l,x=l,y=r;
+        for(std::size_t n=grain;n<total;++n)x[n]=y[n]=-.3f;
+        run(a,l,r,17);run(b,x,y,509);
+        CHECK(l==x && r==y && "live input leaked into wet-only captured loop");
+        CHECK(l.front()==0.f && *std::max_element(l.begin(),l.end())>.1f);
+        CHECK(*std::min_element(l.begin(),l.end())>=0.f);
+    }
+    // At intermediate macro the captured loop survives beyond the OLD
+    // 0.7-second ring capacity. Subtract only the known parallel dry term.
+    {
+        constexpr double sr=48000.;
+        constexpr float m=.30f,wet=m*(.48f+.52f*m);
+        const auto grain=static_cast<std::size_t>(sr*(.275-.257*std::sqrt(m)));
+        const auto total=grain*5;
+        psychiatry::Obsession a,b;
+        a.prepare(sr);b.prepare(sr);a.setAmount(m);b.setAmount(m);a.reset();b.reset();
+        std::vector<float> l(total,.3f),r=l,x=l,y=r;
+        for(std::size_t n=grain;n<total;++n)x[n]=y[n]=-.3f;
+        run(a,l,r,127);run(b,x,y,251);
+        for(std::size_t n=grain;n<total;++n)
+            CHECK(std::abs((l[n]-(1.f-wet)*.3f)-(x[n]+(1.f-wet)*.3f))<2.e-7f);
+    }
     // invalid input and high rate safety.
     for(const auto rate : {44100.0,96000.0,192000.0}) {
         psychiatry::Depression a; psychiatry::Obsession b;

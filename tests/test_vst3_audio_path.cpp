@@ -660,6 +660,24 @@ void testPhaseAndTransients(const std::string& dir) {
         }
     }
 }
+void testObsessionWetLoop() {
+    for(int sr:{44100,48000,96000}) {
+        const auto grain=static_cast<std::size_t>(sr*(.275-.257));
+        Stereo input(grain*5);
+        std::fill(input.l.begin(),input.l.end(),.3f);
+        std::fill(input.r.begin(),input.r.end(),-.3f);
+        Stereo changed=input;
+        for(std::size_t n=grain;n<input.size();++n) {
+            changed.l[n]=-.3f;changed.r[n]=.3f;
+        }
+        const auto a=render(input,6,1.f,0.f,false,false,sr);
+        const auto b=render(changed,6,1.f,0.f,false,false,sr);
+        check(identical(a,b),"P020 live input leaked into full wet frozen loop");
+        check(*std::max_element(a.l.begin(),a.l.end())>.1f &&
+              *std::min_element(a.l.begin(),a.l.end())>=0.f,
+              "P020 captured loop not replaying");
+    }
+}
 void testWetStartup() {
     for(int sr:{44100,48000,96000}) {
         Stereo x(64);
@@ -834,6 +852,7 @@ int main(int argc,char** argv){
     testMultirateIntermod(exportWav?std::string(argv[1]):std::string{});
     testExtendedDry();
     testWetStartup();
+    testObsessionWetLoop();
     testHostIntegrity();
     testAutomatedEndpoints();
     testPhaseAndTransients(exportWav?std::string(argv[1]):std::string{});

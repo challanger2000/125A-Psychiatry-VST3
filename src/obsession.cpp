@@ -68,7 +68,10 @@ void Obsession::process(float* const* channels,unsigned count,std::size_t frames
                 colour_.r+=alpha*(sample.r-colour_.r);
                 const float blend=.80f*wear;
                 const float drive=1.f+.50f*m+.60f*wear;
-                const float gain=(1.f-.06f*m*m)*fade;
+                // P026f: retain the nonlinear transfer and spectral wear, but
+                // trim wet-only replay gain at high settings. The fixed
+                // 0.82 factor at full amount is -1.72 dB relative to P026e.
+                const float gain=(1.f-.06f*m*m)*(1.f-.18f*m*m)*fade;
                 const auto shape=[&](float x,float filtered) noexcept {
                     const float coloured=x+blend*(filtered-x);
                     return gain*std::tanh(drive*coloured);

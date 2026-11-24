@@ -20,6 +20,11 @@ User audition of v0.9.12 confirmed several usable effects above 50%, but rejecte
 - All Windows Actions artefacts are temporary engineering packages, not release installers.
 
 
+
+## P026f — OBSESSION percussion gain correction (v0.9.14, pending verification)
+
+P026e exact source 62035ceec9eb99a9d4477f3bcf27f2384a84b575: [Windows/Linux DSP PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45436494194), [EditorHost PASS](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45436493940), [actual Windows VST3 FAIL](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45436494016). Steinberg validator 47/47 and legacy state passed, as did the earlier audio-path gates; the full-wet P011 level guard failed on drums at +6.789 dB (limit +6 dB). Apply a continuous wet-only trim of 0.82 at 100% (-1.724 dB relative to P026e; predicted drum gain +5.065 dB, not yet measured). Preserve capture, filter, nonlinear transfer and fade. Add the exact P010 sparse percussion fixture to standalone OBSESSION regression; no thresholds weakened. Re-run Windows actual VST3 and recorded-source export. Latest fully verified checkpoint remains P026d/v0.9.13; no musical acceptance claimed.
+
 ## P026e — OBSESSION continuous timbral wear / v0.9.14 candidate
 
 Remove the old repeat-dependent 6–16-bit quantizer. Preserve immutable capture, grain length, repeat count, fades and neutral/fully wet semantics. The replacement is a repeat-dependent one-pole lowpass (6200 Hz towards ~713 Hz as wear approaches one), gradual blend up to 80%, continuous tanh shaping and bounded gain. The intent is compulsively repeated material that becomes increasingly muffled and strained, not bitcrushed. No change to other engines, GUI, latency or state. Tests retain frozen-grain controls and add high/low spectral-bin ratio at early vs late repeat plus low-level amplitude scaling. These are objective proxies, not musical acceptance. No tests executed on P026e yet.

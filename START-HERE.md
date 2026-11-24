@@ -17,3 +17,5 @@ P026c candidate: PARANOIA acoustic layer uses six pinned recordings embedded by 
 P026d: P026c Linux decoded all six files and passed 7/7 DSP tests. Windows build failed on interpreter mismatch; CI now pins and passes the exact decoder-equipped Python. Inspect new Actions results before further DSP edits. No final approval.
 
 P026d is now a verified technical checkpoint (v0.9.13, all four CI workflows successful; see STATUS). P026e v0.9.14 candidate replaces OBSESSION bit reduction with progressive filtered/saturated replay; preserve frozen capture and verify new test results. Remaining work: DEPRESSION, SCHIZOPHRENIA, MANIA, DISSOCIATION, HALLUCINATION and three new worlds, then circular GUI. No user audition yet.
+
+P026f: P026e DSP/EditorHost passed, Windows audio gain guard failed for drums at +6.789 dB. Corrected wet-only replay gain and added a percussion regression. Verify P026f CI before further DSP changes. Last fully verified v0.9.13.

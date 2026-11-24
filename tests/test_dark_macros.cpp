@@ -163,6 +163,39 @@ int main() {
         const float a=renderQuiet(1.e-5f),b=renderQuiet(2.e-5f);
         CHECK(a>1.e-6f&&std::abs(b/a-2.f)<.005f);
     }
+    // P026f: sparse percussion fixture from the actual-VST3 P010
+    // regression, tested earlier in standalone DSP to catch excess replay
+    // energy. Existing host-level -8/+6 dB guard remains unchanged.
+    {
+        constexpr double sr=48000.;
+        constexpr int frames=60000;
+        std::vector<float> l(frames),r(frames);
+        std::uint32_t seed=0x125AF91Du;
+        for(int i=0;i<frames;++i){
+            const double t=static_cast<double>(i)/sr;
+            seed^=seed<<13;seed^=seed>>17;seed^=seed<<5;
+            const float noise=static_cast<float>(seed&0xffffu)/32768.f-1.f;
+            const int k=i%12000,n=i%24000;
+            const auto tone=[t](double hz){return static_cast<float>(std::sin(6.28318530717958647692*hz*t));};
+            const float kick=k<3200 ? .64f*std::exp(-static_cast<float>(k)/640.f)*
+                       tone(75.+60.*std::exp(-static_cast<double>(k)/460.)):0.f;
+            const float sn=n>12000&&n<14500?
+                       .35f*std::exp(-static_cast<float>(n-12000)/460.f)*noise:0.f;
+            const float hat=k%3000<360 ? .12f*std::exp(-static_cast<float>(k%3000)/100.f)*noise:0.f;
+            l[i]=kick+sn+hat;r[i]=.94f*kick+.81f*sn-.9f*hat;
+        }
+        auto energy=[](const auto& a,const auto& b){
+            double s=0.;for(std::size_t i=0;i<a.size();++i)
+                s+=static_cast<double>(a[i])*a[i]+static_cast<double>(b[i])*b[i];
+            return s;
+        };
+        const double dry=energy(l,r);
+        psychiatry::Obsession fx;fx.prepare(sr);fx.setAmount(1.f);fx.reset();
+        run(fx,l,r,127);
+        const double db=10.*std::log10(energy(l,r)/dry);
+        CHECK(db>=-8.&&db<=6.);
+        std::printf("P026f OBSESSION percussion gain %+.4f dB\n",db);
+    }
     // invalid input and high rate safety.
     for(const auto rate : {44100.0,96000.0,192000.0}) {
         psychiatry::Depression a; psychiatry::Obsession b;

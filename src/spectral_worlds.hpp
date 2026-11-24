@@ -2,6 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <vector>
+#include "dissociation_grains.hpp"
 
 namespace psychiatry {
 // P005 prototypes. Signal-derived FX only. Individual state and memory per instance.
@@ -34,13 +35,7 @@ public:
     void setAmount(float amount) noexcept;
     void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
 private:
-    struct Channel {
-        std::vector<float> frozen, recording;
-        std::size_t capture=0,play=0,untilCapture=0;
-        float blur=0.f,low=0.f,high=0.f;
-        bool ready=false, recordingReady=false;
-    };
-    std::array<Channel,2> state_{};
+    detail::DissociationGrains grains_{};
     double rate_=48000.;
     float amount_=0.f,smoothed_=0.f,step_=0.001f;
 };

@@ -2,6 +2,12 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.18 — P026j candidate (2026-11-24)
+
+- DISSOCIATION: continuous overlapping causal forward/reverse grains, independent stereo source schedules, short diffusion; replaces static reverse loop.
+- New causal immutable-grain, continuous-overlap, recapture, silence and tail regressions. Previous fixed-loop assertion intentionally superseded by the approved flowing-grain behavior.
+- Recorded-source workflow now watches all src/ files (MANIA's earlier recorded test did not run). Full validation pending.
+
 ## 0.9.17 — P026i candidate (2026-11-24)
 
 - MANIA: input-reactive stereo-linked clock, real tapered two-repeat source fragment, moving resonant bandpass and retained oversampled feedback/chopper. New regression for retrigger density and replay after source stops. No fixed latency, state or ID change.

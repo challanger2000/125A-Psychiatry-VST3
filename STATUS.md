@@ -1,8 +1,14 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified gate: **P026h / factory v0.9.16**; P025 recorded-source QA / factory v0.9.12 is the, **previous nine-world technical baseline; user audition requires revision, not final or approved**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest three-workflow technical checkpoint: **P026i / factory v0.9.17**; latest four-workflow checkpoint: **P026h / v0.9.16**; P025 recorded-source QA / factory v0.9.12 is the, **previous nine-world technical baseline; user audition requires revision, not final or approved**. **Only `main`**; do not create temporary development branches.
 
-## Current checkpoint — P026h / v0.9.16 verified; P026i / v0.9.17 candidate
+## Current checkpoint — P026i / v0.9.17 verified in three workflows; P026j / v0.9.18 candidate
+
+P026i source `02a91c5fa837e816c99b83fe80a155978673f6d3`: [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45457364438), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45457364257), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45457364319) SUCCESS. Recorded audio workflow did not trigger because the path filter omitted three_worlds; not verified for this SHA. Correct filter to src/** so all DSP updates run it. Do not call v0.9.17 a four-workflow pass.
+
+P026j DISSOCIATION candidate: two overlapping immutable forward/reverse grains, varied causal history offsets, stereo decorrelation and two short diffusion allpasses. No permanent static freeze or hard grain gaps. [Design and tests](docs/P026j.md). All four CI workflows and musical acceptance pending. Next HALLUCINATION, then DELIRIUM, CATATONIA, AMNESIA and finally GUI.
+
+## Historical checkpoint — P026h / v0.9.16 verified; P026i / v0.9.17 candidate
 
 P026h exact source `d1fa2c6e4f4ac360866105672ba960fa9c0deac6`: [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45447624240), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45447622118), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45447622131), [recorded-source audio](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45447622166) all SUCCESS. 47/47 validator and 7/7 standalone groups. Quality CSV: seven review flags, zero safety-level violations. Four 20% weak-onset flags (DEPRESSION bass; PANIC bass, voice, atmosphere), one 50% PANIC voice flag, two combined 50% all-nine attenuation flags (bass -13.4695 dB, drums -14.0969 dB). None concern SCHIZOPHRENIA. Do not globally boost macro curves. Combined level balance remains open. No musical approval.
 

@@ -164,18 +164,46 @@ int main() {
         for(int n=sr;n<2*sr;++n)lr+=std::abs(stereo.l[n]-stereo.r[n]);
         CHECK(lr/sr>.01);
     }
-    // The original frozen grain must not change during recapture.
-    {
-        constexpr double sr=48000.;
-        const auto grain=static_cast<std::size_t>(sr*.112);
-        const auto wait=static_cast<std::size_t>(sr*.15);
-        const auto total=grain+wait+grain/2;
+    // P026j: launched grains remain immutable while fresh material arrives.
+    // Unlike the old frozen-loop contract, new material MUST enter at
+    // later launches. Two independent signal paths test both conditions.
+    for(int sr:{44100,48000,96000}) {
+        const auto hop=static_cast<std::size_t>(std::round(sr*.048));
+        const auto change=hop*12+1,total=hop*24;
         psychiatry::Dissociation a,b;
         a.prepare(sr);b.prepare(sr);a.setAmount(1.f);b.setAmount(1.f);a.reset();b.reset();
         Stereo x{Audio(total,.3f),Audio(total,.3f)},y=x;
-        for(std::size_t n=grain+wait;n<total;++n)y.l[n]=y.r[n]=-.3f;
+        for(std::size_t n=change;n<total;++n)y.l[n]=y.r[n]=-.3f;
         render(a,x,137);render(b,y,509);
-        CHECK(x.l==y.l && x.r==y.r && "recapture leaked into active frozen grain");
+        for(std::size_t n=0;n<13*hop;++n) {
+            CHECK(x.l[n]==y.l[n]&&x.r[n]==y.r[n]);
+        }
+        // Constant input after fill: complementary windows leave no gaps,
+        // allpasses settle to unity DC; no fixed repeated silent interval.
+        for(std::size_t n=16*hop;n<total;++n) {
+            CHECK(x.l[n]>.30f&&x.l[n]<.65f);
+            CHECK(x.r[n]>.30f&&x.r[n]<.65f);
+        }
+        CHECK(y.l.back()<-.30f&&y.r.back()<-.30f);
+        a.reset();
+        Stereo zero{Audio(total),Audio(total)};render(a,zero,193);
+        for(float v:zero.l)CHECK(v==0.f);
+        for(float v:zero.r)CHECK(v==0.f);
+        // An isolated impulse must be causally dispersed, then die away.
+        a.reset();
+        Stereo impulse{Audio(total),Audio(total)};
+        impulse.l[hop]=impulse.r[hop]=.5f;
+        render(a,impulse,71);
+        double energy=0.,difference=0.;
+        for(std::size_t n=0;n<total;++n) {
+            if(n<hop)CHECK(impulse.l[n]==0.f&&impulse.r[n]==0.f);
+            energy+=impulse.l[n]*impulse.l[n]+impulse.r[n]*impulse.r[n];
+            difference+=std::abs(impulse.l[n]-impulse.r[n]);
+        }
+        CHECK(energy>1.e-5&&difference>1.e-3);
+        for(std::size_t n=total-hop;n<total;++n)
+            CHECK(std::abs(impulse.l[n])<1.e-5f&&std::abs(impulse.r[n])<1.e-5f);
+        std::printf("P026j DISSOCIATION %d Hz: continuous OLA, immutable heads, new capture, impulse energy %.6f\n",sr,energy);
     }
     // Explicit invalid-sample rejection during nonzero effect.
     {

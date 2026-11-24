@@ -116,74 +116,26 @@ void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frame
 }
 
 void Dissociation::prepare(double sr) {
-    rate_=saneRate(sr);
-    step_=coeff(14.,rate_);
-    for(auto& s:state_) {
-        const auto size=std::max<std::size_t>(64,static_cast<std::size_t>(rate_*0.112));
-        s.frozen.assign(size,0.f);s.recording.assign(size,0.f);
-    }
-    reset();
+    rate_=saneRate(sr);step_=coeff(14.,rate_);
+    grains_.prepare(rate_);reset();
 }
 void Dissociation::reset() noexcept {
-    for(auto& s:state_) {
-        std::fill(s.frozen.begin(),s.frozen.end(),0.f);
-        std::fill(s.recording.begin(),s.recording.end(),0.f);
-        s.capture=s.play=s.untilCapture=0;
-        s.blur=s.low=s.high=0.f;
-        s.ready=false;s.recordingReady=false;
-    }
-    smoothed_=amount_;
+    grains_.reset();smoothed_=amount_;
 }
 void Dissociation::setAmount(float v) noexcept {amount_=norm(v);}
 void Dissociation::process(float* const* io,unsigned channels,std::size_t frames) noexcept {
-    if(!valid(io,channels)||state_[0].frozen.empty())return;
-    const float a=coeff(280.,rate_),b=coeff(1650.,rate_);
+    if(!valid(io,channels)||!grains_.ready())return;
     for(std::size_t i=0;i<frames;++i) {
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
+        grains_.beginFrame(m,channels);
+        const float w=grains_.weight();
         for(unsigned ch=0;ch<channels;++ch) {
-            auto& s=state_[ch];
             const float raw=io[ch][i],x=sane(raw);
-            const auto size=s.frozen.size();
-            // Capture into separate preallocated storage. Publish only at
-            // a replay boundary. vector::swap is constant-time.
-            if(s.recordingReady && (!s.ready || s.play==0)) {
-                s.frozen.swap(s.recording);
-                s.recordingReady=false;s.ready=true;s.capture=0;s.play=0;
-                s.untilCapture=static_cast<std::size_t>(
-                    rate_*(0.35-0.20*m)) + (ch?size/5:0);
-            }
-            if(!s.recordingReady) {
-                if(s.untilCapture==0 || !s.ready) {
-                    s.recording[s.capture++]=x;
-                    if(s.capture==size)s.recordingReady=true;
-                } else --s.untilCapture;
-            }
-            float backwards=0.f;
-            float window=0.f;
-            if(s.ready) {
-                // Play backwards, but fade 2ms at grain boundaries.
-                const auto idx=size-1-s.play;
-                backwards=s.frozen[idx];
-                const float ramp=std::max(1.f,static_cast<float>(rate_*0.003));
-                window=std::min({1.f,static_cast<float>(s.play)/ramp,
-                    static_cast<float>(size-s.play)/ramp});
-                if(++s.play>=size)s.play=0;
-            }
-            s.low+=a*(backwards-s.low);
-            s.high+=b*(backwards-s.high);
-            const float spectralBlur=0.58f*s.low+0.32f*(s.high-s.low);
-            s.blur+=(0.012f+0.014f*(1.f-m))*(spectralBlur-s.blur);
-            const float displaced=0.48f*window*backwards+
-                0.50f*s.blur+0.16f*(s.high-s.low);
-            // P011: recovered/reversed grains are attenuated by windowing,
-            // smoothing, and destructive source-correlation. Restore useful
-            // full-wet output energy WITHOUT reintroducing the dry input:
-            // makeup multiplies only the transformed time-displaced branch.
-            // Unity at 0%; smooth +~5.1 dB at 100%. Not a limiter/AGC.
-            const float makeup=1.f+0.80f*m*m;
-            if(m>0.f) io[ch][i]=m==1.f?makeup*displaced:x+m*(makeup*displaced-x);
+            const float wet=grains_.processChannel(ch,x,m,w);
+            if(m>0.f)io[ch][i]=m==1.f?wet:x+m*(wet-x);
         }
+        grains_.endFrame();
     }
 }
 

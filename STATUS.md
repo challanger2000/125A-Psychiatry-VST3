@@ -1,15 +1,15 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified gate: **P018 phase-aligned oversampling and PDC / factory v0.9.7**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
+Updated: **2026-11-24**. Latest verified gate: **P019 engine integrity / factory v0.9.8**, **NOT a product release**. **Only `main`**; do not create temporary development branches.
 
 ## Latest verified build and fixed references
 
-- **Source commit tested:** `1cb6df8d9462c6edf4a673151dc7ca4a3203afdc` on **main** (P018, factory v0.9.7).
-- **Windows/MSVC x64 real VST3 workflow:** [run 45295639573](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573), **SUCCESS**.
+- **Source commit tested:** `b005ed084f674e2b0430867d28bc139e75f87f44` on **main** (P019, factory v0.9.8).
+- **Windows/MSVC x64 real VST3 workflow:** [run 45297895778](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895778), **SUCCESS**.
   - Steinberg VST3 SDK 3.8.1 validator: **47/47 PASS, 0 FAIL**.
   - Actual VST3 processor/controller state regression: **1/1 PASS** (historical state v1, v2, v3, v4, plus NaN, truncation and future-version rejection). **Not a DAW project reopen test**.
-  - [P018 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639573/artifacts/14875973051): `125A-PSYCHIATRY-P018-Phase-Aligned-NOT-FINAL` (7-day retention, expires 2026-11-30).
-- **Windows + Linux standalone audio workflow:** [run 45295639454](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45295639454), **SUCCESS**.
+  - [P019 Windows VST3 bundle artifact](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895778/artifacts/14877541843): `125A-PSYCHIATRY-P019-Engine-Integrity-NOT-FINAL` (7-day retention, expires 2026-11-30).
+- **Windows + Linux standalone audio workflow:** [run 45297895678](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895678), **SUCCESS**.
   - **7/7 CTest groups passed on each platform**. Includes all nine concurrent DSP engines and callback no-heap allocation test, plus precomputed Hilbert tap coefficient regression.
   - **P006 objective quality audit:** 120 sound/source/intensity cases, **0 review flags, 0 safety-level violations** after addressing measured issues. **P010 adds a separate 180-case test of the actual VST3 processor, not merely standalone DSP**.
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
@@ -25,16 +25,16 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 `createView(kEditor)` now constructs `VSTGUI::VST3Editor`, rather than returning null and falling back to host generic controls.
 - **Official Steinberg EditorHost GUI interaction PASSED:** [run 45269301923](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923). An actual Win32 GUI was created, a mouse click on LOSS OF CONTROL changed nine effect values and the CRT image (482 sampled pixels differed, RGB delta 81,702), and the subsequent DE language switch retained a working editor. [Three run screenshots](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45269301923/artifacts/14864592486) were visually inspected. **This is still not Studio Pro or an audio listening test.**
 - Stereo/mono, 32-bit floating point input/output, deterministic state per instance; sample-rate dependent buffers allocated in preparation. CPU and realtime allocation *suite* exists, but actual end-user DAW latency/CPU stress still needed.
-- VST3 factory version now **0.9.7**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
+- VST3 factory version now **0.9.8**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P020 — OBSESSION frozen-loop correction (candidate; local regression passed)
+## P020 — OBSESSION frozen-loop correction (v0.9.9; CI pending)
 
-P020 source now captures a complete valid grain, latches its length and repeat count, bounds its lifetime to the enlarged preallocated history, scales fades by sample rate and fades only the wet loop (no live dry leakage at 100%). Local C++17 test passed immutable full-wet capture at 44.1/48/96 kHz, block-size equivalence and all five synthetic proxy source gain ranges; actual VST3 tests added. **No final build claim; P019 CI is allowed to complete before P020 is triggered.**
+P020 source now captures a complete valid grain, latches its length and repeat count, bounds its lifetime to the enlarged preallocated history, scales fades by sample rate and fades only the wet loop (no live dry leakage at 100%). Local C++17 test passed immutable full-wet capture at 44.1/48/96 kHz, block-size equivalence and all five synthetic proxy source gain ranges; actual VST3 tests added. **P019 now verified; P020 v0.9.9 CI triggered.**
 
-## P019 — spectral memory and PANIC oscillator fixes (CI pending)
+## P019 — verified engine integrity
 
-Source factory 0.9.8: SCHIZOPHRENIA processes zero-initialized history immediately instead of bypassing the effect for ~171 ms; DISSOCIATION captures independently and publishes only at a grain boundary; PANIC uses an independent, correctly wrapping tremor oscillator. New start-of-stream and frozen-grain isolation regressions, plus hard phase-cancellation bounds derived from P018. P018 remains latest verified until CI completes. First Linux run detected full-wet rounding leakage during the new capture-isolation test; direct wet assignment corrects that. Additional real processor mono/stereo, in-place, variable-block, independent instance and restart regressions passed in run 45296592022; that run failed the unchanged full-wet level gate on atmosphere SCHIZOPHRENIA (-8.386 dB). A smooth +0.828 dB full-wet makeup is now added and the original guard retained. Corrected full run pending.
+Factory **0.9.8**, tested `b005ed084f674e2b0430867d28bc139e75f87f44`. [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895778), [Windows/Linux DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895678), [Win32 EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895606) all **SUCCESS**. Validator 47/47, full-wet 45/45, automation endpoints 54/54; actual mono/stereo, variable block, in-place, isolated instances and deterministic restart passed. SCHIZOPHRENIA atmosphere full-wet gain corrected to −7.56 dB without reintroducing the dry startup. DISSOCIATION immutable replay and continuous PANIC tremor pass regressions. P018 phase and alias limits retained. [Metrics](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895778/artifacts/14877471849).
 
 ## P018 — verified phase-aligned oversampling and fixed PDC
 

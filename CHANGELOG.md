@@ -2,6 +2,11 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.8 — P019 (2026-11-24)
+
+- Corrected SCHIZOPHRENIA startup, DISSOCIATION capture isolation, PANIC oscillator; atmosphere full-wet gain −7.56 dB.
+- [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895778), [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895678), [GUI](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45297895606) SUCCESS; all prior guards and new actual processor mono/stereo, variable-block, in-place, isolation and restart tests pass.
+
 ## 0.9.7 — P018 (2026-11-24)
 
 - Linear-phase FIR in four nonlinear worlds, matched per-stage and global mix delay, fixed 96-sample host PDC, input-time parameter event alignment.

@@ -1,4 +1,4 @@
-name: P019 Windows VST3 Engine Integrity Audit
+name: P020 Windows VST3 Frozen Loop Audit
 
 on:
   push:
@@ -126,7 +126,7 @@ jobs:
       - name: Attach P010 actual-processor audio metrology (not a release)
         uses: actions/upload-artifact@v4
         with:
-          name: P019-Real-VST3-Engine-Integrity-Metrics
+          name: P020-Real-VST3-Frozen-Loop-Metrics
           path: |
             artifacts/P010_*
             artifacts/P012_*
@@ -137,7 +137,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P019-Engine-Integrity-NOT-FINAL
+          name: 125A-PSYCHIATRY-P020-Frozen-Loop-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

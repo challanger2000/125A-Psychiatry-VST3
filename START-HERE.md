@@ -4,7 +4,7 @@
 
 User audition of v0.9.12: some macros convincing above 50% (acceptable), PANIC bird chirps and PSYCHOSIS too weak. DEPRESSION mostly reverb, SCHIZOPHRENIA mostly delay on initial impression. Original placeholder art and minimal MOTION not accepted. No global curve change. Preserve successful parts.
 
-**Next task:** P027 twelve-world GUI, following the owner-approved visual design. P026l v0.9.20 passed all four CI workflows; preserve that verified DSP, parameter IDs, state, latency and tail. Complete all-twelve randomizer and monitor. No global macro-curve changes, bitcrushing or sample-rate reduction. Earlier checkpoints below are historical.
+**Next task:** Functionality first (owner decision 2026-11-24). P027a v0.9.21 expands LOSS OF CONTROL to twelve real IDs. Verify Windows host/state and regression CI. Continue functional audit before final GUI. P026l v0.9.20 passed all four CI workflows; preserve that verified DSP, parameter IDs, state, latency and tail. Complete all-twelve randomizer and monitor. No global macro-curve changes, bitcrushing or sample-rate reduction. Earlier checkpoints below are historical.
 
 **GUI after sound:** [P027 design](docs/P027-GUI-DESIGN.md) is current: dirty COLOR ivory/green/brown tiled faceplate, genuine rendered black Bakelite knob filmstrips with aged ivory dials, central circular image field (B/W or yellowed/sepia fictional horror photography), ivory THERAPY, red LOSS OF CONTROL, MOTION, DE/EN. Do not use old CRT placeholder art or replace real raster artwork with standard vector knobs.
 

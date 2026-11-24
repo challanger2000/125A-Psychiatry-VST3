@@ -1,6 +1,10 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026l / v0.9.20**. Next milestone: P027 GUI. **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified four-workflow checkpoint: **P026l / v0.9.20**. Current candidate: P027a / v0.9.21 functionality. Final GUI deferred. **Only `main`**; no final or musical approval.
+
+## Current candidate — P027a / v0.9.21
+
+LOSS OF CONTROL previously addressed only nine IDs. Now edits all twelve, retains existing 0 or .12–.78 distribution, groups host begin/perform/end edits and preserves globals/UI settings. Real controller test checks 64 presses, all 12 IDs and 36 callbacks each, nonzero activation, exact reported values and untouched THERAPY, bypass, language, MOTION. No DSP, state version, parameter identity or GUI layout changes. Native CI not yet verified. Existing diagnostic monitor and custom nine-knob layout intentionally remain provisional; all 12 in host parameter list. Owner explicitly deferred final graphic implementation until functions are ready.
 
 ## Current checkpoint — P026l / v0.9.20 verified; P027 visual design
 

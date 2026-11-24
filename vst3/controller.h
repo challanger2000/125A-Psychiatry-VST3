@@ -12,7 +12,7 @@ public:
     Steinberg::tresult PLUGIN_API initialize(Steinberg::FUnknown* context) override;
     Steinberg::tresult PLUGIN_API setComponentState(Steinberg::IBStream* state) override;
     Steinberg::IPlugView* PLUGIN_API createView(Steinberg::FIDString name) override;
-    // UI-thread action. Changes the same nine real host-automatable macro IDs.
+    // UI-thread action. Changes all twelve real host-automatable macro IDs.
     // Never modifies the global THERAPY mix, Bypass, or the audio callback.
     void triggerLossOfControl();
     bool isGermanUi() const noexcept {return germanUi_;}

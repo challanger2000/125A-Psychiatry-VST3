@@ -8,7 +8,7 @@ namespace psychiatry::vst3 {
 static const Steinberg::FUID kProcessorCID(0x125A20D2, 0xA3D04F91, 0x9B1074B7, 0x0119CA26);
 static const Steinberg::FUID kControllerCID(0x125A20D3, 0xA3D04F91, 0x9B1074B7, 0x0119CA26);
 
-// Reserve macro IDs for the later nine-effect release. Do NOT expose inert controls.
+// Stable twelve sound-macro IDs. Do NOT expose inert controls.
 enum Param : Steinberg::Vst::ParamID {
     kDepression=100, kParanoia=101, kSchizophrenia=102,
     kMania=103, kPanic=104, kDissociation=105, kObsession=106,

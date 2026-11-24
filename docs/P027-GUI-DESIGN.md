@@ -37,3 +37,7 @@ The following original source PNGs are preserved in the conversation's generated
 | faceplate-bw-alternative.png | 1448x1086 | 9bd08c38cad98dc6b655048661169207eb2b2195d5b37a6807c5f0898cf81bfd |
 
 Final filmstrips and twelve-knob layout not yet rendered or integrated. No release GUI approval.
+
+## Owner review of layout concepts (2026-11-24)
+
+- Correct brand: **125A Systems** (top left), separate PSYCHIATRY title above observation window. Fan top right, never above the eye where knobs must sit. Twelve equal effect knobs around the eye, THERAPY separately, LOSS OF CONTROL and MOTION accessible. Last generated layout concept approved in spirit, not as final geometry or parameter labeling. More breathing room, no cramped layout. All artwork layered and final labels/types from actual spec, never rely on AI-generated text. User explicitly wants functions first; final GUI postponed. Keep candidate visuals as reference only.

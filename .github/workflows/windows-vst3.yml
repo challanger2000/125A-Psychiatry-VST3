@@ -37,7 +37,7 @@ jobs:
         run: cmake --build build-vst3 --config Release --target PsychiatryPrototype --parallel 4
       - name: Build actual VST3 state regression harness
         run: cmake --build build-vst3 --config Release --target test_vst3_recall --parallel 4
-      - name: Validate legacy project states v1-v4 with real VST3 processor/controller
+      - name: Validate v1-v5 state and twelve-world randomizer with real VST3 processor/controller
         run: ctest --test-dir build-vst3 -C Release -R "^P006_VST3LegacyState$" --output-on-failure
       - name: Build real VST3 audio path metrology executable
         run: cmake --build build-vst3 --config Release --target test_vst3_audio_path --parallel 4

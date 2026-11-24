@@ -26,10 +26,11 @@ constexpr Steinberg::int32 kLanguageUiTag=9001;
 constexpr Steinberg::int32 kMotionUiTag=9002;
 constexpr Steinberg::int32 kLanguageStateMagic=0x50535955; // 'PSYU'
 constexpr Steinberg::int32 kLanguageStateVersion=2;
-// Exactly the nine sound-macro IDs: order is independent of DSP serial routing.
-constexpr std::array<Steinberg::Vst::ParamID,9> kMacroIds{
+// Exactly the twelve sound-macro IDs; no global or UI-only controls.
+constexpr std::array<Steinberg::Vst::ParamID,12> kMacroIds{
     kDepression,kParanoia,kSchizophrenia,kMania,kPanic,
-    kDissociation,kObsession,kHallucination,kPsychosis};
+    kDissociation,kObsession,kHallucination,kPsychosis,
+    kDelirium,kCatatonia,kAmnesia};
 }
 
 tresult PLUGIN_API Controller::initialize(FUnknown* context) {
@@ -149,16 +150,16 @@ tresult PLUGIN_API Controller::getParamStringByValue(
 
 void Controller::triggerLossOfControl() {
     // Run exclusively on VSTGUI's UI callback thread. Randomize useful ranges
-    // instead of maximum values for all nine effects (avoids overloading the
+    // instead of maximum values for all twelve effects (avoids overloading the
     // compound serial chain on the first randomization).
     std::uniform_real_distribution<double> amount(0.12,0.78);
     std::uniform_real_distribution<double> chance(0.0,1.0);
-    // If the host implements IComponentHandler2, group the nine related
+    // If the host implements IComponentHandler2, group the twelve related
     // parameter edits into a single automation/undo timestamp.
-    std::array<double,9> values{};
+    std::array<double,kMacroIds.size()> values{};
     for(auto& value:values)value=chance(random_)<0.18?0.0:amount(random_);
     if(std::none_of(values.begin(),values.end(),[](double v){return v>0.;}))
-        values[std::uniform_int_distribution<unsigned>(0,8)(random_)]=amount(random_);
+        values[std::uniform_int_distribution<std::size_t>(0,kMacroIds.size()-1)(random_)]=amount(random_);
     startGroupEdit();
     for(std::size_t i=0;i<kMacroIds.size();++i) {
         const auto id=kMacroIds[i];
@@ -421,6 +422,8 @@ public:
 private:
     Controller* controller_;
     MonitorModel readModel() const {
+        // Historical nine-scene diagnostic renderer only. Do not expand its
+        // array indices until the final image renderer is ready.
         std::array<double,9> macros{};
         for(std::size_t i=0;i<macros.size();++i)
             macros[i]=controller_->getParamNormalized(kMacroIds[i]);

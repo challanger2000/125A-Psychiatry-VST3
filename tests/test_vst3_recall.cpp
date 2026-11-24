@@ -29,7 +29,7 @@ using namespace Steinberg;
 void* moduleHandle = nullptr;
 
 // Minimal host spy: verifies that UI randomization is reported to the real
-// Steinberg IComponentHandler interfaces, with one grouped edit and nine
+// Steinberg IComponentHandler interfaces, with one grouped edit and twelve
 // begin/perform/end cycles. It does not pretend to be a DAW.
 struct HandlerSpy final : Vst::IComponentHandler, Vst::IComponentHandler2 {
     std::atomic<uint32> refs{1};
@@ -228,49 +228,58 @@ int main(){
             CHECK(r.readFloat(f));equals(f,.67f);
         }
     }
-    // The controller randomizes the nine existing macro IDs only. Legacy
-    // project values are valid, so we can check both preservation and change.
+    // Exercise the actual controller action, independently checking the
+    // explicit set of sound IDs (not a production-derived count or list).
     {
+        constexpr std::array<Vst::ParamID,12> soundIds{
+            kDepression,kParanoia,kSchizophrenia,kMania,kPanic,kDissociation,
+            kObsession,kHallucination,kPsychosis,kDelirium,kCatatonia,kAmnesia};
         ResizableMemoryIBStream state;
-        writeLegacy(state,4);
+        writeLegacy(state,5);
         CHECK(controller.setComponentState(&state)==kResultOk);
         const auto therapyBefore=controller.getParamNormalized(kTherapy);
         const auto bypassBefore=controller.getParamNormalized(kBypass);
         auto* spy=new HandlerSpy;
         CHECK(controller.setComponentHandler(spy)==kResultOk);
-        controller.triggerLossOfControl();
-        CHECK(spy->groupStarts==1 && spy->groupFinishes==1);
-        CHECK(spy->events.size()==27);
-        for(std::size_t i=0;i<9;++i) {
-            CHECK(spy->events[i*3].type=='B' && spy->events[i*3+1].type=='P' &&
-                  spy->events[i*3+2].type=='E');
-            CHECK(spy->events[i*3].id==params[i]);
-            CHECK(spy->events[i*3+1].id==params[i]);
-            CHECK(spy->events[i*3+2].id==params[i]);
-            CHECK(spy->events[i*3+1].value==controller.getParamNormalized(params[i]));
+        std::array<double,12> previous{};
+        std::array<bool,12> observedNonzero{};
+        for(int pass=0;pass<64;++pass) {
+            const bool german=(pass%2)==0,motion=(pass%3)==0;
+            controller.setGermanUi(german);
+            controller.setMotionEnabled(motion);
+            spy->events.clear();
+            // Simulate a previously automated out-of-range-for-randomization
+            // macro value. Each ID MUST be overwritten by this action.
+            for(auto id:soundIds)CHECK(controller.setParamNormalized(id,1.)==kResultOk);
+            controller.triggerLossOfControl();
+            CHECK(spy->groupStarts==pass+1&&spy->groupFinishes==pass+1);
+            CHECK(spy->events.size()==36);
+            bool different=false,anyActive=false;
+            for(std::size_t i=0;i<soundIds.size();++i) {
+                const auto id=soundIds[i];
+                const auto& begin=spy->events[i*3];
+                const auto& perform=spy->events[i*3+1];
+                const auto& end=spy->events[i*3+2];
+                CHECK(begin.type=='B'&&perform.type=='P'&&end.type=='E');
+                CHECK(begin.id==id&&perform.id==id&&end.id==id);
+                const double value=controller.getParamNormalized(id);
+                CHECK(perform.value==value);
+                CHECK(std::isfinite(value)&&(value==0.||(value>=.12&&value<=.78)));
+                if(value>0.){observedNonzero[i]=true;anyActive=true;}
+                if(value!=previous[i])different=true;
+                previous[i]=value;
+            }
+            CHECK(anyActive&&different);
+            CHECK(controller.getParamNormalized(kTherapy)==therapyBefore);
+            CHECK(controller.getParamNormalized(kBypass)==bypassBefore);
+            CHECK(controller.isGermanUi()==german&&controller.isMotionEnabled()==motion);
         }
-        std::array<double,9> firstValues{};
-        for(std::size_t i=0;i<9;++i) {
-            const double value=controller.getParamNormalized(params[i]);
-            CHECK(value>=0.0 && value<=0.78 && std::isfinite(value));
-            firstValues[i]=value;
-        }
-        CHECK(controller.getParamNormalized(kTherapy)==therapyBefore);
-        CHECK(controller.getParamNormalized(kBypass)==bypassBefore);
-        controller.triggerLossOfControl();
-        bool different=false;
-        for(std::size_t i=0;i<9;++i) {
-            const double value=controller.getParamNormalized(params[i]);
-            CHECK(value>=0.0 && value<=0.78 && std::isfinite(value));
-            if(value!=firstValues[i])different=true;
-        }
-        CHECK(different); // consecutive presses must not repeat every knob
-        CHECK(controller.getParamNormalized(kTherapy)==therapyBefore);
-        CHECK(controller.getParamNormalized(kBypass)==bypassBefore);
-        CHECK(spy->groupStarts==2 && spy->groupFinishes==2);
-        CHECK(spy->events.size()==54);
+        for(bool active:observedNonzero)CHECK(active);
         CHECK(controller.setComponentHandler(nullptr)==kResultOk);
         spy->release();
+        controller.setGermanUi(false);
+        controller.setMotionEnabled(false);
+        std::puts("P027a LOSS OF CONTROL PASS: 64 presses, 12 IDs, 36 host edits per press, globals preserved");
     }
     // UI readouts display meaningful percentages, not raw 0.0000..1.0000.
     {

@@ -2,6 +2,12 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.21 — P027a twelve-world randomizer candidate (2026-11-24)
+
+- LOSS OF CONTROL now targets all twelve automatable sound IDs; retains existing random ranges and group edits.
+- Expanded actual controller/host-spy regression, 64 presses and 36 callbacks per press. Global and UI-only values unchanged.
+- Existing diagnostic GUI remains provisional. DSP unchanged. Native candidate CI pending.
+
 ## 0.9.20 — P026l verified freeze acquisition correction (2026-11-24)
 
 - Preserve a deliberate equal-level freeze but reacquire on a substantially stronger source frame, preventing an almost silent leading edge from monopolizing a hold.

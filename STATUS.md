@@ -19,6 +19,11 @@ User audition of v0.9.12 confirmed several usable effects above 50%, but rejecte
   - [P011-quality and CPU metric methodology](docs/P011.md); metrics include wet/dry RMS ratio, dBFS peak, normalized delta, DC, maximum single-sample step, and runner-local render time.
 - All Windows Actions artefacts are temporary engineering packages, not release installers.
 
+
+## P026d — Windows build interpreter correction (verification pending)
+
+P026c exact source d314dda1d9e8ee5c7530ce54f32993256077c603: Linux decoded six archived OGG files with matching hashes and 7/7 CTests passed, including the new acoustic player test and no-heap combined chain. Windows standalone, VST3, EditorHost and recorded-audio builds failed before compiling the acoustic engine: pip installed imageio-ffmpeg 0.6.0 into PATH Python, while CMake selected hosted Python 3.14.10/python3.exe without the module. See Actions 45431442142 / 45431442305 / 45431442219 / 45431442186. Correct all four build workflows by explicitly selecting Python 3.12 with setup-python, passing its exact python-path output to CMake, and checking decoder availability at configure time. No DSP changes or weakened test oracles. Native Windows VST3 audio, alias correction and acoustic bundle verification remain unverified; v0.9.13 not final.
+
 ## P026c — PARANOIA embedded acoustic layer candidate / factory 0.9.13 (not yet verified)
 
 [Implementation and scope](docs/P026c.md). Six source recordings are selected from the 23 archived OGG files; build-time hash-verified PCM generation, reactive playback and actual PARANOIA wet/cross-feedback routing. No new controls or runtime codec. Native build/test results pending. Last fully verified source remains P024/P025 v0.9.12.

@@ -8,7 +8,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # A standalone DSP executable remains buildable without Steinberg's SDK.
 # Decode only archived, hash-verified sources at build time. The generated
 # immutable PCM is linked into the same VST3; no decoder at runtime.
+# CI explicitly supplies the exact interpreter whose decoder was installed.
+# For local builds prefer the active environment/PATH rather than a Windows
+# registry entry for an unrelated Python installation.
+set(Python3_FIND_STRATEGY LOCATION)
+set(Python3_FIND_REGISTRY LAST)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+execute_process(COMMAND "${Python3_EXECUTABLE}" -c
+    "import importlib.util, shutil, sys; sys.exit(0 if importlib.util.find_spec('imageio_ffmpeg') or shutil.which('ffmpeg') else 1)"
+    RESULT_VARIABLE ACOUSTIC_DECODER_CHECK)
+if(NOT ACOUSTIC_DECODER_CHECK EQUAL 0)
+    message(FATAL_ERROR "Acoustic bank decoder missing for ${Python3_EXECUTABLE}. Install imageio-ffmpeg==0.6.0 with that interpreter, or install ffmpeg on PATH.")
+endif()
 set(ACOUSTIC_BANK "${CMAKE_CURRENT_BINARY_DIR}/generated/acoustic_bank.hpp")
 file(GLOB_RECURSE ACOUSTIC_SOURCE_FILES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/sound-library/originals/*.ogg")

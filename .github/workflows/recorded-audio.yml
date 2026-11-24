@@ -19,6 +19,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        id: acoustic-python
+        with:
+          python-version: '3.12'
+          architecture: x64
       - name: Prepare pinned recorded sources
         shell: pwsh
         run: |
@@ -35,7 +40,7 @@ jobs:
       - name: Build actual VST3 processor harness
         shell: pwsh
         run: |
-          cmake -S . -B build-vst3 -G "Visual Studio 17 2022" -A x64 -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF
+          cmake -S . -B build-vst3 "-DPython3_EXECUTABLE=${{ steps.acoustic-python.outputs.python-path }}" -G "Visual Studio 17 2022" -A x64 -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build-vst3 --config Release --target test_vst3_audio_path --parallel 4
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -7,6 +7,7 @@
 #include "vst3/monitor_model.h"
 
 #include "public.sdk/source/vst/utility/memoryibstream.h"
+#include "public.sdk/source/vst/hosting/parameterchanges.h"
 #include "base/source/fstreamer.h"
 
 #include <array>
@@ -110,7 +111,120 @@ static void writeLegacy(ResizableMemoryIBStream& memory,int version,bool invalid
 static void equals(float actual,float expected){
     CHECK(std::abs(actual-expected)<1.e-6f);
 }
+// Bridge the actual controller edit events through the SDK host queue
+// into the actual processor. Then restore a fresh processor/controller
+// from saved state. This is a host harness, not a DAW or DLL-host test.
+static void testRandomizerRecall(){
+    constexpr std::array<Vst::ParamID,12> ids{
+        kDepression,kParanoia,kSchizophrenia,kMania,kPanic,kDissociation,
+        kObsession,kHallucination,kPsychosis,kDelirium,kCatatonia,kAmnesia};
+    constexpr int block=256,frames=block*192;
+    Processor live,restored,unchanged;
+    Controller control,reopened;
+    CHECK(control.initialize(nullptr)==kResultOk);
+    CHECK(reopened.initialize(nullptr)==kResultOk);
+    for(auto* p:{&live,&restored,&unchanged}){
+        CHECK(p->initialize(nullptr)==kResultOk);
+        Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,block,48000.};
+        CHECK(p->setupProcessing(setup)==kResultOk);
+    }
+    ResizableMemoryIBStream initial;
+    {
+        IBStreamer w(&initial,kLittleEndian);
+        CHECK(w.writeInt32(kStateMagic)&&w.writeInt32(kStateVersion));
+        for(int i=0;i<9;++i)CHECK(w.writeFloat(.85f));
+        CHECK(w.writeFloat(.25f)&&w.writeInt32(0));
+        for(int i=0;i<3;++i)CHECK(w.writeFloat(.85f));
+    }
+    initial.rewind();CHECK(live.setState(&initial)==kResultOk);
+    initial.rewind();CHECK(unchanged.setState(&initial)==kResultOk);
+    initial.rewind();CHECK(control.setComponentState(&initial)==kResultOk);
+    CHECK(live.setActive(true)==kResultOk);
+    CHECK(unchanged.setActive(true)==kResultOk);
+    control.setGermanUi(true);control.setMotionEnabled(true);
+    auto* spy=new HandlerSpy;
+    CHECK(control.setComponentHandler(spy)==kResultOk);
+    control.triggerLossOfControl();
+    CHECK(spy->events.size()==36&&spy->groupStarts==1&&spy->groupFinishes==1);
+    Vst::ParameterChanges changes(12);
+    unsigned active=0,zero=0;
+    for(std::size_t i=0;i<ids.size();++i){
+        const auto& e=spy->events[3*i+1];
+        CHECK(e.type=='P'&&e.id==ids[i]);
+        CHECK(e.value==control.getParamNormalized(ids[i]));
+        int32 index=0,point=0;
+        auto* q=changes.addParameterData(e.id,index);
+        CHECK(q&&q->addPoint(0,e.value,point)==kResultTrue);
+        if(e.value>0.)++active;else ++zero;
+    }
+    CHECK(active>=3&&active<=6&&zero==12-active);
+    CHECK(control.getParamNormalized(kTherapy)==.25&&control.getParamNormalized(kBypass)==0.);
+    CHECK(control.isGermanUi()&&control.isMotionEnabled());
+    CHECK(control.setComponentHandler(nullptr)==kResultOk);spy->release();
+
+    using Samples=std::array<float,block>;
+    const auto audioBlock=[&](Processor& p,int offset,Samples& l,Samples& r,
+                              Vst::ParameterChanges* queues=nullptr){
+        Samples inL{},inR{};
+        for(int n=0;n<block;++n){
+            const double t=double(offset+n)/48000.;
+            const double envelope=.6+.4*std::sin(6.283185307179586*3.*t);
+            inL[n]=float(envelope*(.23*std::sin(6.283185307179586*117.*t)+
+                                      .11*std::sin(6.283185307179586*781.*t)));
+            inR[n]=float(envelope*(.19*std::sin(6.283185307179586*143.*t)+
+                                      .09*std::sin(6.283185307179586*531.*t)));
+        }
+        float* src[]{inL.data(),inR.data()},*dst[]{l.data(),r.data()};
+        Vst::AudioBusBuffers bi{},bo{};
+        bi.numChannels=bo.numChannels=2;bi.channelBuffers32=src;bo.channelBuffers32=dst;
+        Vst::ProcessData d{};
+        d.processMode=Vst::kRealtime;d.symbolicSampleSize=Vst::kSample32;
+        d.numSamples=block;d.numInputs=d.numOutputs=1;d.inputs=&bi;d.outputs=&bo;
+        d.inputParameterChanges=queues;
+        CHECK(p.process(d)==kResultOk);
+        for(int i=0;i<block;++i)CHECK(std::isfinite(l[i])&&std::isfinite(r[i])&&
+                                     std::abs(l[i])<4.f&&std::abs(r[i])<4.f);
+    };
+    double difference=0.;
+    for(int n=0;n<frames;n+=block){
+        Samples a{},b{},c{},d{};
+        audioBlock(live,n,a,b,n==0?&changes:nullptr);
+        audioBlock(unchanged,n,c,d);
+        for(int i=0;i<block;++i)difference+=std::abs(double(a[i])-c[i])+std::abs(double(b[i])-d[i]);
+    }
+    CHECK(difference>1.); // actual random edits cannot be an inert UI change
+
+    ResizableMemoryIBStream saved,ui;
+    CHECK(live.getState(&saved)==kResultOk);
+    CHECK(control.getState(&ui)==kResultOk);
+    saved.rewind();CHECK(restored.setState(&saved)==kResultOk);
+    saved.rewind();CHECK(reopened.setComponentState(&saved)==kResultOk);
+    ui.rewind();CHECK(reopened.setState(&ui)==kResultOk);
+    for(auto id:ids)equals(float(reopened.getParamNormalized(id)),float(control.getParamNormalized(id)));
+    equals(float(reopened.getParamNormalized(kTherapy)),.25f);
+    CHECK(reopened.getParamNormalized(kBypass)==0.&&reopened.isGermanUi()&&reopened.isMotionEnabled());
+
+    // Recreate audio history from a clean transport lifecycle on both
+    // instances, rather than requiring a saved project to preserve delay tails.
+    CHECK(live.setActive(false)==kResultOk&&live.setActive(true)==kResultOk);
+    CHECK(restored.setActive(true)==kResultOk);
+    double energy=0.;
+    for(int n=0;n<frames;n+=block){
+        Samples a{},b{},c{},d{};
+        audioBlock(live,n,a,b);audioBlock(restored,n,c,d);
+        CHECK(a==c&&b==d);
+        for(int i=0;i<block;++i)energy+=double(a[i])*a[i]+double(b[i])*b[i];
+    }
+    CHECK(energy>1.e-5);
+    for(auto* p:{&live,&restored,&unchanged}){
+        CHECK(p->setActive(false)==kResultOk&&p->terminate()==kResultOk);
+    }
+    CHECK(control.terminate()==kResultOk&&reopened.terminate()==kResultOk);
+    std::printf("P027g UI-host-audio-recall PASS: %u active, %u zeroed, live delta %.3f, bit-exact restored stereo\n",active,zero,difference);
+}
+
 int main(){
+    testRandomizerRecall();
     Processor component;
     Controller controller;
     CHECK(component.initialize(nullptr)==kResultOk);

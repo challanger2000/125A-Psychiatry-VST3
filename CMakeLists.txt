@@ -141,7 +141,8 @@ if(PSYCHIATRY_BUILD_VST3)
   add_executable(test_vst3_recall
       tests/test_vst3_recall.cpp
       vst3/processor.cpp
-      vst3/controller.cpp)
+      vst3/controller.cpp
+      "${PSYCHIATRY_VST3_SDK_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp")
   target_include_directories(test_vst3_recall PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_link_libraries(test_vst3_recall PRIVATE psychiatry_audio sdk vstgui_support)

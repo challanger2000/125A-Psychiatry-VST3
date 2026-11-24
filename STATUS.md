@@ -1,12 +1,18 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified four-workflow and controller checkpoint: **P027e / v0.9.23**. Current candidate: P027f / v0.9.24. Final GUI deferred. **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified four-workflow and controller checkpoint: **P027f / v0.9.24**. Current test-only candidate: P027g. Final GUI deferred. **Only `main`**; no final or musical approval.
 
-## Current candidate — P027f / v0.9.24 twelve-world image state
+## Current candidate — P027g integrated functionality gate (factory v0.9.24 unchanged)
+
+P027f exact source `88254962264c1d361f4b09a8e631f114e5ceeb75`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45479875147), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45479875048), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45479875182), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45479875053) all SUCCESS. Twelve-world monitor regression and provisional mapping verified by their existing gates; unique final images and twelve physical controls not yet integrated.
+
+P027g adds actual controller -> IComponentHandler edits -> SDK host parameter queues -> actual Processor::process -> saved component/UI state -> new processor/controller -> bit-exact restarted audio. Start from 12 active worlds; assert explicit zeros, real live audio change, preserved THERAPY/bypass/language/motion, exact restored values (float state precision), non-silent matching audio after reset. No production or graphical changes. New CI pending. If green, functional baseline is frozen for the approved P027 final GUI implementation; do not keep adding unrelated audit-only phases or change DSP without specific evidence. Musical and final Studio Pro acceptance remain unverified.
+
+## Historical candidate — P027f / v0.9.24 twelve-world image state
 
 P027e exact source `1cab684822bcf482c3076397bc50b7c9c27ea710`: [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45477278047), [EditorHost](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45477278151), [Windows](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45477278113), [recorded](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45477278139) all SUCCESS. 32 actual generated preset renders, 3–6 active worlds, raw gain -9.198 to -3.604 dB, gain-matched residual .40724–.96848, maximum peak -5.001 dBFS. These are eight fixed generator draws across four recordings, not a universal gain guarantee; different from previous dense test vectors. Validator 47/47, 60/60 substantive full wet, no weak cases. Actual VST3 12-world realtime factor .1029 at 85%, .0925 at 100%, .0638 neutral (runner-dependent, not the owner's PC).
 
-P027f extends functional visual-state model to all twelve IDs, effective levels, primary and secondary selection, deterministic tie behavior, bypass and THERAPY. Existing diagnostic renderer reuses three old images as explicit placeholders, safely mapping all 12 logical indices to 9 bitmap slots; no final design or new artwork. Tests check isolated controller values for every world, bounds, ties, equality and dry/bypass. Existing custom editor still has nine knobs; generic host has all 12; final custom controls and image library remain deferred. DSP untouched. New CI pending.
+P027f extends functional visual-state model to all twelve IDs, effective levels, primary and secondary selection, deterministic tie behavior, bypass and THERAPY. Existing diagnostic renderer reuses three old images as explicit placeholders, safely mapping all 12 logical indices to 9 bitmap slots; no final design or new artwork. Tests check isolated controller values for every world, bounds, ties, equality and dry/bypass. Existing custom editor still has nine knobs; generic host has all 12; final custom controls and image library remain deferred. DSP untouched. All four CI workflows subsequently passed.
 
 ## Historical candidate — P027e / v0.9.23 randomizer density
 

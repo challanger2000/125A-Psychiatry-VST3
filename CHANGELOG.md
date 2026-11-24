@@ -2,10 +2,15 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
-## 0.9.24 — P027f twelve-world visual state candidate
+## P027g — integrated functionality gate (factory v0.9.24 unchanged)
+
+- Actual controller edits via SDK parameter queues into real processor; live audio change and new-instance recall with bit-exact restarted audio.
+- No production changes; native CI pending. After green freeze functional baseline for final GUI.
+
+## 0.9.24 — P027f verified twelve-world visual state
 
 - Monitor logic observes all twelve parameters, stable primary/secondary, effective THERAPY and bypass, existing diagnostic resource indices safely mapped.
-- Actual controller/model regressions; no sound or final graphic redesign. Native CI pending.
+- Actual controller/model regressions; no sound or final graphic redesign. All four CI workflows passed.
 
 ## 0.9.23 — P027e verified randomizer density
 

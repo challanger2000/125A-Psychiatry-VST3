@@ -2,6 +2,11 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.9 — P020 (2026-11-24)
+
+- OBSESSION complete grain capture, immutable repeat lifetime, sample-rate-scaled wet-only fade, exact wet endpoint.
+- [Windows VST3](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45300506720), [DSP](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45300506694), [GUI](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45300506798) SUCCESS; all existing gates and three-rate frozen loop test pass.
+
 ## 0.9.8 — P019 (2026-11-24)
 
 - Corrected SCHIZOPHRENIA startup, DISSOCIATION capture isolation, PANIC oscillator; atmosphere full-wet gain −7.56 dB.

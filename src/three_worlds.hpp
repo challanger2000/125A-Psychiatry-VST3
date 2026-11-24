@@ -37,7 +37,7 @@ public:
     std::uint64_t impulses() const noexcept {return impulseCount_;}
 private:
     struct Channel {
-        float fast=0.f,slow=0.f,phase=0.f,envelope=0.f;
+        float fast=0.f,slow=0.f,phase=0.f,envelope=0.f,tremorPhase=0.f;
         float last=0.f,slowHigh=0.f;
         std::uint32_t rng=0xB54CA515u;
         unsigned cooldown=0;

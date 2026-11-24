@@ -99,7 +99,7 @@ void Panic::prepare(double sr) noexcept {
 void Panic::reset() noexcept {
     // Do not overwrite the prepared biquad coefficients when resetting.
     for(auto& c:state_){
-        c.fast=c.slow=c.phase=c.envelope=0.f;
+        c.fast=c.slow=c.phase=c.envelope=c.tremorPhase=0.f;
         c.last=c.slowHigh=0.f;
         c.cooldown=0;
         c.saturation.reset();
@@ -140,8 +140,11 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
                 ++impulseCount_;
             }
             s.envelope*=decay;
-            s.phase+=invRate*(700.f+1600.f*m+1300.f*s.envelope);
-            if(s.phase>=1.f) s.phase-=1.f;
+            const float sirenHz=700.f+1600.f*m+1300.f*s.envelope;
+            s.phase+=invRate*sirenHz;
+            s.phase-=std::floor(s.phase);
+            s.tremorPhase+=invRate*sirenHz*0.037f;
+            s.tremorPhase-=std::floor(s.tremorPhase);
             s.slowHigh+=highpass*(x-s.slowHigh);
             const float piercing=x-s.slowHigh;
             // A bounded, input-triggered 'electric' shock. Noise is emitted
@@ -150,7 +153,7 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
             const float noise=static_cast<float>(s.rng & 0xffffu)*(1.f/32768.f)-1.f;
             const float siren=std::sin(kTau*s.phase);
             const float pulse=s.envelope*(0.65f*siren+0.12f*noise);
-            const float tremor=0.80f + 0.20f*std::sin(kTau*s.phase*0.037f);
+            const float tremor=0.80f + 0.20f*std::sin(kTau*s.tremorPhase);
             // P014: protect the fast transient/electric shaper from
             // third-harmonic foldback. Oversample ONLY the wet excitation
             // and saturator, then use a separately filtered decimator.

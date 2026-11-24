@@ -81,8 +81,8 @@ void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frame
             const float conflict=std::tanh(3.0f*high*low);
             const float transformed=std::tanh(0.33f*x+0.48f*high+
                 0.42f*low+0.16f*m*spectral+0.18f*m*conflict);
-            if(m>0.f&&s.filled>static_cast<std::size_t>(lag+grain+2.f))
-                io[ch][i]=x+m*(transformed-x);
+            // Zero-initialized history needs no dry startup bypass.
+            if(m>0.f)io[ch][i]=m==1.f?transformed:x+m*(transformed-x);
             if(++s.write>=s.ring.size())s.write=0;
             s.phase+=invRate/0.057f;
             if(s.phase>=1.f)s.phase-=1.f;
@@ -93,16 +93,19 @@ void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frame
 void Dissociation::prepare(double sr) {
     rate_=saneRate(sr);
     step_=coeff(14.,rate_);
-    for(auto& s:state_)s.frozen.assign(
-        std::max<std::size_t>(64,static_cast<std::size_t>(rate_*0.112)),0.f);
+    for(auto& s:state_) {
+        const auto size=std::max<std::size_t>(64,static_cast<std::size_t>(rate_*0.112));
+        s.frozen.assign(size,0.f);s.recording.assign(size,0.f);
+    }
     reset();
 }
 void Dissociation::reset() noexcept {
     for(auto& s:state_) {
         std::fill(s.frozen.begin(),s.frozen.end(),0.f);
+        std::fill(s.recording.begin(),s.recording.end(),0.f);
         s.capture=s.play=s.untilCapture=0;
         s.blur=s.low=s.high=0.f;
-        s.ready=false;
+        s.ready=false;s.recordingReady=false;
     }
     smoothed_=amount_;
 }
@@ -117,17 +120,20 @@ void Dissociation::process(float* const* io,unsigned channels,std::size_t frames
             auto& s=state_[ch];
             const float raw=io[ch][i],x=sane(raw);
             const auto size=s.frozen.size();
-            // A slow moving input-derived 'memory' is continuously captured.
-            // At high amounts the reverse replay endures between captures.
-            // Capturing one sample at a time never stalls an audio callback.
-            if(s.untilCapture==0 || !s.ready) {
-                s.frozen[s.capture++]=x;
-                if(s.capture>=size) {
-                    s.capture=0;s.ready=true;
-                    s.untilCapture=static_cast<std::size_t>(
-                        rate_*(0.35-0.20*m)) + (ch?size/5:0);
-                }
-            } else --s.untilCapture;
+            // Capture into separate preallocated storage. Publish only at
+            // a replay boundary. vector::swap is constant-time.
+            if(s.recordingReady && (!s.ready || s.play==0)) {
+                s.frozen.swap(s.recording);
+                s.recordingReady=false;s.ready=true;s.capture=0;s.play=0;
+                s.untilCapture=static_cast<std::size_t>(
+                    rate_*(0.35-0.20*m)) + (ch?size/5:0);
+            }
+            if(!s.recordingReady) {
+                if(s.untilCapture==0 || !s.ready) {
+                    s.recording[s.capture++]=x;
+                    if(s.capture==size)s.recordingReady=true;
+                } else --s.untilCapture;
+            }
             float backwards=0.f;
             float window=0.f;
             if(s.ready) {

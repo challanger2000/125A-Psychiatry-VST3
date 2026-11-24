@@ -110,6 +110,29 @@ int main() {
         for(float sample:l) CHECK(std::isfinite(sample)&&std::abs(sample)<2.f);
         (void)ptr;
     }
+    // P019: full wet from first sample, not a dry startup bypass.
+    for(double sr:{44100.,48000.,96000.}) {
+        psychiatry::Schizophrenia fx;fx.prepare(sr);fx.setAmount(1.f);fx.reset();
+        Stereo x{Audio(64,0.4f),Audio(64,-0.4f)};
+        render(fx,x,17);
+        for(std::size_t n=0;n<x.l.size();++n) {
+            CHECK(std::abs(x.l[n]-std::tanh(0.33f*0.4f))<1.e-6f);
+            CHECK(std::abs(x.r[n]-std::tanh(-0.33f*0.4f))<1.e-6f);
+        }
+    }
+    // The original frozen grain must not change during recapture.
+    {
+        constexpr double sr=48000.;
+        const auto grain=static_cast<std::size_t>(sr*.112);
+        const auto wait=static_cast<std::size_t>(sr*.15);
+        const auto total=grain+wait+grain/2;
+        psychiatry::Dissociation a,b;
+        a.prepare(sr);b.prepare(sr);a.setAmount(1.f);b.setAmount(1.f);a.reset();b.reset();
+        Stereo x{Audio(total,.3f),Audio(total,.3f)},y=x;
+        for(std::size_t n=grain+wait;n<total;++n)y.l[n]=y.r[n]=-.3f;
+        render(a,x,137);render(b,y,509);
+        CHECK(x.l==y.l && x.r==y.r && "recapture leaked into active frozen grain");
+    }
     // Explicit invalid-sample rejection during nonzero effect.
     {
         psychiatry::Schizophrenia mm;psychiatry::Dissociation pp;psychiatry::Hallucination zz;

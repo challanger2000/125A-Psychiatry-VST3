@@ -629,6 +629,7 @@ void testPhaseAndTransients(const std::string& dir) {
                                                   W[0]*D[0]+W[1]*D[1])*180./kPi;
                     const double halfGain=20.*std::log10(std::max(ha,1.e-15)/da);
                     const double loss=20.*std::log10(std::max(ha,1.e-15)/(.5*(da+wa)));
+                    check(loss>=(fx==0?-3.5:-1.5),"P019 phase cancellation regression");
                     if(phase.good())phase<<sr<<","<<kMacroNames[fx]<<","<<c<<","<<hz<<","<<gain<<","<<angle<<","<<halfGain<<","<<loss<<"\n";
                     std::printf("P016 PHASE rate=%d fx=%s ch=%d hz=%.0f wet=%+.2f angle=%+.1f half=%+.2f cancellation=%+.2f dB\n",
                                 sr,kMacroNames[fx],c,hz,gain,angle,halfGain,loss);
@@ -656,6 +657,18 @@ void testPhaseAndTransients(const std::string& dir) {
                 std::printf("P016 IMPULSE rate=%d fx=%s ch=%d peak_offset=%d peak=%.6f energy2ms=%.6f energy20ms=%.6f tail=%.6f prering=%.6f\n",
                             sr,kMacroNames[fx],c,offset,peak,early,window,tail,prering);
             }
+        }
+    }
+}
+void testWetStartup() {
+    for(int sr:{44100,48000,96000}) {
+        Stereo x(64);
+        std::fill(x.l.begin(),x.l.end(),.4f);
+        std::fill(x.r.begin(),x.r.end(),-.4f);
+        const auto y=render(x,2,1.f,0.f,false,false,sr);
+        for(std::size_t n=0;n<x.size();++n) {
+            check(std::abs(y.l[n]-std::tanh(.33f*.4f))<1.e-6f,"P019 SCHIZOPHRENIA wet from first sample");
+            check(std::abs(y.r[n]-std::tanh(-.33f*.4f))<1.e-6f,"P019 SCHIZOPHRENIA stereo wet from first sample");
         }
     }
 }
@@ -751,6 +764,7 @@ int main(int argc,char** argv){
     testHighBandAliasing(exportWav?std::string(argv[1]):std::string{});
     testMultirateIntermod(exportWav?std::string(argv[1]):std::string{});
     testExtendedDry();
+    testWetStartup();
     testAutomatedEndpoints();
     testPhaseAndTransients(exportWav?std::string(argv[1]):std::string{});
     int substantial=0,weak=0;

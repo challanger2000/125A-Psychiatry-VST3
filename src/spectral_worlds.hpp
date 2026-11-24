@@ -32,10 +32,10 @@ public:
     void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
 private:
     struct Channel {
-        std::vector<float> frozen;
+        std::vector<float> frozen, recording;
         std::size_t capture=0,play=0,untilCapture=0;
         float blur=0.f,low=0.f,high=0.f;
-        bool ready=false;
+        bool ready=false, recordingReady=false;
     };
     std::array<Channel,2> state_{};
     double rate_=48000.;

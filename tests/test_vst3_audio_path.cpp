@@ -104,8 +104,23 @@ void writeState(ResizableMemoryIBStream& state,int macro,float amount,
     check(w.writeFloat(therapy)&&w.writeInt32(bypass?1:0),"therapy/bypass state");
     state.rewind();
 }
+constexpr int kLatency=static_cast<int>(Processor::kLatency);
+Stereo compensate(const Stereo& raw,std::size_t size) {
+    check(raw.size()>=size+kLatency,"P018 padded capture");
+    Stereo result(size);
+    std::copy_n(raw.l.begin()+kLatency,size,result.l.begin());
+    std::copy_n(raw.r.begin()+kLatency,size,result.r.begin());
+    return result;
+}
+Stereo padded(const Stereo& dry) {
+    Stereo x(dry.size()+kLatency);
+    std::copy(dry.l.begin(),dry.l.end(),x.l.begin());
+    std::copy(dry.r.begin(),dry.r.end(),x.r.begin());
+    return x;
+}
 Stereo render(const Stereo& dry,int macro,float amount,
-              float therapy=0.f,bool bypass=false,bool inplace=false,double sampleRate=kRate) {
+              float therapy=0.f,bool bypass=false,bool inplace=false,double sampleRate=kRate,
+              bool compensateLatency=true) {
     Processor p;
     check(p.initialize(nullptr)==kResultOk,"real VST3 initialize");
     Vst::ProcessSetup setup{};
@@ -118,32 +133,30 @@ Stereo render(const Stereo& dry,int macro,float amount,
     writeState(state,macro,amount,therapy,bypass);
     check(p.setState(&state)==kResultOk,"real VST3 component state");
     check(p.setActive(true)==kResultOk,"real VST3 setActive");
-    Stereo out(dry.size());
-    for(std::size_t start=0;start<dry.size();start+=kBlock){
-        const int n=static_cast<int>(std::min<std::size_t>(kBlock,dry.size()-start));
-        auto* p0=const_cast<float*>(dry.l.data())+start;
-        auto* p1=const_cast<float*>(dry.r.data())+start;
+    check(p.getLatencySamples()==kLatency,"P018 fixed reported latency");
+    Stereo input=padded(dry),out(input.size());
+    for(std::size_t start=0;start<input.size();start+=kBlock){
+        const int n=static_cast<int>(std::min<std::size_t>(kBlock,input.size()-start));
+        auto* p0=input.l.data()+start;
+        auto* p1=input.r.data()+start;
         if(inplace){
             std::copy_n(p0,n,out.l.data()+start);
             std::copy_n(p1,n,out.r.data()+start);
-            p0=out.l.data()+start;
-            p1=out.r.data()+start;
+            p0=out.l.data()+start;p1=out.r.data()+start;
         }
-        float* in[]={p0,p1};
-        float* o[]={out.l.data()+start,out.r.data()+start};
+        float* in[]={p0,p1};float* o[]={out.l.data()+start,out.r.data()+start};
         Vst::AudioBusBuffers bIn{},bOut{};
         bIn.numChannels=2;bOut.numChannels=2;
         bIn.channelBuffers32=in;bOut.channelBuffers32=o;
         Vst::ProcessData data{};
-        data.processMode=Vst::kRealtime;
-        data.symbolicSampleSize=Vst::kSample32;
-        data.numSamples=n;
-        data.numInputs=1;data.numOutputs=1;
+        data.processMode=Vst::kRealtime;data.symbolicSampleSize=Vst::kSample32;
+        data.numSamples=n;data.numInputs=1;data.numOutputs=1;
         data.inputs=&bIn;data.outputs=&bOut;
         check(p.process(data)==kResultOk,"actual VST3 Processor::process");
     }
     check(p.setActive(false)==kResultOk,"deactivate real VST3");
     check(p.terminate()==kResultOk,"terminate real VST3");
+    if(compensateLatency)return compensate(out,dry.size());
     return out;
 }
 bool identical(const Stereo& a,const Stereo& b){
@@ -180,44 +193,37 @@ Metric measure(const Stereo& dry,const Stereo& wet){
 // All other VST3 macro stages are at 0%; the plugin's output MUST match
 // this wet-only signal without a parallel undistorted/dry mix.
 template<class FX>
-void directSimple(FX& effect,Stereo& processed) {
-    effect.prepare(kRate);
-    effect.setAmount(1.f);
-    effect.reset();
-    for(int start=0;start<kFrames;start+=kBlock){
-        const auto n=std::min(kBlock,kFrames-start);
+void directSimple(FX& effect,Stereo& processed,float amount) {
+    effect.prepare(kRate);effect.setAmount(amount);effect.reset();
+    for(std::size_t start=0;start<processed.size();start+=kBlock){
+        const auto n=std::min<std::size_t>(kBlock,processed.size()-start);
         float* ptr[]{processed.l.data()+start,processed.r.data()+start};
-        effect.process(ptr,2,static_cast<std::size_t>(n));
+        effect.process(ptr,2,n);
     }
 }
 Stereo pureWetReference(const Stereo& dry,int effect) {
-    Stereo ref=dry;
-    switch(effect) {
-        case 0: { psychiatry::Depression fx;directSimple(fx,ref);break; }
-        case 1: {
-            psychiatry::Paranoia fx;fx.prepare(kRate);
-            psychiatry::Paranoia::Settings ps;
-            ps.amount=1.f;ps.therapy=0.f;
-            ps.trigger=psychiatry::Paranoia::Trigger::Hybrid;
-            ps.pattern=psychiatry::Paranoia::Pattern::Every;
-            fx.setSettings(ps);fx.reset();
-            for(int start=0;start<kFrames;start+=kBlock){
-                const auto n=std::min(kBlock,kFrames-start);
-                float* ptr[]{ref.l.data()+start,ref.r.data()+start};
-                fx.process(ptr,2,static_cast<std::size_t>(n));
-            }
-            break;
-        }
-        case 2: { psychiatry::Schizophrenia fx;directSimple(fx,ref);break; }
-        case 3: { psychiatry::Mania fx;directSimple(fx,ref);break; }
-        case 4: { psychiatry::Panic fx;directSimple(fx,ref);break; }
-        case 5: { psychiatry::Dissociation fx;directSimple(fx,ref);break; }
-        case 6: { psychiatry::Obsession fx;directSimple(fx,ref);break; }
-        case 7: { psychiatry::Hallucination fx;directSimple(fx,ref);break; }
-        case 8: { psychiatry::Psychosis fx;directSimple(fx,ref);break; }
-        default: check(false,"unexpected 100% wet reference macro");
+    // Independently run the nine concrete stages in their documented order,
+    // including neutral stages' constant delays, then compensate exactly once.
+    Stereo ref=padded(dry);
+    psychiatry::Depression d;directSimple(d,ref,effect==0?1.f:0.f);
+    psychiatry::Schizophrenia s;directSimple(s,ref,effect==2?1.f:0.f);
+    psychiatry::Mania m;directSimple(m,ref,effect==3?1.f:0.f);
+    psychiatry::Panic pn;directSimple(pn,ref,effect==4?1.f:0.f);
+    psychiatry::Paranoia p;p.prepare(kRate);
+    psychiatry::Paranoia::Settings ps;
+    ps.amount=effect==1?1.f:0.f;ps.therapy=0.f;
+    ps.trigger=psychiatry::Paranoia::Trigger::Hybrid;
+    ps.pattern=psychiatry::Paranoia::Pattern::Every;
+    p.setSettings(ps);p.reset();
+    for(std::size_t start=0;start<ref.size();start+=kBlock){
+        float* ptr[]{ref.l.data()+start,ref.r.data()+start};
+        p.process(ptr,2,std::min<std::size_t>(kBlock,ref.size()-start));
     }
-    return ref;
+    psychiatry::Dissociation ds;directSimple(ds,ref,effect==5?1.f:0.f);
+    psychiatry::Obsession o;directSimple(o,ref,effect==6?1.f:0.f);
+    psychiatry::Hallucination h;directSimple(h,ref,effect==7?1.f:0.f);
+    psychiatry::Psychosis z;directSimple(z,ref,effect==8?1.f:0.f);
+    return compensate(ref,dry.size());
 }
 double spectralBandDistance(const Stereo& a,const Stereo& b) {
     // Four actual frequency ranges by splitting low-pass outputs at
@@ -337,10 +343,12 @@ void testAutomation(){
     check(p.process(data)==kResultOk,"automation VST3 process");
     bool changed=false;
     for(int i=0;i<256;++i){
-        if(i<128)check(outL[i]==inL[i]&&outR[i]==inR[i],
+        const float dryL=i>=kLatency?inL[i-kLatency]:0.f;
+        const float dryR=i>=kLatency?inR[i-kLatency]:0.f;
+        if(i<128+kLatency)check(outL[i]==dryL&&outR[i]==dryR,
                        "automation changed signal BEFORE event sample");
-        if(i>=128 && (std::abs(outL[i]-inL[i])>1.e-5f||
-                      std::abs(outR[i]-inR[i])>1.e-5f))changed=true;
+        if(i>=128+kLatency && (std::abs(outL[i]-dryL)>1.e-5f||
+                      std::abs(outR[i]-dryR)>1.e-5f))changed=true;
     }
     check(changed,"automation event did not cause audio change");
     check(p.setActive(false)==kResultOk,"automation deactivate");
@@ -468,8 +476,10 @@ void testHighBandAliasing(const std::string& dir) {
         if(csv.good())csv<<"cpu_all_nine,"<<level
             <<",,,,,"<<(kFrames/static_cast<double>(kRate))
             <<","<<elapsed<<","<<rt<<","<<peak<<"\n";
-        if(level==0.f)check(identical(signal,out),
-           "P012 nine-at-zero must be bit-perfect dry");
+        if(level==0.f)for(int n=0;n<kFrames;++n)
+            check(out.l[n]==(n>=kLatency?signal.l[n-kLatency]:0.f)&&
+                  out.r[n]==(n>=kLatency?signal.r[n-kLatency]:0.f),
+                  "P012 nine-at-zero exact latency-matched dry");
     }
 }
 // P015: exercise the actual VST3 callback at 44.1/48/96 kHz, including
@@ -577,7 +587,7 @@ void testPhaseAndTransients(const std::string& dir) {
         transient.open(dir+"/P016_transient_metrics.csv");
         check(phase.good()&&transient.good(),"P016 CSV open");
         phase<<"rate_hz,effect,channel,frequency_hz,wet_gain_db,phase_deg,half_mix_gain_db,coherent_sum_loss_db\n";
-        transient<<"rate_hz,effect,channel,first_peak_sample_offset,peak_20ms,energy_2ms,energy_20ms,energy_tail\n";
+        transient<<"rate_hz,effect,channel,first_peak_sample_offset,peak_20ms,energy_2ms,energy_20ms,energy_tail,compensated_prering_energy\n";
     }
     constexpr std::array<double,6> frequencies{100.,1000.,4000.,8000.,12000.,16000.};
     for(int sr:{44100,48000,96000}) {
@@ -595,6 +605,7 @@ void testPhaseAndTransients(const std::string& dir) {
             const Stereo wet=render(signal,fx,1.f,0.f,false,false,sr);
             const Stereo half=render(signal,fx,1.f,.5f,false,false,sr);
             const Stereo imp=render(pulse,fx,1.f,0.f,false,false,sr);
+            const Stereo rawImpulse=render(pulse,fx,1.f,0.f,false,false,sr,false);
             for(int c=0;c<2;++c) {
                 const auto& d=c?signal.r:signal.l;
                 const auto& w=c?wet.r:wet.l;
@@ -622,13 +633,18 @@ void testPhaseAndTransients(const std::string& dir) {
                     std::printf("P016 PHASE rate=%d fx=%s ch=%d hz=%.0f wet=%+.2f angle=%+.1f half=%+.2f cancellation=%+.2f dB\n",
                                 sr,kMacroNames[fx],c,hz,gain,angle,halfGain,loss);
                 }
-                double peak=0.,early=0.,window=0.,tail=0.;
+                double peak=0.,early=0.,window=0.,tail=0.,prering=0.;
+                const auto& raw=c?rawImpulse.r:rawImpulse.l;
+                for(int n=0;n<onset;++n)check(raw[static_cast<std::size_t>(n)]==0.f,"P018 raw impulse response must be causal");
                 int offset=0;
                 const int n2=sr*2/1000,n20=sr*20/1000;
                 for(int n=0;n<static_cast<int>(z.size());++n) {
                     const double v=z[static_cast<std::size_t>(n)];
                     check(std::isfinite(v),"P016 nonfinite impulse output");
-                    if(n<onset)check(v==0.,"P016 unexpected output before impulse");
+                    if(n<onset) {
+                        if(n<onset-kLatency)check(v==0.,"P018 pre-ring outside compensated FIR latency");
+                        prering+=v*v;
+                    }
                     else if(n<onset+n20) {
                         if(std::abs(v)>peak){peak=std::abs(v);offset=n-onset;}
                         window+=v*v;
@@ -636,9 +652,9 @@ void testPhaseAndTransients(const std::string& dir) {
                     } else tail+=v*v;
                 }
                 check(peak>1.e-5 && peak<1.,"P016 impulse missing or uncontrolled peak");
-                if(transient.good())transient<<sr<<","<<kMacroNames[fx]<<","<<c<<","<<offset<<","<<peak<<","<<early<<","<<window<<","<<tail<<"\n";
-                std::printf("P016 IMPULSE rate=%d fx=%s ch=%d peak_offset=%d peak=%.6f energy2ms=%.6f energy20ms=%.6f tail=%.6f\n",
-                            sr,kMacroNames[fx],c,offset,peak,early,window,tail);
+                if(transient.good())transient<<sr<<","<<kMacroNames[fx]<<","<<c<<","<<offset<<","<<peak<<","<<early<<","<<window<<","<<tail<<","<<prering<<"\n";
+                std::printf("P016 IMPULSE rate=%d fx=%s ch=%d peak_offset=%d peak=%.6f energy2ms=%.6f energy20ms=%.6f tail=%.6f prering=%.6f\n",
+                            sr,kMacroNames[fx],c,offset,peak,early,window,tail,prering);
             }
         }
     }
@@ -672,6 +688,7 @@ void testAutomatedEndpoints() {
                 bool wetBefore=false;
                 std::size_t exact=0;
                 std::array<float,kBlock> a{},b{},x{},y{};
+                psychiatry::detail::FixedDelay<Processor::kLatency> refL,refR;
                 for(int start=0;start<end;start+=kBlock) {
                     const int frames=std::min(kBlock,end-start);
                     for(int n=0;n<frames;++n) {
@@ -699,13 +716,14 @@ void testAutomatedEndpoints() {
                     for(int n=0;n<frames;++n) {
                         const int t=start+n;
                         check(std::isfinite(x[n])&&std::isfinite(y[n]),"P017 nonfinite");
-                        if(t<automationAt&&(std::abs(x[n]-a[n])>1.e-4f||
-                                            std::abs(y[n]-b[n])>1.e-4f))wetBefore=true;
-                        if(t>=settledAt) {
-                            if(x[n]!=a[n]||y[n]!=b[n])
+                        const float dryL=refL.process(a[n]),dryR=refR.process(b[n]);
+                        if(t<automationAt&&(std::abs(x[n]-dryL)>1.e-4f||
+                                            std::abs(y[n]-dryR)>1.e-4f))wetBefore=true;
+                        if(t>=settledAt+kLatency) {
+                            if(x[n]!=dryL||y[n]!=dryR)
                                 std::fprintf(stderr,"P017 endpoint mismatch rate=%d fx=%s control=%s t=%d dry=%g wet=%g\n",
-                                             sr,kMacroNames[fx],global?"THERAPY":"macro",t,a[n],x[n]);
-                            check(x[n]==a[n]&&y[n]==b[n],"P017 automated endpoint not exact dry");
+                                             sr,kMacroNames[fx],global?"THERAPY":"macro",t,dryL,x[n]);
+                            check(x[n]==dryL&&y[n]==dryR,"P017 automated endpoint not exact latency-matched dry");
                             ++exact;
                         }
                     }

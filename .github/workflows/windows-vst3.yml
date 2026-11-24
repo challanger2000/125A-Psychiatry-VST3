@@ -1,4 +1,4 @@
-name: P017 Windows VST3 Automated Endpoint Audit
+name: P018 Windows VST3 Phase Aligned PDC Audit
 
 on:
   push:
@@ -126,7 +126,7 @@ jobs:
       - name: Attach P010 actual-processor audio metrology (not a release)
         uses: actions/upload-artifact@v4
         with:
-          name: P017-Real-VST3-Phase-Transient-and-WetDry-Metrics
+          name: P018-Real-VST3-Phase-Aligned-Metrics
           path: |
             artifacts/P010_*
             artifacts/P012_*
@@ -137,7 +137,7 @@ jobs:
       - name: Attach experimental VST3 (NOT a release)
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-PSYCHIATRY-P017-Automation-NOT-FINAL
+          name: 125A-PSYCHIATRY-P018-Phase-Aligned-NOT-FINAL
           path: artifacts/**
           if-no-files-found: error
           retention-days: 7

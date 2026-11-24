@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <limits>
 #include <vector>
+#include <type_traits>
 
 #define CHECK(expr) do {if(!(expr)){std::fprintf(stderr,"P003 CHECK FAIL %s:%d %s\n",__FILE__,__LINE__,#expr); std::abort();}}while(0)
 
@@ -31,8 +32,13 @@ std::vector<float> source(std::size_t samples) {
 template<class FX>
 double check(FX& fx,float macro,double threshold) {
     constexpr std::size_t frames=48000*3;
-    const auto dry=source(frames);
-    auto l=dry,r=dry;
+    const auto input=source(frames);
+    auto dry=input;
+    if constexpr(std::is_same_v<FX,psychiatry::Depression>) {
+        std::move_backward(dry.begin(),dry.end()-psychiatry::detail::kLinearPhaseLatency,dry.end());
+        std::fill_n(dry.begin(),psychiatry::detail::kLinearPhaseLatency,0.f);
+    }
+    auto l=input,r=input;
     fx.prepare(48000);
     fx.setAmount(macro);
     fx.reset();
@@ -50,7 +56,7 @@ double check(FX& fx,float macro,double threshold) {
     second.prepare(48000);
     second.setAmount(macro);
     second.reset();
-    auto x=dry,y=dry;
+    auto x=input,y=input;
     run(second,x,y,1024);
     CHECK(l==x && r==y && "block-size invariant");
     if(macro==0.f) CHECK(l==dry && r==dry && "macro zero must be bit-exact dry");

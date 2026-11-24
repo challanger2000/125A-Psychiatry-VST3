@@ -43,11 +43,16 @@ double delta(const Stereo& dry,const Stereo& wet) {
 template<class FX>
 double probe(FX& fx,float amount,double minDifference) {
     constexpr double rate=48000.;
-    const auto dry=stimulus(96000,rate);
+    const auto input=stimulus(96000,rate);
+    auto dry=input;
+    for(auto* channel:{&dry.l,&dry.r}) {
+        std::move_backward(channel->begin(),channel->end()-psychiatry::detail::kLinearPhaseLatency,channel->end());
+        std::fill_n(channel->begin(),psychiatry::detail::kLinearPhaseLatency,0.f);
+    }
     fx.prepare(rate);
     fx.setAmount(amount);
     fx.reset();
-    auto wet=dry;
+    auto wet=input;
     render(fx,wet,137);
     for(std::size_t i=0;i<wet.l.size();++i) {
         CHECK(std::isfinite(wet.l[i])&&std::isfinite(wet.r[i]));
@@ -57,7 +62,7 @@ double probe(FX& fx,float amount,double minDifference) {
     second.prepare(rate);
     second.setAmount(amount);
     second.reset();
-    auto other=dry;
+    auto other=input;
     render(second,other,512);
     CHECK(wet.l==other.l && wet.r==other.r);
     const double change=delta(dry,wet);

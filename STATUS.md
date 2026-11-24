@@ -28,9 +28,9 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.6**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
-## P018 — phase-aligned oversampling candidate (local kernel passed; integration pending)
+## P018 — phase-aligned oversampling (integrated; Windows verification pending)
 
-A 49-tap symmetric halfband FIR, efficient polyphase interpolation/decimation, and exact 24-host-sample delay per nonlinear stage are implemented. Local GCC C++17 test: impulse exactly symmetric, DC 0.999999996; 18 compensated phase measurements at 44.1/48/96 kHz and 100–16,000 Hz show absolute gain error <0.002 dB and negligible phase error. Four nonlinear tanh alias probes at 44.1/48 kHz: −95.12 to −105.22 dBc. **These are filter-kernel measurements, not evidence that the four complete FX have been corrected.** P017 remains the verified plugin build until integration, new PDC and whole-chain tests pass.
+A 49-tap symmetric halfband FIR, efficient polyphase interpolation/decimation, and exact 24-host-sample delay per nonlinear stage are implemented. Local GCC C++17 test: impulse exactly symmetric, DC 0.999999996; 18 compensated phase measurements at 44.1/48/96 kHz and 100–16,000 Hz show absolute gain error <0.002 dB and negligible phase error. Four nonlinear tanh alias probes at 44.1/48 kHz: −95.12 to −105.22 dBc. **These are filter-kernel measurements, not evidence that the four complete FX have been corrected.** Factory source v0.9.7 integrates the candidate in four engines, delays every neutral stage exactly 24 samples, aligns global THERAPY and Bypass to 96 samples, reports fixed VST3 latency and queues host automation according to stage position. Tests use explicit padded renders and PDC compensation; no claim of a passed actual plugin until CI completes. P017 remains latest verified.
 
 ## P017 — exact automation convergence verified
 

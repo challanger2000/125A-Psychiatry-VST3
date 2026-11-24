@@ -126,10 +126,16 @@ double delta(const Stereo& a,const Stereo& b){
 int main(){
     auto dry=generate();
     auto zero=dry;
+    auto alignedDry=dry;
+    constexpr auto latency=4*psychiatry::detail::kLinearPhaseLatency;
+    for(auto* channel:{&alignedDry.l,&alignedDry.r}) {
+        std::move_backward(channel->begin(),channel->end()-latency,channel->end());
+        std::fill_n(channel->begin(),latency,0.f);
+    }
     Chain untouched;
     untouched.setup(0.f);
     run(untouched,zero,128);
-    CHECK(zero.l==dry.l && zero.r==dry.r);
+    CHECK(zero.l==alignedDry.l && zero.r==alignedDry.r);
 
     Chain first,second;
     first.setup(0.86f);second.setup(0.86f);
@@ -143,7 +149,7 @@ int main(){
     CHECK(allocations.load()==0 && "nine-macro audio callback must not allocate");
     run(second,wetOther,1024);
     CHECK(wet.l==wetOther.l && wet.r==wetOther.r && "full chain block invariant");
-    const double change=delta(dry,wet);
+    const double change=delta(alignedDry,wet);
     CHECK(change>0.20 && "nine-worlds combined must make a perceptible signal change");
     float peak=0.f;
     double sum=0.;
@@ -157,10 +163,10 @@ int main(){
     // Therapy = 100% must be original dry, independent of processing internals.
     for(std::size_t i=0;i<wet.l.size();++i) {
         const float t=0.f;
-        wet.l[i]=dry.l[i]+t*(wet.l[i]-dry.l[i]);
-        wet.r[i]=dry.r[i]+t*(wet.r[i]-dry.r[i]);
+        wet.l[i]=alignedDry.l[i]+t*(wet.l[i]-alignedDry.l[i]);
+        wet.r[i]=alignedDry.r[i]+t*(wet.r[i]-alignedDry.r[i]);
     }
-    CHECK(wet.l==dry.l && wet.r==dry.r);
+    CHECK(wet.l==alignedDry.l && wet.r==alignedDry.r);
     // Long synthetic input followed by silence: output should remain finite
     // and below hard runaway, not self-oscillate uncontrollably.
     Stereo stop{Audio(48000*2,0.f),Audio(48000*2,0.f)};

@@ -189,7 +189,14 @@ int main(){
                 }
                 const auto elapsed=std::chrono::duration<double,std::milli>(
                     std::chrono::steady_clock::now()-start).count();
-                const auto m=measure(dry,wet,elapsed);
+                auto aligned=dry;
+                const std::size_t latency=effect==9?4*psychiatry::detail::kLinearPhaseLatency:
+                    ((effect==0||effect==3||effect==4||effect==8)?psychiatry::detail::kLinearPhaseLatency:0);
+                if(latency)for(auto* channel:{&aligned.l,&aligned.r}) {
+                    std::move_backward(channel->begin(),channel->end()-latency,channel->end());
+                    std::fill_n(channel->begin(),latency,0.f);
+                }
+                const auto m=measure(aligned,wet,elapsed);
                 const double gain=20.*std::log10(std::max(m.wetRms,1.e-15)/
                                                  std::max(m.dryRms,1.e-15));
                 const double peakDb=20.*std::log10(std::max(m.peak,1.e-15));

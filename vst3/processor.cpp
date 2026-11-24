@@ -106,6 +106,7 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
 
 tresult PLUGIN_API Processor::setActive(TBool state) {
     if(state && prepared_) {
+        resetTimeline();
         depression_.reset();
         paranoia_.reset();
         obsession_.reset();
@@ -115,7 +116,6 @@ tresult PLUGIN_API Processor::setActive(TBool state) {
         schizophrenia_.reset();
         dissociation_.reset();
         hallucination_.reset();
-        resetTimeline();
         wetSmoothed_=1.f-therapyAmount_;
     }
     return AudioEffect::setActive(state);

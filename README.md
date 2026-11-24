@@ -2,7 +2,7 @@
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
-> **Current verified engineering checkpoint: P024 raster CRT / factory v0.9.12**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Not the final photographic GUI and not yet approved in Studio Pro.**
+> **Current verified engineering checkpoint: P024 raster CRT / factory v0.9.12**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Original fictional grayscale CRT scenes verified; not archival photographs. Studio Pro acceptance remains open.**
 
 ## Nine equally important effect worlds
 
@@ -159,7 +159,7 @@ The 120 audit cases use **synthetic** bass, drum, voice-like and atmosphere prox
 
 ## Historical visual direction
 
-The eventual GUI should resemble a disturbing old clinical diagnostic instrument: worn metal, analog meters, institutional imagery, documentary-style monochrome photographs and a damaged black-and-white monitor. **Each macro drives a corresponding visual world**, and active macros may mix those behaviors. Imagery must be licensed, historically appropriate and respectful of real patients. The current P009 CRT is entirely generated in the UI thread from the real macro values and has reduced-motion controls; **no photographic archive assets are bundled yet**, and the final vintage-hardware appearance is still in development.
+The eventual GUI should resemble a disturbing old clinical diagnostic instrument: worn metal, analog meters, institutional imagery, documentary-style monochrome photographs and a damaged black-and-white monitor. **Each macro drives a corresponding visual world**, and active macros may mix those behaviors. Imagery must be licensed, historically appropriate and respectful of real patients. P024 bundles nine original fictional grayscale rendered scenes driven by actual macro values, with reduced motion and bypass/THERAPY response. No archival photographs or external image rights are involved.
 
 ## Development
 
@@ -176,6 +176,6 @@ ctest --test-dir build -C Release --output-on-failure
 
 See [docs/P002.md](docs/P002.md) for the Windows Steinberg SDK build setup.
 
-**Release is NO-GO:** no finished historical GUI, no historic image license package, no real Studio Pro audible/project recall sign-off, no completed high-fidelity spectral/aliasing and CPU acceptance. A green build is never a substitute for listening.
+**Release acceptance remains open:** P024 Windows VST3 and actual GUI, alias/intermodulation, phase, endpoints, dense automation and tail decay tests are verified. P025 recorded-source audit is pending; actual Studio Pro listening and project recall have not yet been verified. A green build is not a substitute for listening.
 
 © 125A. Final license to be determined before redistribution.

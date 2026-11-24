@@ -224,19 +224,19 @@ The major new evidence is **actual audio passing through `psychiatry::vst3::Proc
 
 [Full P006 method, findings and limitations](docs/P006.md).
 
-## Still not implemented / NO-GO
+## Current remaining acceptance gates
 
-- **The functional P009 monochrome vector CRT exists, but the final historic photographic GUI, photo/asset rights review and the full old-clinic atmosphere are not yet finished.**
-- **LOSS OF CONTROL and DE/EN toggles are implemented**, but their physical click-to-audio behavior in Studio Pro has not yet been user-verified.
-- **No real Studio Pro listening test or project save/reopen, no user listening acceptance, no captured real musical/vocal audio comparison.** P010 proves significant transformations using generated bass, drum, guitar-like, voice-like and atmosphere *proxies*, not recordings.
-- **No production high-fidelity assurance** for wavefolder aliasing, spectral/Hilbert sidebands, grain clicks, transient smoothing, long automation and long-session CPU behavior. The VST3 47/47 tests do not validate subjective quality.
-- No release installer or final VST3 product. P014 corrects a further narrowband PANIC alias; release and musical acceptance are still NO-GO.
+- **Recorded-source audit P025:** real sampled drums/acoustic guitar, vocal foley and machine-room ambience; objective measurements and RMS-matched A/B export are running. Vocal foley is not sung or spoken voice. Synthetic audio, alias/intermodulation, PDC, exact endpoints, three-rate automation, tail decay and allocation/CPU regression tests have already passed in P024.
+- **Visual:** all nine original fictional grayscale scene bitmaps are loaded in the actual Windows GUI; no third-party or archival images are bundled. Manual inspection of P024 EditorHost screenshot confirmed the new CRT art, legible controls and complete panel. The original photographic reference is not claimed to be reproduced exactly.
+- **Final host acceptance:** only actual Studio Pro session listening, recall and automation in the target DAW can establish end-user acceptance. No completed DAW test is claimed.
+- **Distribution:** a verified portable Windows x64 VST3 bundle exists. No public final release, installer or finished-product approval claimed. No test recordings in plugin bundle.
 
-## Next engineering gates
+## P024 package inspection
 
-1. **Next audio acceptance:** multi-tone, 44.1/48/96-kHz alias/intermodulation measurements of all nine worlds, phase/latency and transient benchmarks, real recorded bass/guitar/drums/vocals, and revisions where musical quality is poor. Real DAW testing **at the end** per project policy.
-2. **Next final art phase:** establish rights-cleared original historic-clinic photographic motifs and richer worn-instrument styling for the already functioning monochrome CRT, keeping UI rendering off the audio thread; retain motion-off accessibility and bilingual labels.
-3. **Final release QA:** actual Windows Studio Pro audible/protected realtime validation, project recall/automation/installer verification, final release readiness only on proof.
+Downloaded actual artifact 14882642144 and inspected independently: ZIP CRC valid, exactly one branded VST3 bundle with PE32+ AMD64 module, matching 0.9.12 metadata, stable IDs, nine decodable 224×196 grayscale PNGs, UI resource, both SDK license notices. No QA recordings or personal developer identity in package metadata. System/VC++ runtime dependencies only; no external host required.
+
+ZIP SHA-256: `24626e65ffc0282036cfde16db341b1b3fbc0edb2c197db1b826464e311015de`
+Module SHA-256: `32357f529914b572a6d2deaf6e02b01b526a776ddbf5ae24161906e12c47f4b3`
 
 ## Project rules
 

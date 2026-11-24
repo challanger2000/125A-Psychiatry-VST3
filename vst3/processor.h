@@ -24,6 +24,8 @@ public:
     Steinberg::tresult PLUGIN_API setBusArrangements(Steinberg::Vst::SpeakerArrangement* inputs,
             Steinberg::int32 numIns, Steinberg::Vst::SpeakerArrangement* outputs,
             Steinberg::int32 numOuts) override;
+    static constexpr Steinberg::uint32 kLatency=4*psychiatry::detail::kLinearPhaseLatency;
+    Steinberg::uint32 PLUGIN_API getLatencySamples() override { return kLatency; }
     Steinberg::tresult PLUGIN_API canProcessSampleSize(Steinberg::int32 symbolic) override;
     Steinberg::tresult PLUGIN_API process(Steinberg::Vst::ProcessData& data) override;
     Steinberg::tresult PLUGIN_API setState(Steinberg::IBStream* state) override;
@@ -54,8 +56,22 @@ private:
     float wetSmoothed_=1.f;
     float wetStep_=0.001f;
     bool bypass_=false;
+    bool bypassDSP_=false;
+    float therapyDSP_=0.f;
     bool prepared_=false;
     std::array<std::vector<float>,2> original_{};
+    std::array<psychiatry::detail::FixedDelay<kLatency>,2> dryDelay_{};
+    struct Pending { std::uint64_t due=0; float value=0.f; };
+    struct PendingLane {
+        std::array<Pending,kLatency+1> items{};
+        std::size_t head=0,count=0;
+    };
+    std::array<PendingLane,11> pending_{};
+    std::uint64_t clock_=0;
+    void dispatchPending() noexcept;
+    std::uint64_t nextDue() const noexcept;
+    void applyDSP(unsigned lane,float value) noexcept;
+    void resetTimeline() noexcept;
 
     void apply(Steinberg::Vst::ParamID id, Steinberg::Vst::ParamValue value) noexcept;
     bool processSpan(Steinberg::Vst::ProcessData& data,

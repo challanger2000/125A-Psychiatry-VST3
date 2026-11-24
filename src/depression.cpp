@@ -34,9 +34,11 @@ void Depression::reset() noexcept {
         c.darkness=0.f;
         c.dynamics=0.f;
         c.saturation.reset();
+        c.dryDelay.reset();
         for(auto& line:c.delay) std::fill(line.begin(),line.end(),0.f);
     }
     smoothed_=target_;
+    mixDelay_.reset(smoothed_/(0.50f+0.50f*smoothed_));
 }
 void Depression::setAmount(float a) noexcept { target_=normal(a); }
 
@@ -49,10 +51,13 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
         // clean bass/atmosphere. A smooth concave curve makes the first
         // third musically perceptible without shifting the 0% or 100% ends.
         const float m=smoothed_/(0.50f+0.50f*smoothed_);
+        const float mix=mixDelay_.process(m);
         for(unsigned ch=0;ch<count;++ch) {
             auto& c=state_[ch];
             const float original=channels[ch][n];
             const float x=finite(original);
+            const float delayedRaw=c.dryDelay.process(original);
+            const float delayed=finite(delayedRaw);
             // Program-dependent compression with saturator; gradual onset.
             c.dynamics+=step_*4.f*(std::abs(x)-c.dynamics);
             const float drive=1.f+4.5f*m*m;
@@ -66,7 +71,7 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
             const float cutoff=7500.f*std::pow(0.062f,m);
             const float a=1.f-std::exp(-6.28318530718f*cutoff/static_cast<float>(rate_));
             c.darkness+=a*(compressed-c.darkness);
-            const float body=0.36f*x+0.64f*c.darkness;
+            const float body=0.36f*delayed+0.64f*c.darkness;
             // Plate-like diffuse tail: feedback in an energy-preserving
             // orthogonal Hadamard scattering matrix; <1 feedback gain.
             std::array<float,4> out{};
@@ -98,7 +103,7 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
             const float reverbMix=m*m*(0.17f+0.43f*m);
             // Controlled musical decay and level, not louder = better.
             const float transformed=body*(1.f-0.3f*m)+tail*reverbMix;
-            if(m>0.f) channels[ch][n]=x+m*(transformed-x);
+            channels[ch][n]=mix==0.f?delayedRaw:(mix==1.f?transformed:delayed+mix*(transformed-delayed));
         }
     }
 }

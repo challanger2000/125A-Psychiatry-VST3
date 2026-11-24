@@ -2,7 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include "oversample2x.hpp"
+#include "linear_phase_2x.hpp"
 
 namespace psychiatry {
 
@@ -19,9 +19,11 @@ public:
 private:
     struct Channel {
         float phase=0.f,feedback=0.f,fast=0.f,slow=0.f;
-        detail::Oversample2x saturation{};
+        detail::LinearPhaseOversample2x saturation{};
+        detail::FixedDelay<detail::kLinearPhaseLatency> dryDelay{};
     };
     std::array<Channel,2> state_{};
+    detail::FixedDelay<detail::kLinearPhaseLatency> mixDelay_{};
     float amount_=0.f,smoothed_=0.f,step_=0.001f;
     double rate_=48000.0;
 };
@@ -39,9 +41,11 @@ private:
         float last=0.f,slowHigh=0.f;
         std::uint32_t rng=0xB54CA515u;
         unsigned cooldown=0;
-        detail::Oversample2x saturation{};
+        detail::LinearPhaseOversample2x saturation{};
+        detail::FixedDelay<detail::kLinearPhaseLatency> dryDelay{};
     };
     std::array<Channel,2> state_{};
+    detail::FixedDelay<detail::kLinearPhaseLatency> mixDelay_{};
     float amount_=0.f,smoothed_=0.f,step_=0.001f;
     double rate_=48000.0;
     std::uint64_t impulseCount_=0;
@@ -54,30 +58,14 @@ public:
     void setAmount(float amount) noexcept;
     void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
 private:
-    // P012: allocation-free 2x over/undersampling around ALL nonlinear
-    // branches. Three cascaded Butterworth biquads per direction, per band.
-    // These have no hidden dry mix and are reset in setActive().
-    struct Coeff {
-        float b0=0.f,b1=0.f,b2=0.f,a1=0.f,a2=0.f;
-    };
-    struct Biquad {
-        float z1=0.f,z2=0.f;
-        float process(float x,const Coeff& c) noexcept {
-            const float y=c.b0*x+z1;
-            z1=c.b1*x-c.a1*y+z2;
-            z2=c.b2*x-c.a2*y;
-            return y;
-        }
-    };
     struct Channel {
         float low=0.f,lowMid=0.f,driveEnvelope=0.f;
-        // Upsampler for low/mid/high. Decimator is shared after the
-        // combined nonlinear wet branches for each individual channel.
-        std::array<std::array<Biquad,3>,3> up{};
-        std::array<Biquad,3> down{};
+        std::array<detail::LinearPhaseInterpolator2x,3> up{};
+        detail::LinearPhaseDecimator2x down{};
+        detail::FixedDelay<detail::kLinearPhaseLatency> dryDelay{};
     };
     std::array<Channel,2> state_{};
-    std::array<Coeff,3> oversampleCoeffs_{};
+    detail::FixedDelay<detail::kLinearPhaseLatency> mixDelay_{};
     float amount_=0.f,smoothed_=0.f,step_=0.001f;
     double rate_=48000.0;
 };

@@ -9,6 +9,7 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <limits>
 
 namespace psychiatry::vst3 {
 using namespace Steinberg;
@@ -96,6 +97,7 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
         for(auto& channel:original_)
             channel.assign(static_cast<std::size_t>(setup.maxSamplesPerBlock),0.f);
         wetStep_=static_cast<float>(1.-std::exp(-1./(0.012*setup.sampleRate)));
+        resetTimeline();
         wetSmoothed_=1.f-therapyAmount_;
         prepared_=true;
     }
@@ -113,6 +115,7 @@ tresult PLUGIN_API Processor::setActive(TBool state) {
         schizophrenia_.reset();
         dissociation_.reset();
         hallucination_.reset();
+        resetTimeline();
         wetSmoothed_=1.f-therapyAmount_;
     }
     return AudioEffect::setActive(state);
@@ -122,40 +125,78 @@ tresult PLUGIN_API Processor::canProcessSampleSize(int32 symbolic) {
     return symbolic==Vst::kSample32 ? kResultTrue : kResultFalse;
 }
 
+// Parameter queues follow the same fixed input-time latency as audio.
+// A host event at sample t enters each stage when that stage receives
+// sample t; the four stage mix envelopes have their own 24-sample delay.
+void Processor::resetTimeline() noexcept {
+    clock_=0;pending_={};
+    for(auto& d:dryDelay_)d.reset();
+    applyDSP(0,depressionAmount_);applyDSP(1,paranoiaSettings_.amount);
+    applyDSP(2,schizophreniaAmount_);applyDSP(3,maniaAmount_);
+    applyDSP(4,panicAmount_);applyDSP(5,dissociationAmount_);
+    applyDSP(6,obsessionAmount_);applyDSP(7,hallucinationAmount_);
+    applyDSP(8,psychosisAmount_);applyDSP(9,therapyAmount_);applyDSP(10,bypass_?1.f:0.f);
+}
+void Processor::applyDSP(unsigned lane,float v) noexcept {
+    switch(lane) {
+        case 0: depression_.setAmount(v);break;
+        case 1: {auto settings=paranoiaSettings_;settings.amount=v;paranoia_.setSettings(settings);break;}
+        case 2: schizophrenia_.setAmount(v);break;
+        case 3: mania_.setAmount(v);break;
+        case 4: panic_.setAmount(v);break;
+        case 5: dissociation_.setAmount(v);break;
+        case 6: obsession_.setAmount(v);break;
+        case 7: hallucination_.setAmount(v);break;
+        case 8: psychosis_.setAmount(v);break;
+        case 9: therapyDSP_=v;break;
+        case 10: bypassDSP_=v>=0.5f;break;
+    }
+}
 void Processor::apply(Vst::ParamID id,Vst::ParamValue value) noexcept {
     const float v=static_cast<float>(normalized(value));
-    if(id==kDepression) {
-        depressionAmount_=v;
-        depression_.setAmount(v);
-    } else if(id==kParanoia) {
-        paranoiaSettings_.amount=v;
-        paranoia_.setSettings(paranoiaSettings_);
-    } else if(id==kObsession) {
-        obsessionAmount_=v;
-        obsession_.setAmount(v);
-    } else if(id==kMania) {
-        maniaAmount_=v;
-        mania_.setAmount(v);
-    } else if(id==kPanic) {
-        panicAmount_=v;
-        panic_.setAmount(v);
-    } else if(id==kPsychosis) {
-        psychosisAmount_=v;
-        psychosis_.setAmount(v);
-    } else if(id==kSchizophrenia) {
-        schizophreniaAmount_=v;
-        schizophrenia_.setAmount(v);
-    } else if(id==kDissociation) {
-        dissociationAmount_=v;
-        dissociation_.setAmount(v);
-    } else if(id==kHallucination) {
-        hallucinationAmount_=v;
-        hallucination_.setAmount(v);
-    } else if(id==kTherapy) {
-        therapyAmount_=v;
-    } else if(id==kBypass) {
-        bypass_=v>=0.5f;
+    unsigned lane=0;
+    switch(id) {
+        case kDepression: depressionAmount_=v;lane=0;break;
+        case kParanoia: paranoiaSettings_.amount=v;lane=1;break;
+        case kSchizophrenia: schizophreniaAmount_=v;lane=2;break;
+        case kMania: maniaAmount_=v;lane=3;break;
+        case kPanic: panicAmount_=v;lane=4;break;
+        case kDissociation: dissociationAmount_=v;lane=5;break;
+        case kObsession: obsessionAmount_=v;lane=6;break;
+        case kHallucination: hallucinationAmount_=v;lane=7;break;
+        case kPsychosis: psychosisAmount_=v;lane=8;break;
+        case kTherapy: therapyAmount_=v;lane=9;break;
+        case kBypass: bypass_=v>=0.5f;lane=10;break;
+        default: return;
     }
+    constexpr std::uint64_t D=psychiatry::detail::kLinearPhaseLatency;
+    constexpr std::array<std::uint64_t,11> offsets{0,3*D,D,D,2*D,3*D,3*D,3*D,3*D,4*D,4*D};
+    auto& q=pending_[lane];
+    const auto due=clock_+offsets[lane];
+    if(q.count && q.items[(q.head+q.count-1)%q.items.size()].due==due) {
+        q.items[(q.head+q.count-1)%q.items.size()].value=v;
+    } else {
+        // At most one change per sample per lane, within kLatency samples.
+        // Capacity kLatency+1 includes the event due at the current sample.
+        if(q.count<q.items.size()) {
+            q.items[(q.head+q.count)%q.items.size()]={due,v};
+            ++q.count;
+        }
+    }
+}
+void Processor::dispatchPending() noexcept {
+    for(unsigned lane=0;lane<pending_.size();++lane) {
+        auto& q=pending_[lane];
+        while(q.count && q.items[q.head].due<=clock_) {
+            applyDSP(lane,q.items[q.head].value);
+            q.head=(q.head+1)%q.items.size();--q.count;
+        }
+    }
+}
+std::uint64_t Processor::nextDue() const noexcept {
+    auto due=std::numeric_limits<std::uint64_t>::max();
+    for(const auto& q:pending_)if(q.count)due=std::min(due,q.items[q.head].due);
+    return due;
 }
 
 bool Processor::processSpan(Vst::ProcessData& data,
@@ -187,11 +228,11 @@ bool Processor::processSpan(Vst::ProcessData& data,
             const auto c=static_cast<std::size_t>(ch);
             const auto* from=src[c]+offset+pos;
             auto* to=dst[c]+offset+pos;
-            std::memcpy(original_[c].data(),from,static_cast<std::size_t>(size)*sizeof(float));
+            for(int32 i=0;i<size;++i)original_[c][static_cast<std::size_t>(i)]=dryDelay_[c].process(from[i]);
             if(from!=to) std::memmove(to,from,static_cast<std::size_t>(size)*sizeof(float));
             ptrs[c]=to;
         }
-        if(!bypass_) {
+        { // Keep wet and dry timelines continuous even during native bypass.
             // Fixed order yields designed interaction; individual macro
             // processors each return exact dry at zero amount.
             depression_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
@@ -213,14 +254,14 @@ bool Processor::processSpan(Vst::ProcessData& data,
             psychosis_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
                                static_cast<std::size_t>(size));
             for(int32 i=0;i<size;++i) {
-                wetSmoothed_=psychiatry::detail::smoothToward(wetSmoothed_,1.f-therapyAmount_,wetStep_);
+                wetSmoothed_=psychiatry::detail::smoothToward(wetSmoothed_,1.f-therapyDSP_,wetStep_);
                 const float w=std::clamp(wetSmoothed_,0.f,1.f);
                 for(int32 ch=0;ch<input.numChannels;++ch) {
                     const auto c=static_cast<std::size_t>(ch);
                     const float dry=original_[c][static_cast<std::size_t>(i)];
                     const float wet=ptrs[c][i];
                     // Exact endpoints need no subtract/add round trip.
-                    if(w==0.f)ptrs[c][i]=dry;
+                    if(bypassDSP_||w==0.f)ptrs[c][i]=dry;
                     else if(w<1.f)ptrs[c][i]=dry+w*(wet-dry);
                 }
             }
@@ -258,8 +299,12 @@ tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
                 changed=true;
             }
         }
+        dispatchPending();
         if(pos>=data.numSamples) break;
         int32 next=data.numSamples;
+        const auto due=nextDue();
+        if(due!=std::numeric_limits<std::uint64_t>::max()&&due>clock_&&due-clock_<static_cast<std::uint64_t>(next-pos))
+            next=pos+static_cast<int32>(due-clock_);
         for(int32 n=0;n<count;++n) {
             const Lane& lane=lanes[static_cast<std::size_t>(n)];
             if(lane.index<lane.count) next=std::min(next,lane.nextOffset);
@@ -269,6 +314,7 @@ tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
             continue;
         }
         if(!processSpan(data,pos,next-pos)) return kResultFalse;
+        clock_+=static_cast<std::uint64_t>(next-pos);
         pos=next;
     }
     return kResultOk;
@@ -327,6 +373,8 @@ tresult PLUGIN_API Processor::setState(IBStream* state) {
     obsession_.setAmount(obsessionAmount_);
     hallucination_.setAmount(hallucinationAmount_);
     psychosis_.setAmount(psychosisAmount_);
+    pending_={};
+    therapyDSP_=therapyAmount_;bypassDSP_=bypass_;
     wetSmoothed_=1.f-therapyAmount_;
     return kResultOk;
 }

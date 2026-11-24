@@ -37,8 +37,9 @@ void Mania::reset() noexcept {
     for(auto& s:state_) {
         s.phase=s.feedback=s.fast=s.slow=0.f;
         s.saturation.reset();
+        s.dryDelay.reset();
     }
-    smoothed_=amount_;
+    smoothed_=amount_;mixDelay_.reset(smoothed_);
 }
 void Mania::setAmount(float a) noexcept {amount_=norm(a);}
 void Mania::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
@@ -48,10 +49,13 @@ void Mania::process(float* const* audio,unsigned channels,std::size_t frames) no
     for(std::size_t i=0;i<frames;++i) {
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
+        const float mix=mixDelay_.process(m);
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
             const float raw=audio[ch][i];
             const float x=sane(raw);
+            const float delayedRaw=s.dryDelay.process(raw);
+            const float delayed=sane(delayedRaw);
             // Onsets accelerate the restless internal clock. Unlike generic
             // tremolo, envelope, feedback and ring sidebands interact.
             const float level=std::abs(x);
@@ -82,7 +86,7 @@ void Mania::process(float* const* audio,unsigned channels,std::size_t frames) no
             // keep pulse/ring speed and timbral changes intact.
             const float automaticGain=1.f/(1.f+2.55f*m*m);
             const float transformed=automaticGain*manipulated;
-            if(m>0.f) audio[ch][i]=x+m*(transformed-x);
+            audio[ch][i]=mix==0.f?delayedRaw:(mix==1.f?transformed:delayed+mix*(transformed-delayed));
         }
     }
 }
@@ -99,9 +103,10 @@ void Panic::reset() noexcept {
         c.last=c.slowHigh=0.f;
         c.cooldown=0;
         c.saturation.reset();
+        c.dryDelay.reset();
     }
     state_[0].rng=0xCA125A11u;state_[1].rng=0x8BA92AE7u;
-    smoothed_=amount_;impulseCount_=0;
+    smoothed_=amount_;mixDelay_.reset(smoothed_*(1.5f-0.5f*smoothed_));impulseCount_=0;
 }
 void Panic::setAmount(float a) noexcept {amount_=norm(a);}
 void Panic::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
@@ -116,10 +121,13 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
         // Smooth onset boost; P006 reported a marginal 20% PANIC response
         // on clean synth bass. Preserve both endpoints and audio smoothing.
         const float m=smoothed_*(1.5f-0.5f*smoothed_);
+        const float mix=mixDelay_.process(m);
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
             const float raw=audio[ch][i];
             const float x=sane(raw);
+            const float delayedRaw=s.dryDelay.process(raw);
+            const float delayed=sane(delayedRaw);
             const float level=std::abs(x);
             s.fast+=fa*(level-s.fast);
             s.slow+=sa*(level-s.slow);
@@ -157,7 +165,7 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
             // Smooth macro-dependent wet-only trim, unity at 0%.
             const float levelTrim=1.f/(1.f+0.25f*m*m);
             const float transformed=levelTrim*wet*(1.f-0.35f*m*(1.f-tremor));
-            if(m>0.f) audio[ch][i]=x+m*(transformed-x);
+            audio[ch][i]=mix==0.f?delayedRaw:(mix==1.f?transformed:delayed+mix*(transformed-delayed));
         }
     }
 }
@@ -165,32 +173,10 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
 void Psychosis::prepare(double sr) noexcept {
     rate_=rate(sr);
     step_=pole(16.,rate_);
-    // P012 anti-aliasing: true 2x filtered upsample/decimate. A 6th-order
-    // Butterworth IIR with a cutoff at ~0.41 of the original rate is used
-    // twice (before nonlinear processing AND before downsampling).
-    // Coefficients are computed ONLY during prepare(), never in process().
-    // The three stable SOS Q values are the sixth-order Butterworth poles.
-    constexpr std::array<double,3> q{
-        0.5176380902050415,0.7071067811865476,1.9318516525781366};
-    constexpr double omega=6.2831853071795864769*0.205;
-    const double sine=std::sin(omega),cosine=std::cos(omega);
-    for(std::size_t k=0;k<3;++k) {
-        const double alpha=sine/(2.*q[k]);
-        const double a0=1.+alpha;
-        oversampleCoeffs_[k].b0=
-            static_cast<float>((1.-cosine)/(2.*a0));
-        oversampleCoeffs_[k].b1=
-            static_cast<float>((1.-cosine)/a0);
-        oversampleCoeffs_[k].b2=oversampleCoeffs_[k].b0;
-        oversampleCoeffs_[k].a1=
-            static_cast<float>(-2.*cosine/a0);
-        oversampleCoeffs_[k].a2=
-            static_cast<float>((1.-alpha)/a0);
-    }
     reset();
 }
 void Psychosis::reset() noexcept {
-    state_={};smoothed_=amount_;
+    state_={};smoothed_=amount_;mixDelay_.reset(smoothed_);
 }
 void Psychosis::setAmount(float a) noexcept {amount_=norm(a);}
 void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
@@ -198,20 +184,16 @@ void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames
     const float lowPole=pole(170.,rate_);
     const float midPole=pole(2050.,rate_);
     const float envPole=pole(20.,rate_);
-    // P012: prefiltered 2x nonlinear wet branch with a separate lowpass
-    // decimator. Filter state is per-instance and fully preallocated.
-    const auto filtering=[this](std::array<Biquad,3>& stages,float sample) noexcept {
-        for(std::size_t section=0;section<stages.size();++section)
-            sample=stages[section].process(sample,oversampleCoeffs_[section]);
-        return sample;
-    };
     for(std::size_t i=0;i<frames;++i) {
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
+        const float mix=mixDelay_.process(m);
         for(unsigned ch=0;ch<channels;++ch) {
             auto& s=state_[ch];
             const float raw=audio[ch][i];
             const float x=sane(raw);
+            const float delayedRaw=s.dryDelay.process(raw);
+            const float delayed=sane(delayedRaw);
             s.low+=lowPole*(x-s.low);
             s.lowMid+=midPole*(x-s.lowMid);
             const float low=s.low;
@@ -219,31 +201,23 @@ void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames
             const float high=x-s.lowMid;
             s.driveEnvelope+=envPole*(std::abs(x)-s.driveEnvelope);
             const float dynamic=0.2f*std::clamp(s.driveEnvelope,0.f,1.f);
-            // Two streamed oversamples per input frame: [2*x, 0] in
-            // each of three prefiltered bands. An IIR reconstruction stage
-            // suppresses the 33-kHz image of a 15-kHz source BEFORE the
-            // nonlinear shapers see it; the output IIR suppresses harmonics
-            // above the real host Nyquist BEFORE 2:1 decimation.
-            // No history arrays resize or allocate within an audio callback.
-            float decimated=0.f;
+            const auto upL=s.up[0].process(low);
+            const auto upM=s.up[1].process(mid);
+            const auto upH=s.up[2].process(high);
+            std::array<float,2> shaped{};
             for(int os=0;os<2;++os) {
-                const float inLow=filtering(s.up[0],os==0?2.f*low:0.f);
-                const float inMid=filtering(s.up[1],os==0?2.f*mid:0.f);
-                const float inHigh=filtering(s.up[2],os==0?2.f*high:0.f);
-                const float l=std::tanh(inLow*(1.f+4.f*m+dynamic));
-                const float mm=std::tanh(inMid*(1.f+12.f*m+dynamic));
-                const float h=std::tanh(inHigh*(1.f+6.f*m+dynamic));
+                const float l=std::tanh(upL[os]*(1.f+4.f*m+dynamic));
+                const float mm=std::tanh(upM[os]*(1.f+12.f*m+dynamic));
+                const float h=std::tanh(upH[os]*(1.f+6.f*m+dynamic));
                 const float folded=fold(mm,(m>0.25f)?(m-0.25f)*0.92f:0.f);
-                const float im=std::tanh((inMid*inHigh)*8.f*m);
-                const float shaped=0.60f*l+0.75f*folded+0.42f*h+
-                    0.28f*m*im;
-                const float filtered=filtering(s.down,shaped);
-                if(os==0)decimated=filtered;
+                const float im=std::tanh((upM[os]*upH[os])*8.f*m);
+                shaped[os]=0.60f*l+0.75f*folded+0.42f*h+0.28f*m*im;
             }
+            const float decimated=s.down.process(shaped[0],shaped[1]);
             // Preserve the calibrated wet-only gain structure from P006.
             const float automaticGain=1.f/(1.f+1.30f*m*m);
             const float transformed=0.72f*automaticGain*decimated;
-            if(m>0.f) audio[ch][i]=x+m*(transformed-x);
+            audio[ch][i]=mix==0.f?delayedRaw:(mix==1.f?transformed:delayed+mix*(transformed-delayed));
         }
     }
 }

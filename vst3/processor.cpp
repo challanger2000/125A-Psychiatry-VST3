@@ -76,6 +76,7 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
         return kResultFalse;
     const auto result=AudioEffect::setupProcessing(setup);
     if(result==kResultOk) {
+        tailSamples_=static_cast<uint32>(std::ceil(30.*setup.sampleRate))+kLatency;
         depression_.prepare(setup.sampleRate);
         paranoia_.prepare(setup.sampleRate);
         obsession_.prepare(setup.sampleRate);

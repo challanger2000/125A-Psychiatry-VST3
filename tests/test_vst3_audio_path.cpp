@@ -837,6 +837,72 @@ void testAutomatedEndpoints() {
         }
     }
 }
+// P023: an actual host receives a nonzero tail declaration, and the
+// full serial chain is exercised until that advertised bound has elapsed.
+void testReportedTail() {
+    for(int sr:{44100,48000,96000}) {
+        Processor p;
+        check(p.initialize(nullptr)==kResultOk,"P023 init");
+        Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,1024,double(sr)};
+        check(p.setupProcessing(setup)==kResultOk,"P023 setup");
+        ResizableMemoryIBStream state;
+        IBStreamer writer(&state,kLittleEndian);
+        check(writer.writeInt32(kStateMagic)&&writer.writeInt32(kStateVersion),"P023 state");
+        for(int i=0;i<9;++i)check(writer.writeFloat(1.f),"P023 macro");
+        check(writer.writeFloat(0.f)&&writer.writeInt32(0),"P023 mix");
+        state.rewind();
+        check(p.setState(&state)==kResultOk&&p.setActive(true)==kResultOk,"P023 activate");
+        const auto reported=p.getTailSamples();
+        check(reported==30u*static_cast<unsigned>(sr)+kLatency,"P023 host tail declaration");
+        std::array<float,1024> l{},r{},a{},b{};
+        // Exact silence at reset; followed by two seconds of input and
+        // the entire stated tail duration. Bin each second independently.
+        const int startSignal=sr,endSignal=3*sr;
+        const int total=endSignal+static_cast<int>(reported);
+        std::array<double,31> peaks{},energy{};
+        std::array<unsigned,31> samples{};
+        double activePeak=0.;
+        for(int pos=0;pos<total;pos+=1024) {
+            const int count=std::min(1024,total-pos);
+            for(int i=0;i<count;++i) {
+                const int n=pos+i;
+                const double t=double(n)/sr;
+                l[i]=n>=startSignal&&n<endSignal?.37f*tone(73.4,t)+.19f*tone(1291.,t):0.f;
+                r[i]=n>=startSignal&&n<endSignal?.31f*tone(97.,t)+.17f*tone(873.,t):0.f;
+            }
+            float* in[]{l.data(),r.data()},*out[]{a.data(),b.data()};
+            Vst::AudioBusBuffers bi{},bo{};
+            bi.numChannels=2;bo.numChannels=2;bi.channelBuffers32=in;bo.channelBuffers32=out;
+            if(pos+count<=startSignal||pos>=endSignal)bi.silenceFlags=3;
+            Vst::ProcessData data{};data.processMode=Vst::kRealtime;data.symbolicSampleSize=Vst::kSample32;
+            data.numSamples=count;data.numInputs=1;data.numOutputs=1;data.inputs=&bi;data.outputs=&bo;
+            check(p.process(data)==kResultOk,"P023 actual callback");
+            for(int i=0;i<count;++i) {
+                const int n=pos+i;
+                const double peak=std::max(std::abs(double(a[i])),std::abs(double(b[i])));
+                check(std::isfinite(a[i])&&std::isfinite(b[i])&&peak<4.,"P023 finite and bounded");
+                if(n<startSignal)check(peak==0.,"P023 spontaneous audio during initial silence");
+                else if(n<endSignal)activePeak=std::max(activePeak,peak);
+                else {
+                    const auto bin=static_cast<std::size_t>((n-endSignal)/sr);
+                    peaks[bin]=std::max(peaks[bin],peak);
+                    energy[bin]+=double(a[i])*a[i]+double(b[i])*b[i];
+                    ++samples[bin];
+                }
+            }
+        }
+        check(activePeak>.01&&peaks[0]>.001,"P023 meaningful source and tail");
+        for(std::size_t i=0;i<peaks.size();++i)
+            std::printf("P023 TAIL rate=%d second=%zu peak=%.9g rms=%.9g\n",sr,i+1,peaks[i],
+                        std::sqrt(energy[i]/(2.*std::max(1u,samples[i]))));
+        // Retain measured tail rather than arbitrarily zeroing buffers.
+        // The final complete second and extra latency must be below -100 dBFS.
+        check(peaks[29]<=1.e-5&&peaks[30]<=1.e-5,"P023 declared tail too short or residual feedback");
+        check(p.setActive(false)==kResultOk&&p.terminate()==kResultOk,"P023 terminate");
+        std::printf("P023 TAIL PASS rate=%d reported=%u\n",sr,reported);
+    }
+}
+
 // P021: identical absolute automation timeline, radically different host
 // block boundaries. Exercise all nine effects, native bypass, long silence,
 // returning input and exact global Dry at the end, at three host rates.
@@ -941,6 +1007,7 @@ int main(int argc,char** argv){
     testHostIntegrity();
     testAutomatedEndpoints();
     testDenseAutomationStress();
+    testReportedTail();
     testPhaseAndTransients(exportWav?std::string(argv[1]):std::string{});
     int substantial=0,weak=0;
     for(unsigned input=0;input<kInputs.size();++input){

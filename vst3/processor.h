@@ -26,6 +26,9 @@ public:
             Steinberg::int32 numOuts) override;
     static constexpr Steinberg::uint32 kLatency=4*psychiatry::detail::kLinearPhaseLatency;
     Steinberg::uint32 PLUGIN_API getLatencySamples() override { return kLatency; }
+    // Fixed conservative tail allowance: macros can be automated during playback,
+    // so a static upper bound avoids a UI-thread restart for each edit.
+    Steinberg::uint32 PLUGIN_API getTailSamples() override { return tailSamples_; }
     Steinberg::tresult PLUGIN_API canProcessSampleSize(Steinberg::int32 symbolic) override;
     Steinberg::tresult PLUGIN_API process(Steinberg::Vst::ProcessData& data) override;
     Steinberg::tresult PLUGIN_API setState(Steinberg::IBStream* state) override;
@@ -59,6 +62,7 @@ private:
     bool bypassDSP_=false;
     float therapyDSP_=0.f;
     bool prepared_=false;
+    Steinberg::uint32 tailSamples_=30*48000+kLatency;
     std::array<std::vector<float>,2> original_{};
     std::array<psychiatry::detail::FixedDelay<kLatency>,2> dryDelay_{};
     struct Pending { std::uint64_t due=0; float value=0.f; };

@@ -28,6 +28,10 @@ Processing order: DEPRESSION → SCHIZOPHRENIA → MANIA → PANIC → PARANOIA 
 - VST3 factory version now **0.9.9**, actual component/controller IDs and ParamIDs unchanged. Project state **v4**, with decoding of v1/v2/v3.
 
 
+## P023 — host tail declaration (candidate; CI not yet run)
+
+The SDK default getTailSamples() returned kNoTail despite audible delay, grain and reverb tails. Candidate declares 30 seconds plus the fixed 96-sample latency at the configured sample rate. Actual processor tests exercise initial silence, two seconds of input with all nine macros at 100%, 30 seconds of tail, and require the final complete second below −100 dBFS. Report the measured decay per second; no verified claim until CI runs. P022 remains separate.
+
 ## P022 — control-driven CRT polish (v0.9.10; corrected package CI pending)
 
 Monitor intensity follows all nine actual controls, inverse THERAPY and host Bypass; zero-state, bypass and therapy-dry captions are distinct. Static mode is truly static, initial values are read on editor creation, motion stops when all controls are neutral. Added deterministic monitor model assertions and actual EditorHost bypass/restore screenshot comparison. Removed engineering checkpoint labels from both templates. No archival photo assets added; not final visual acceptance. The bundle now uses the product name, verifies its actual x64 binary and includes pinned VST3 SDK/VSTGUI license notices. Plugin package and metrology are separate artifacts. P021 actual audio/state/build CTest and complete metrics export passed. P022 CI triggered with a distinct workflow name so P021 export can finish.

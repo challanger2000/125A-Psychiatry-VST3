@@ -92,9 +92,10 @@ jobs:
             $notice = @(Get-ChildItem -LiteralPath $chosen.FullName -Recurse -File -Filter $license)
             if ($notice.Count -ne 1) { throw "Missing or duplicate third-party license: $license" }
           }
-          Copy-Item -LiteralPath $chosen.FullName -Destination "artifacts" -Recurse -Force
+          New-Item -ItemType Directory -Force -Path "plugin-package" | Out-Null
+          Copy-Item -LiteralPath $chosen.FullName -Destination "plugin-package" -Recurse -Force
           Write-Host "Staged branded plugin:" $chosen.FullName
-          Get-ChildItem artifacts -Recurse | Select-Object FullName,Length
+          Get-ChildItem plugin-package -Recurse | Select-Object FullName,Length
       - name: Export real VST3 per-macro audio comparisons and metrology CSV
         shell: pwsh
         run: |
@@ -136,6 +137,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 125A-PSYCHIATRY-P021-Stress-NOT-FINAL
-          path: artifacts/125A PSYCHIATRY.vst3/**
+          path: plugin-package/
           if-no-files-found: error
           retention-days: 7

@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current technically verified candidate: P028j / v0.9.26 (P028i product, P028j native GUI PASS; P028h recorded audio PASS). **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current audited candidate: P028j / v0.9.26 — **NO-GO** after independent Codex audit. A01–A10 open; prior CI passes are scoped historical evidence. **Only `main`**; no final or musical approval.
 
-## Current task — P028j verified technical candidate
+## Current task — P028k audit corrections
+
+Independent audit confirms nine product findings A01–A09 and package-verifier gap A10. Do not request final Studio Pro test. See [P028k correction gate](docs/P028k-AUDIT-CORRECTIONS.md). Full audit report supplied by owner; evidence ZIP download unavailable. Recreate exact counterprobes as needed. No production changes yet.
+
+## Historical P028j verified technical candidate
 
 Native GUI test [45536098801](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45536098801) SUCCESS: exact 50→75% resize, all 13 knobs, MOTION, timed scene rotation, static hold, bypass and randomization. Windows package artifact 14986961132 from unchanged P028i product, all 40 scenes. Final Studio Pro audition and higher zoom factors not yet verified. See [P028h/P028j evidence](docs/P028h.md#p028j-verified-result--2026-11-25).
 

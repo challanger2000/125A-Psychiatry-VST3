@@ -1,0 +1,35 @@
+# P028k — audit correction gate (2026-11-25)
+
+**NO-GO for Studio Pro.** Independent Codex audit supplied by owner on 2026-11-25, product SHA 96bf94bb9ccd01c7f20e57ed6d0dc0c5d8345dba, P028j v0.9.26. The uploaded text report is available in the conversation; the separate audit evidence ZIP could not be downloaded by the owner. This is an actionable transcription of findings and acceptance gates, not a claim that the independent harness has been rerun. Existing successful CI evidence remains historical and scoped. No released version or musical approval. Only main per explicit owner decision. No code edits in this documentation checkpoint.
+
+## Confirmed findings to close
+
+| ID | Severity | Reported reproduction / required regression |
+|---|---|---|
+| A01 | High | Save A (all macros .2), run complete B callback (.8) during stream write, continue save: mixed A/B values. processor.cpp getState/apply. Coherent snapshots acquired before stream I/O, transactional active restore and audio-owned DSP state; test controlled interleaving, true concurrent save/restore, fresh-instance PCM and exact v1–v5 compatibility. No locks, blocking retry or allocation in callback. |
+| A02 | High | PSYCHOSIS 100%, same 256-sample linear THERAPY ramp represented by point at 255 versus 256 equivalent points, max difference .03775907 FS, first deviation 4192. processor.cpp Lane/advance/process. Interpolate continuous normalized queues at input-time with implicit preceding-sample value, preserve PDC routing and internal smoothing; discrete bypass separately. Compare sparse/dense and partitioned trajectories, endpoints and malformed queue limits. Existing discrete-event test assumptions must be reviewed, not simply weakened. |
+| A03 | High | setProcessing(true/false) returns kNotImplemented (3), no override. Implement explicit correct lifecycle; no expensive reset or allocation on processing start/stop; test loaded module start/idle/stop/restart/deactivate, preserve flush semantics. |
+| A04 | High | IBStream error plus four transferred bytes at offset 12 accepted by SDK IBStreamer. Reject failed read/write even when byte count matches, transactional decode, preserve exact wire layout. Processor and controller component/UI state; distinguish empty legacy UI state from truncated header. Fault injection, read/write, partial/full, recall rollback. |
+| A05 | Medium | Deactivated output bus nonnull sentinel buffers overwritten; flags changed. Respect bus activation, do not touch inactive output, handle inactive input without reading it, test reactivation, null and nonnull buffers, parameter flush. |
+| A06 | Medium | NaN and Inf reach dry, THERAPY 100% and bypass at sample 96. Replace nonfinite input once at ingress, keep every finite dry sample unchanged. All modes/in-place/recovery. |
+| A07 | Medium | PSYCHOSIS 100%, bypass point 4128, hard jump .1459416 FS at 4224. Short finite crossfade between latency-aligned dry and continuously running wet; exact stationary endpoints; both directions, fast reversal and sample timing. |
+| A08 | Medium | Motif 01→31, level .75, fade .9999: final alpha jump max 45.384/255. Compose both photos at common scene opacity with equivalent source-over alpha math or bounded buffer. Preserve 1.2 s, actual assets, glass, mask, motion and approved brightness. Endpoints and rapid switching/hold; independently derived pixel oracle. |
+| A09 | Medium | Host rejects 1152px request, actual client 768x512, saved index incorrectly 1. Commit zoom state only on accepted/applied geometry; menu + SDK internal factor + saved state agree, rollback on rejection. Accepted six-size native mouse/reopen and rejected host probes; live UI recall. Distinct from resolved small Windows desktop issue. |
+| A10 | Medium / test gap | Text file disguised as x64 module and wrong nonempty VSTGUI notice pass old verifier; PNG mutation rejected correctly. Exact package CRC/paths, PE32+ AMD64 structure and exports/imports, factory/module version identity, exact license bytes, source/resource hashes, negative tamper tests. Actual Windows archive not independently found defective. |
+
+## Additional open gates
+
+- Bound queue lane/point work without silently dropping valid automation; test worst supported valid density, invalid counts, offsets and duplicates. Measure realtime after interpolation with actual 96-sample PDC; do not substitute average CPU for deadline evidence.
+- Controller live recall of MOTION checkbox and zoom, multiple editor instances and host dirty behavior; native open/close texture lifetime.
+- Audit 96 kHz / 64 samples / four instances in cloud showed 157/1200 execution overruns, 283 paced misses; CATATONIA FFT coincidence is only a hypothesis. Windows target realtime and ASIO remain NOT VERIFIED. No unapproved DSP topology changes.
+- 13 objective combination review flags including attenuation up to -20.53 dB RMS on all-twelve stress; owner listening/A-B, not proof of a DSP bug. 144 independent macro activation cases, 36 neutral + 36 dry cases and 96-sample latency passed. Accepted six zoom sizes and 78/78 native mouse probes passed on Linux; Windows 50→75 previously passed. Higher Win32 sizes and independent archive bytes still open.
+- No sound redesign, framework migration, visual redesign, new features, new IDs, or changed state versions merely to close findings.
+
+## Implementation and validation order
+
+1. A01/A04 shared strict state codec and coherent parameter exchange; do not expose partially decoded or in-flight mixed state. Audio thread owns DSP; save copies snapshot before any stream calls. Resolve active restore ordering explicitly and test save during application. Keep state byte layout and legacy defaults.
+2. A02/A03/A05/A06/A07 at processor boundary. Retain existing algorithm order and fixed stage offsets. Preserve no-automation finite neutral/wet reference; update only tests whose previous oracle encoded erroneous stepped continuous automation. Evaluate density and CPU cost before CI.
+3. A08/A09 GUI correctness, no artwork edits. A10 strengthen verification of actual artifact, negative controls against known fakes. Retest all accepted and refused geometry, motion and live recall.
+4. Run local targeted negatives against baseline and positive tests against corrected source as available. One consolidated candidate build only after changes and regression tests are reviewed. Independent Codex re-audit of exact corrected commit and actual Windows package. Studio Pro remains NO-GO until technical gates are satisfied. Evidence ZIP missing; recreate counterprobes from supplied detailed report and label independent reproduction status honestly.
+
+Current engineering mandatory reading not yet complete for this implementation pass (Guardrails 3187 lines, 439215 chars fetched but not fully exposed/read). No production implementation or CI triggered by this entry.

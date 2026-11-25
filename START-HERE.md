@@ -1,6 +1,6 @@
 # START HERE — 125A PSYCHIATRY
 
-**Current continuation P028j / v0.9.26:** Technically verified candidate, P028i product Windows/DSP PASS, P028h recorded PASS, P028j native GUI PASS including motion, scene rotation and exact 50→75% zoom. Final Studio Pro audition pending. See STATUS.md and [P028h/P028j](docs/P028h.md).
+**Current continuation P028k — NO-GO:** P028j / v0.9.26 independent audit found A01–A10. Read [P028k audit correction gate](docs/P028k-AUDIT-CORRECTIONS.md), STATUS.md and original audit report. Preserve product design and DSP algorithms. No final Studio Pro test until corrections and independent re-audit; no production changes yet.
 
 **Current design authorities: P026 sound and P027 visuals, confirmed 2026-11-24.** Read [docs/P027-GUI-DESIGN.md](docs/P027-GUI-DESIGN.md) in full for GUI work. Read [docs/P026-SOUND-DESIGN.md](docs/P026-SOUND-DESIGN.md) in full, then [STATUS.md](STATUS.md), [docs/SPEC.md](docs/SPEC.md) (historical baseline where conflicting), and relevant DSP code before changes. Follow 125A Engineering mandatory reading and guardrails. Do not assume older green tests establish musical quality.
 

@@ -34,7 +34,7 @@ jobs:
       - name: Compile audio prototype
         run: cmake --build build --config Release --parallel 2
       - name: Run realtime DSP tests
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: ctest --test-dir build -C Release -V
       - name: Render comparison audio
         if: matrix.os == 'windows-latest'
         shell: pwsh

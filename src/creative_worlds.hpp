@@ -7,6 +7,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#if defined(_M_X64) || defined(__SSE2__)
+#include <emmintrin.h>
+#define PSY_SYNTH_SSE2 1
+#else
+#define PSY_SYNTH_SSE2 0
+#endif
 
 namespace psychiatry {
 namespace creative {
@@ -89,7 +95,7 @@ private:
 // STFT freeze. Capture a complex spectrum, estimate phase advance from
 // consecutive real input frames, propagate that phase independently of input.
 // Four-way overlap/add uses Hann analysis and Hann synthesis windows.
-template<bool Distributed=true,bool PackedInverse=Distributed,bool SpreadInverse=PackedInverse> class CatatoniaImpl final {
+template<bool Distributed=true,bool PackedInverse=Distributed,bool SpreadInverse=PackedInverse,bool FastKernels=SpreadInverse> class CatatoniaImpl final {
     using C=std::complex<float>;
 public:
     void prepare(double sr) {
@@ -103,6 +109,16 @@ public:
         bitReverse_.resize(size_);decay_.resize(size_/2+1);fallbackRotation_.resize(size_/2+1);
         for(std::size_t k=0;k<size_;++k)window_[k]=float(.5-.5*std::cos(2.*creative::pi*double(k)/double(size_)));
         for(std::size_t k=0;k<twiddle_.size();++k)twiddle_[k]=std::polar(1.f,float(-2.*creative::pi*double(k)/double(size_)));
+        if constexpr(FastKernels){
+            forwardStages_.resize(size_-1);inverseStages_.resize(size_-1);
+            for(std::size_t half=1;half<size_;half*=2){
+                const auto stride=size_/(2*half);
+                for(std::size_t k=0;k<half;++k){
+                    const C tw=twiddle_[k*stride];
+                    forwardStages_[half-1+k]=tw;inverseStages_[half-1+k]=std::conj(tw);
+                }
+            }
+        }
         bitReverse_[0]=0;
         for(std::size_t i=1,j=0;i<size_;++i){
             std::size_t bit=size_>>1;for(;j&bit;bit>>=1)j^=bit;
@@ -118,6 +134,7 @@ public:
             c.work.assign(size_,C{});c.previous.assign(size_,C{});
             c.held.assign(size_/2+1,C{});c.rotation.assign(size_/2+1,C{});
             if constexpr(SpreadInverse){c.future.assign(size_/2,C{});c.predicted.assign(size_/2+1,C{});}
+            if constexpr(FastKernels)c.decayedRotation.assign(size_/2+1,C{});
         }
         reset();
     }
@@ -164,7 +181,7 @@ public:
 private:
     struct Channel {
         std::vector<float> history,ola;
-        std::vector<C> work,previous,held,rotation,future,predicted;
+        std::vector<C> work,previous,held,rotation,future,predicted,decayedRotation;
         std::size_t age=0;
         double captureEnergy=0.;
         bool active=false,previousValid=false,pending=false;
@@ -202,7 +219,7 @@ private:
             const auto half=c.half,base=c.base,stride=size_/(2*half);
             const auto count=std::min(budget,half-c.k),end=c.k+count;
             for(auto k=c.k;k<end;++k){
-                const C tw=twiddle_[k*stride];
+                const C tw=FastKernels?forwardStages_[half-1+k]:twiddle_[k*stride];
                 const C u=c.previous[base+k],x=c.previous[base+k+half];
                 const float vr=x.real()*tw.real()-x.imag()*tw.imag();
                 const float vi=x.real()*tw.imag()+x.imag()*tw.real();
@@ -218,6 +235,14 @@ private:
                 }
             }
         }
+    }
+    static bool negligible(C z) noexcept {
+        // Preserve the original hypot threshold near its boundary; avoid
+        // hypot for the overwhelming majority of clearly nonzero/zero bins.
+        const float hi=std::max(std::abs(z.real()),std::abs(z.imag()));
+        if(hi>=1.e-12f)return false;
+        if(hi<=.5e-12f)return true;
+        return std::abs(z)<1.e-12f;
     }
     C packBin(const std::vector<C>& bins,std::size_t k) const noexcept {
         const auto half=size_/2;
@@ -239,8 +264,9 @@ private:
                 const auto count=std::min(budget,c.held.size()-c.jobPos);
                 const auto end=c.jobPos+count;
                 for(auto k=c.jobPos;k<end;++k){
-                    C value=c.held[k];value*=c.rotation[k]*decay_[k];
-                    if(std::abs(value)<1.e-12f)value=C{};
+                    C value=c.held[k];
+                    if constexpr(FastKernels){value*=c.decayedRotation[k];if(negligible(value))value=C{};}
+                    else{value*=c.rotation[k]*decay_[k];if(std::abs(value)<1.e-12f)value=C{};}
                     c.predicted[k]=value;
                 }
                 c.jobPos=end;budget-=count;
@@ -254,8 +280,28 @@ private:
             }else{
                 const auto h=c.jobHalf,base=c.jobBase,stride=size_/(2*h);
                 const auto count=std::min(budget,h-c.jobK),end=c.jobK+count;
-                for(auto k=c.jobK;k<end;++k){
-                    const C tw=std::conj(twiddle_[k*stride]);
+                auto k=c.jobK;
+#if PSY_SYNTH_SSE2
+                // Vectorize only the inverse synthesis butterflies, never
+                // the forward analysis used to estimate bin phase.
+                if constexpr(FastKernels){
+                    const __m128 signs=_mm_set_ps(0.f,-0.f,0.f,-0.f);
+                    for(;k+1<end;k+=2){
+                        auto* lo=reinterpret_cast<float*>(c.future.data()+base+k);
+                        auto* hi=reinterpret_cast<float*>(c.future.data()+base+k+h);
+                        const auto u=_mm_loadu_ps(lo),x=_mm_loadu_ps(hi);
+                        const auto tw=_mm_loadu_ps(reinterpret_cast<const float*>(inverseStages_.data()+h-1+k));
+                        const auto re=_mm_shuffle_ps(tw,tw,_MM_SHUFFLE(2,2,0,0));
+                        const auto im=_mm_shuffle_ps(tw,tw,_MM_SHUFFLE(3,3,1,1));
+                        const auto swapped=_mm_shuffle_ps(x,x,_MM_SHUFFLE(2,3,0,1));
+                        const auto value=_mm_add_ps(_mm_mul_ps(x,re),_mm_xor_ps(_mm_mul_ps(swapped,im),signs));
+                        _mm_storeu_ps(lo,_mm_add_ps(u,value));
+                        _mm_storeu_ps(hi,_mm_sub_ps(u,value));
+                    }
+                }
+#endif
+                for(;k<end;++k){
+                    const C tw=FastKernels?inverseStages_[h-1+k]:std::conj(twiddle_[k*stride]);
                     const C u=c.future[base+k],x=c.future[base+k+h];
                     const float vr=x.real()*tw.real()-x.imag()*tw.imag();
                     const float vi=x.real()*tw.imag()+x.imag()*tw.real();
@@ -307,6 +353,7 @@ private:
                 const float magnitude=std::abs(cross);
                 c.rotation[k]=c.previousValid&&magnitude>1.e-12f?cross/magnitude:fallbackRotation_[k];
                 c.held[k]=now;
+                if constexpr(FastKernels)c.decayedRotation[k]=c.rotation[k]*decay_[k];
             } else if(c.active) {
                 if(useFuture)c.held[k]=c.predicted[k];
                 else{
@@ -370,7 +417,7 @@ private:
     }
     std::array<Channel,2> state_{};
     std::vector<float> window_;
-    std::vector<C> twiddle_,fallbackRotation_;
+    std::vector<C> twiddle_,fallbackRotation_,forwardStages_,inverseStages_;
     std::vector<float> decay_;
     std::vector<std::size_t> bitReverse_;
     std::size_t size_=0,hop_=0,write_=0,ticks_=0,filled_=0,slices_=0,butterfliesPerSlice_=0;
@@ -379,6 +426,7 @@ private:
 };
 
 using Catatonia=CatatoniaImpl<true>;
+#undef PSY_SYNTH_SSE2
 
 // Erase information rather than add shock sounds: stereo-linked smooth
 // time and complementary-band masks, occasional one-shot past fragment.

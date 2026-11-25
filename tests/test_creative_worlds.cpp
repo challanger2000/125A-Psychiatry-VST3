@@ -80,12 +80,13 @@ int main(){
         pairedCatatonia<psychiatry::CatatoniaImpl<false,false>>(sr,"immediate full FFT");
         pairedCatatonia<psychiatry::CatatoniaImpl<true,false>>(sr,"distributed full inverse");
         pairedCatatonia<psychiatry::CatatoniaImpl<true,true,false>>(sr,"immediate packed inverse");
+        pairedCatatonia<psychiatry::CatatoniaImpl<true,true,true,false>>(sr,"scalar spread inverse P028u");
     }
     for(int round=0;round<4;++round){
         double old=0.,now=0.;
-        if(round%2==0){old=hopMedian<psychiatry::CatatoniaImpl<true,true,false>>();now=hopMedian<psychiatry::Catatonia>();}
-        else{now=hopMedian<psychiatry::Catatonia>();old=hopMedian<psychiatry::CatatoniaImpl<true,true,false>>();}
-        std::printf("R01 matched isolated 4x Catatonia hop median round=%d immediate packed %.3f us spread packed %.3f us ratio %.4f\n",round,old,now,now/old);
+        if(round%2==0){old=hopMedian<psychiatry::CatatoniaImpl<true,true,true,false>>();now=hopMedian<psychiatry::Catatonia>();}
+        else{now=hopMedian<psychiatry::Catatonia>();old=hopMedian<psychiatry::CatatoniaImpl<true,true,true,false>>();}
+        std::printf("R01 matched isolated 4x Catatonia hop median round=%d scalar spread %.3f us optimized spread %.3f us ratio %.4f\n",round,old,now,now/old);
     }
     for(int sr:{44100,48000,96000}){
         Audio input(4*sr);

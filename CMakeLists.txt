@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(PsychiatryAudioPrototype VERSION 0.9.25 LANGUAGES CXX)
+project(PsychiatryAudioPrototype VERSION 0.9.26 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,6 +45,8 @@ else()
 endif()
 
 enable_testing()
+add_executable(test_scene_sequence tests/test_scene_sequence.cpp)
+add_test(NAME P028h_SceneSequence COMMAND test_scene_sequence)
 add_executable(test_linear_phase_2x tests/test_linear_phase_2x.cpp)
 target_include_directories(test_linear_phase_2x PRIVATE src)
 add_test(NAME P018_LinearPhaseFIR COMMAND test_linear_phase_2x)
@@ -109,7 +111,7 @@ if(PSYCHIATRY_BUILD_VST3)
   smtg_add_vst3plugin(PsychiatryPrototype
       PACKAGE_NAME "125A-PSYCHIATRY"
       SOURCES_LIST
-      vst3/ids.h vst3/monitor_model.h
+      vst3/ids.h vst3/monitor_model.h vst3/scene_sequence.h
       vst3/processor.h vst3/processor.cpp
       vst3/controller.h vst3/controller.cpp
       vst3/entry.cpp
@@ -137,9 +139,48 @@ if(PSYCHIATRY_BUILD_VST3)
       resource/artwork/faceplate.png resource/artwork/macro-atlas.png
       resource/artwork/therapy-atlas.png resource/artwork/porthole-glass.png
       resource/artwork/loss-released.png resource/artwork/loss-pressed.png
-      resource/artwork/scene-corridor-bw.png resource/artwork/scene-corridor-color.png
-      resource/artwork/scene-treatment-room-bw.png resource/artwork/scene-treatment-room-color.png
-      resource/artwork/scene-fictional-horror-portrait-bw.png
+      resource/artwork/scene-corridor-bw.png
+      resource/artwork/scene-p028h-01-depression-isolation.png
+      resource/artwork/scene-p028h-02-panic-medical-room.png
+      resource/artwork/scene-p028h-03-dissociation-reflection.png
+      resource/artwork/scene-p028h-04-mania-scribbled-walls.png
+      resource/artwork/scene-p028h-05-corridor-wheelchair.png
+      resource/artwork/scene-p028h-06-padded-room-bed.png
+      resource/artwork/scene-p028h-07-treatment-room-straitjacket.png
+      resource/artwork/scene-p028h-08-eeg-mannequin.png
+      resource/artwork/scene-p028h-09-empty-ward-bed.png
+      resource/artwork/scene-p028h-10-mania-motion-blur.png
+      resource/artwork/scene-p028h-11-paranoia-observer.png
+      resource/artwork/scene-p028h-12-isolation-padded-room.png
+      resource/artwork/scene-p028h-13-fragmented-reflections.png
+      resource/artwork/scene-p028h-14-hallucination-double-exposure.png
+      resource/artwork/scene-p028h-15-corridor-straitjacket.png
+      resource/artwork/scene-p028h-16-hydrotherapy-tub.png
+      resource/artwork/scene-p028h-17-treatment-room-shadow.png
+      resource/artwork/scene-p028h-18-electrotherapy-console.png
+      resource/artwork/scene-p028h-19-historical-treatment-nurse.png
+      resource/artwork/scene-p028h-20-historical-restraint-chair.png
+      resource/artwork/scene-p028h-21-empty-electrotherapy-chair.png
+      resource/artwork/scene-p028h-22-historical-electrode-portrait.png
+      resource/artwork/scene-p028h-23-historical-treatment-seated.png
+      resource/artwork/scene-p028h-24-historical-doctor-and-nurse.png
+      resource/artwork/scene-p028h-25-ward-hanging-straitjacket.png
+      resource/artwork/scene-p028h-26-patient-portrait-young.png
+      resource/artwork/scene-p028h-27-matron-with-keys.png
+      resource/artwork/scene-p028h-28-open-medicine-cabinet.png
+      resource/artwork/scene-p028h-29-patient-records-archive.png
+      resource/artwork/scene-p028h-30-antique-instruments.png
+      resource/artwork/scene-p028h-31-abandoned-common-room.png
+      resource/artwork/scene-p028h-32-institution-staircase.png
+      resource/artwork/scene-p028h-33-basement-corridor.png
+      resource/artwork/scene-p028h-34-long-ward.png
+      resource/artwork/scene-p028h-35-double-exposure-portrait.png
+      resource/artwork/scene-p028h-36-elderly-patient-portrait.png
+      resource/artwork/scene-p028h-37-nurse-portrait.png
+      resource/artwork/scene-p028h-38-neurological-instruments.png
+      resource/artwork/scene-p028h-39-closed-medicine-cabinet.png
+      resource/artwork/scene-p028h-40-disordered-common-room.png
+      resource/artwork/scenes-p028h.json
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VST3-SDK.txt"
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VSTGUI.txt")
   smtg_target_configure_version_file(PsychiatryPrototype)

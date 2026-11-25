@@ -9,6 +9,8 @@ using System;
 using System.Runtime.InteropServices;
 public static class PSYGUI {
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X,Y; }
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left,Top,Right,Bottom; }
+    [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hwnd,ref RECT rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hwnd,ref POINT point);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern void mouse_event(uint flags,uint x,uint y,uint data,UIntPtr extra);
@@ -104,6 +106,26 @@ try {
     $restored=Screenshot 'P009-Editor-Restored.png'
     if((Delta $after $bypassed 313 180 140 140) -lt 80){throw 'P028d bypass does not change effective observation'}
     if((Delta $after $restored 313 180 140 140) -gt 4){throw 'P028d restored static observation differs'}
+    # Motion must visibly move only the aperture, and cycle to another scene.
+    ClickClient $handle 302 493
+    Start-Sleep -Milliseconds 800
+    $motionA=Screenshot 'P009-Editor-Motion-A.png'
+    Start-Sleep -Milliseconds 1600
+    $motionB=Screenshot 'P009-Editor-Motion-B.png'
+    try{
+        if((Delta $motionA $motionB 313 180 140 140) -lt 5){throw 'P028h MOTION does not visibly animate the aperture'}
+        if((Delta $motionA $motionB 40 40 100 100) -gt 4){throw 'P028h MOTION changes the fixed faceplate'}
+    }finally{$motionA.Dispose();$motionB.Dispose()}
+    Start-Sleep -Seconds 8
+    ClickClient $handle 302 493
+    Start-Sleep -Milliseconds 500
+    $cycled=Screenshot 'P009-Editor-Cycled-Static.png'
+    Start-Sleep -Milliseconds 900
+    $held=Screenshot 'P009-Editor-Motion-Off-Hold.png'
+    try{
+        if((Delta $restored $cycled 313 180 140 140) -lt 80){throw 'P028h timed scene rotation did not change the still image'}
+        if((Delta $cycled $held 313 180 140 140) -gt 4){throw 'P028h MOTION off does not hold the selected scene'}
+    }finally{$cycled.Dispose();$held.Dispose()}
     function DragClient([IntPtr]$hwnd,[int]$x,[int]$y) {
         $point=[PSYGUI+POINT]::new();$point.X=$x;$point.Y=$y
         if(-not [PSYGUI]::ClientToScreen($hwnd,[ref]$point)){throw 'ClientToScreen failed'}
@@ -131,7 +153,26 @@ try {
     }
     $proc.Refresh()
     if($proc.HasExited){throw 'P028d EditorHost terminated during interaction'}
-    Write-Host 'P028d native faceplate, randomization, static bypass/restore and 13 knob drag probes PASS'
+    # Test actual native zoom menu selection. At 75% the 1152x768 editor
+    # exceeds the CI desktop width; verify HWND geometry rather than cropped pixels.
+    $rect0=[PSYGUI+RECT]::new()
+    if(-not [PSYGUI]::GetClientRect($handle,[ref]$rect0)){throw 'P028h initial client geometry unavailable'}
+    ClickClient $handle 450 493
+    Start-Sleep -Milliseconds 200
+    [System.Windows.Forms.SendKeys]::SendWait('{HOME}{DOWN}{ENTER}')
+    $zoomOk=$false
+    for($i=0;$i -lt 30;++$i){
+        Start-Sleep -Milliseconds 100
+        $rect1=[PSYGUI+RECT]::new()
+        if([PSYGUI]::GetClientRect($handle,[ref]$rect1)){
+            $w0=$rect0.Right-$rect0.Left;$h0=$rect0.Bottom-$rect0.Top
+            $w1=$rect1.Right-$rect1.Left;$h1=$rect1.Bottom-$rect1.Top
+            if([math]::Abs($w1-1.5*$w0) -le 4 -and [math]::Abs($h1-1.5*$h0) -le 4){$zoomOk=$true;break}
+        }
+    }
+    if(-not $zoomOk){throw "P028h zoom 50 to 75 percent did not resize the host client: $w0 x $h0 -> $w1 x $h1"}
+    Write-Host "P028h actual zoom menu resize PASS: $w0 x $h0 -> $w1 x $h1"
+    Write-Host 'P028h native faceplate, randomization, bypass/restore, 13 knobs, MOTION, timed scene change and zoom PASS'
 } finally {
     if($before){$before.Dispose()}
     if($after){$after.Dispose()}

@@ -34,6 +34,36 @@ assert tags["LOSS_OF_CONTROL"]==9000 and tags["MONITOR_MOTION"]==9002
 assert tags["BYPASS"]==999 and tags["UI_ZOOM"]==9003 and "UI_LANGUAGE" not in tags
 print(f"P028c: {len(manifest)} SHA256 entries; 13 knob/parameter/readout bindings; atlas geometry PASS")
 
+# P028h: exact library bytes, dimensions, unique complete assignment and code mapping.
+library_path = root / "resource/artwork/scenes-p028h.json"
+library = json.loads(library_path.read_text(encoding="utf-8"))
+scene_names = [s["file"] for s in library["scenes"]]
+assert len(scene_names) == len(set(scene_names)) == 40
+assert list(library["worlds"]) == [x["label"] for x in g["macro_controls"]]
+assigned = [n for ns in library["worlds"].values() for n in ns]
+assert len(assigned) == 40 and set(assigned) == set(scene_names)
+assert all(3 <= len(ns) <= 4 for ns in library["worlds"].values())
+scene_hashes = {}
+for s in library["scenes"]:
+    name = s["file"]
+    assert pathlib.Path(name).name == name and name.startswith("scene-p028h-")
+    data = (library_path.parent / name).read_bytes()
+    assert len(data) == s["bytes"]
+    assert hashlib.sha256(data).hexdigest() == s["sha256"], name
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    assert struct.unpack(">II", data[16:24]) == (768, 768) and data[25] == 2, name
+    assert name in library["worlds"][s["effect_world"]]
+    scene_hashes[name] = s["sha256"]
+assert len(set(scene_hashes.values())) == 40
+import re
+header = (root / "vst3/scene_sequence.h").read_text()
+assert re.findall(r'"(scene-[^"]+\.png)"', header) == ["scene-corridor-bw.png"] + scene_names
+rows = re.findall(r'\{\{([0-9,]+)\}\}', header)
+assert [[int(i) for i in row.split(",") if int(i)] for row in rows] == [[scene_names.index(n)+1 for n in ns] for ns in library["worlds"].values()]
+counts = re.search(r'kWorldSceneCounts\{([0-9,]+)\}', header).group(1)
+assert list(map(int, counts.split(","))) == [len(ns) for ns in library["worlds"].values()]
+print("P028h: 40 scene hashes, 768x768 RGB, unique 12-world mapping and C++ table PASS")
+
 # Optional second argument: the actual built VST3 bundle, not the source tree.
 # The full source layout/manifest checks above still execute first.
 if len(sys.argv) > 2:
@@ -61,14 +91,15 @@ if len(sys.argv) > 2:
     assets = (
         "faceplate.png", "macro-atlas.png", "therapy-atlas.png",
         "porthole-glass.png", "loss-pressed.png", "loss-released.png",
-        "scene-corridor-bw.png", "scene-corridor-color.png",
-        "scene-treatment-room-bw.png", "scene-treatment-room-color.png",
-        "scene-fictional-horror-portrait-bw.png",
+        "scene-corridor-bw.png",
     )
     for name in assets:
         path = unique_file(name)
         assert hashlib.sha256(path.read_bytes()).hexdigest() == manifest["resource/artwork/" + name], f"Packaged PNG hash mismatch: {name}"
+    for name, digest in scene_hashes.items():
+        assert hashlib.sha256(unique_file(name).read_bytes()).hexdigest() == digest, name
+    assert unique_file("scenes-p028h.json").read_bytes() == library_path.read_bytes()
     for name in ("LICENSE-VST3-SDK.txt", "LICENSE-VSTGUI.txt", "LICENSE-ACOUSTIC-SOURCES.txt"):
         assert unique_file(name).stat().st_size > 0, name
     assert (bundle / "Contents/x86_64-win/125A-PSYCHIATRY.vst3").is_file(), "Branded x64 binary missing"
-    print("P028g packaged GUI: verified source XML, 13 animated controls/readouts, single English template, 4 utility controls, 11 exact PNG hashes, 3 notices and x64 binary PASS")
+    print("P028g packaged GUI: verified source XML, 13 animated controls/readouts, single English template, 4 utility controls, 47 exact PNG hashes, 3 notices and x64 binary PASS")

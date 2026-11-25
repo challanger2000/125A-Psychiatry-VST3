@@ -1,6 +1,8 @@
 #include "controller.h"
 #include "ids.h"
 #include "monitor_model.h"
+#include "scene_sequence.h"
+#include <chrono>
 #include "loss_of_control.h"
 
 #include "base/source/fstreamer.h"
@@ -182,12 +184,6 @@ public:
     explicit ObservationWindow(Controller* controller)
         : VSTGUI::CView(VSTGUI::CRect(0,0,376,376)), controller_(controller) {
         using namespace VSTGUI;
-        static constexpr const char* names[]{
-            "scene-corridor-bw.png","scene-fictional-horror-portrait-bw.png",
-            "scene-treatment-room-bw.png","scene-corridor-color.png",
-            "scene-treatment-room-color.png"};
-        for(std::size_t i=0;i<scenes_.size();++i)
-            scenes_[i]=VSTGUI::owned(new CBitmap(CResourceDescription(names[i])));
         glass_=VSTGUI::owned(new CBitmap(CResourceDescription("porthole-glass.png")));
         // Copy only the outside of the fixed aperture from the exact faceplate.
         // This masks the moving photograph, NOT the fixed glass or metal ring.
@@ -212,27 +208,40 @@ public:
         }
         if(!maskOk)edge_=nullptr;
         model_=readModel();
-        previousScene_=scene(model_);
+        sequence_.update(model_.peak>0.f?model_.dominant:-1,false,0.);
+        currentScene_=previousScene_=sequence_.current();
+        lastIdle_=Clock::now();
+        refreshTextures();
         motion_=controller_->isMotionEnabled();
         setWantsIdle(true);
     }
     void onIdle() override {
+        const auto now=Clock::now();
+        const double dt=std::clamp(std::chrono::duration<double>(now-lastIdle_).count(),0.,1.);
+        lastIdle_=now;
         const auto next=readModel();
         const bool motion=controller_->isMotionEnabled();
         const bool changed=!(next==model_)||motion!=motion_;
-        if(scene(next)!=scene(model_)){
-            previousScene_=scene(model_);
-            fade_=0;
+        sequence_.update(next.peak>0.f?next.dominant:-1,motion,dt);
+        const int selected=sequence_.current();
+        const bool sceneChanged=selected!=currentScene_;
+        if(sceneChanged){
+            previousScene_=currentScene_;
+            currentScene_=selected;
+            fade_=0.;
         }
         model_=next;motion_=motion;
         if(motion_&&model_.peak>0.f) {
-            tick_=(tick_+1)%1200u;
-            fade_=std::min(18u,fade_+1);
-            if(changed||tick_%3==0)invalid();
+            phase_=std::fmod(phase_+dt*.9,6283.185307179586);
+            fade_=std::min(1.,fade_+dt/1.2);
+            refreshTextures();
+            redrawElapsed_+=dt;
+            if(changed||sceneChanged||redrawElapsed_>=1./30.){redrawElapsed_=0.;invalid();}
         } else {
-            const bool reset=tick_!=0||fade_!=18;
-            tick_=0;fade_=18;
-            if(changed||reset)invalid();
+            const bool reset=phase_!=0.||fade_!=1.;
+            phase_=0.;fade_=1.;redrawElapsed_=0.;
+            refreshTextures();
+            if(changed||sceneChanged||reset)invalid();
         }
     }
     void draw(VSTGUI::CDrawContext* dc) override {
@@ -242,7 +251,7 @@ public:
         if(clip.isEmpty()){setDirty(false);return;}
         dc->setFillColor(CColor{0,0,0,255});
         dc->drawRect(r,kDrawFilled);
-        const double phase=static_cast<double>(tick_)*.023;
+        const double phase=phase_;
         const bool move=motion_&&model_.peak>0.f&&edge_;
         const double scale=move?1.035+.015*std::sin(phase):1.;
         const double dx=move?2.2*std::sin(phase*.73):0.;
@@ -257,33 +266,41 @@ public:
             bmp->draw(dc,CRect(0,0,bmp->getWidth(),bmp->getHeight()),CPoint(0,0),opacity);
         };
         const float level=model_.peak>0.f?.50f+.50f*model_.peak:.30f;
-        const int current=scene(model_);
-        if(motion_&&fade_<18&&previousScene_!=current){
+        const int current=currentScene_;
+        if(motion_&&fade_<1.&&previousScene_!=current){
             paint(scenes_[previousScene_],level,scale,dx,dy);
-            paint(scenes_[current],level*float(fade_)/18.f,scale,dx,dy);
+            paint(scenes_[current],level*static_cast<float>(fade_),scale,dx,dy);
         }else paint(scenes_[current],level,scale,dx,dy);
         const int secondary=model_.secondary();
         if(secondary>=0&&model_.peak>0.f) {
-            const int other=worldScene(secondary);
+            const int other=sequence_.forWorld(secondary);
             if(other!=current)paint(scenes_[other],.18f*model_.levels[secondary],scale,dx,dy);
         }
         paint(glass_,1.f,1.,0.,0.);
         if(edge_)edge_->draw(dc,r);
         // A missing critical texture must not silently resemble a normal standby.
-        if(!scenes_[current]->isLoaded()||!glass_->isLoaded()){
+        if(!scenes_[current]||!scenes_[current]->isLoaded()||!glass_->isLoaded()){
             dc->setFont(kNormalFont);dc->setFontColor(CColor{255,190,150,255});
             dc->drawString("ARTWORK MISSING",r,kCenterText,true);
         }
         setDirty(false);
     }
 private:
-    // Five owner-reviewed candidate photographs: provisional reuse for twelve
-    // worlds, not the final distinct image library.
-    static int worldScene(int world) noexcept {
-        constexpr std::array<int,12> map{0,1,2,3,4,0,2,1,4,3,2,0};
-        return map[static_cast<std::size_t>(std::clamp(world,0,11))];
+    using Clock=std::chrono::steady_clock;
+    // Retain at most current, fading predecessor and secondary images.
+    // Decode and release only on the GUI thread; never in audio processing.
+    void refreshTextures() {
+        using namespace VSTGUI;
+        const int secondary=model_.secondary();
+        const int other=secondary>=0&&model_.peak>0.f?sequence_.forWorld(secondary):-1;
+        for(std::size_t i=0;i<scenes_.size();++i) {
+            const int index=static_cast<int>(i);
+            const bool wanted=index==currentScene_||index==other||
+                (motion_&&model_.peak>0.f&&fade_<1.&&index==previousScene_);
+            if(!wanted)scenes_[i]=nullptr;
+            else if(!scenes_[i])scenes_[i]=VSTGUI::owned(new CBitmap(CResourceDescription(kSceneFiles[i])));
+        }
     }
-    static int scene(const MonitorModel& m) noexcept {return m.peak>0.f?worldScene(m.dominant):0;}
     MonitorModel readModel() const {
         std::array<double,MonitorModel::worldCount> macros{};
         for(std::size_t i=0;i<macros.size();++i)
@@ -292,12 +309,14 @@ private:
                                   controller_->getParamNormalized(kBypass));
     }
     Controller* controller_;
-    std::array<VSTGUI::SharedPointer<VSTGUI::CBitmap>,5> scenes_{};
+    std::array<VSTGUI::SharedPointer<VSTGUI::CBitmap>,kSceneFiles.size()> scenes_{};
+    SceneSequence sequence_{};
     VSTGUI::SharedPointer<VSTGUI::CBitmap> glass_,edge_;
     MonitorModel model_{};
-    int previousScene_=0;
+    int currentScene_=0,previousScene_=0;
     bool motion_=false;
-    unsigned tick_=0,fade_=18;
+    Clock::time_point lastIdle_{};
+    double phase_=0.,fade_=1.,redrawElapsed_=0.;
 };
 
 class RasterLossButton final : public VSTGUI::CTextButton {

@@ -2,6 +2,10 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.26 — P028h scene library candidate
+
+- 40 unique new historical-fiction scene textures with twelve-world mapping, bounded GUI texture loading, slow timed crossfade/rotation, MOTION hold and native zoom probe. No DSP changes. Verification pending.
+
 ## 0.9.25 — P028d raster editor candidate
 
 - Approved P028c artwork, thirteen native animated controls, momentary LOSS, circular photographic observation, English-only, motion, bypass, zoom and value displays. P028g all four CI workflows passed on exact source `87be28cb8f4d5c34a9a0bc164e4eda06ec6b03f8`; verified raster candidate, final acceptance pending; DSP unchanged.

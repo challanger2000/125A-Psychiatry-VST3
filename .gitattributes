@@ -4,3 +4,4 @@
 /SHA256.json text eol=lf
 /artwork-source/*.png -text
 /resource/artwork/*.png -text
+/resource/artwork/scenes-p028h.json text eol=lf

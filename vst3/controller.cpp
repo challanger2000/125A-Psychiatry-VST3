@@ -371,6 +371,32 @@ private:
     VSTGUI::SharedPointer<VSTGUI::CBitmap> released_,pressed_;
 };
 
+// The pinned SDK calls resizeView from inside enableEditing/open, before
+// the CFrame and native child are fully initialized. Isolate that internal
+// geometry work; forward platform interfaces (e.g. Linux IRunLoop) to the
+// actual host, but negotiate the native size only after construction.
+class AttachGeometryFrame final : public IPlugFrame {
+public:
+    explicit AttachGeometryFrame(IPlugFrame* host):host_(host){}
+    tresult PLUGIN_API queryInterface(const TUID iid,void** out) override {
+        if(!out)return kInvalidArgument;
+        *out=nullptr;
+        if(FUnknownPrivate::iidEqual(iid,FUnknown::iid)||
+           FUnknownPrivate::iidEqual(iid,IPlugFrame::iid)){
+            *out=static_cast<IPlugFrame*>(this);addRef();return kResultOk;
+        }
+        return host_?host_->queryInterface(iid,out):kNoInterface;
+    }
+    uint32 PLUGIN_API addRef() override{return ++refs_;}
+    uint32 PLUGIN_API release() override{const auto n=--refs_;if(!n)delete this;return n;}
+    tresult PLUGIN_API resizeView(IPlugView*,ViewRect* size) override {
+        return size&&size->getWidth()>0&&size->getHeight()>0?kResultTrue:kResultFalse;
+    }
+private:
+    IPtr<IPlugFrame> host_;
+    uint32 refs_=1;
+};
+
 class PsychiatryEditor final : public VSTGUI::VST3Editor, public VSTGUI::VST3EditorDelegate {
 public:
     explicit PsychiatryEditor(Controller* parent)
@@ -402,7 +428,7 @@ public:
     }
     void didOpen(VSTGUI::VST3Editor*) override {
         open_=true;
-        parent_->editorOpened(this);
+        if(!building_)parent_->editorOpened(this);
         syncMotion();
         syncZoomMenu();
     }
@@ -448,12 +474,64 @@ public:
         }
     }
 protected:
-    bool PLUGIN_API open(void* parent,const VSTGUI::PlatformType& type) override {
-        // A controller recall may happen between createView and attached.
-        // No frame is attached yet: initialize geometry using current state.
+    tresult PLUGIN_API attached(void* parent,FIDString type) override {
+        if(building_||open_||getFrame()||!type||
+           isPlatformTypeSupported(type)!=kResultTrue)return kResultFalse;
+        VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
+        const auto oldRect=getRect();
+        attachHost_=plugFrame;
+        if(!attachHost_)return kResultFalse;
+        auto internal=Steinberg::owned(new AttachGeometryFrame(attachHost_));
+        building_=true;attachCanceled_=false;
+        plugFrame=internal.get();
+        // Reset both SDK geometry caches on *every* attachment, including
+        // reuse of the same IPlugView after removal at a different scale.
         acceptedZoom_=parent_->zoomIndex();
         setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
-        return VSTGUI::VST3Editor::open(parent,type);
+        nonEditRect=VSTGUI::CRect();
+        const auto scale=getAbsScaleFactor();
+        ViewRect wanted(0,0,static_cast<int32>(std::floor(minSize.x*scale)),
+                            static_cast<int32>(std::floor(minSize.y*scale)));
+        setRect(wanted);
+        const auto result=Steinberg::Vst::VSTGUIEditor::attached(parent,type);
+        building_=false;
+        plugFrame=attachHost_;
+        attachHost_=nullptr;
+        const bool valid=result==kResultOk&&!attachCanceled_&&open_&&getFrame()&&
+            getFrame()->isAttached()&&getFrame()->hasChildren()&&
+            std::abs(getFrame()->getWidth()-wanted.getWidth())<1.&&
+            std::abs(getFrame()->getHeight()-wanted.getHeight())<1.;
+        if(!valid||!plugFrame){
+            Steinberg::Vst::VSTGUIEditor::removed();setRect(oldRect);return kResultFalse;
+        }
+        // A host may reject or synchronously call removed/setFrame(nullptr)
+        // here. The SDK construction stack has already unwound. Retain the
+        // host and editor across the single external resize request.
+        IPtr<IPlugFrame> host=plugFrame;
+        const auto accepted=host->resizeView(this,&wanted);
+        if(accepted!=kResultTrue||!open_||!getFrame()||!plugFrame||
+           getRect().getWidth()!=wanted.getWidth()||getRect().getHeight()!=wanted.getHeight()){
+            if(open_||getFrame())Steinberg::Vst::VSTGUIEditor::removed();
+            setRect(oldRect);return kResultFalse;
+        }
+        parent_->editorOpened(this);syncMotion();syncZoomMenu();
+        return kResultOk;
+    }
+    tresult PLUGIN_API removed() override {
+        if(building_){attachCanceled_=true;return kResultOk;}
+        VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
+        return Steinberg::Vst::VSTGUIEditor::removed();
+    }
+    tresult PLUGIN_API setFrame(IPlugFrame* host) override {
+        if(building_){
+            if(attachHost_.get()!=host)attachCanceled_=true;
+            attachHost_=host;return kResultOk;
+        }
+        return Steinberg::Vst::VSTGUIEditor::setFrame(host);
+    }
+    bool beforeSizeChange(const VSTGUI::CRect& next,const VSTGUI::CRect& old) override {
+        if(building_)return true;
+        return VSTGUI::VST3Editor::beforeSizeChange(next,old);
     }
     void PLUGIN_API close() override {
         if(!getFrame())return;
@@ -523,6 +601,8 @@ private:
     VSTGUI::CControl* motionControl_=nullptr;
     int acceptedZoom_=0;
     bool rollingBack_=false,open_=false,applyingZoom_=false;
+    bool building_=false,attachCanceled_=false;
+    IPtr<IPlugFrame> attachHost_;
 };
 
 // UI thread only. Keep actual per-view geometry and menu on refusal.

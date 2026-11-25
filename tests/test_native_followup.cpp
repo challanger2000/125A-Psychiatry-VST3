@@ -86,20 +86,21 @@ static constexpr std::array<int,6> heights{512,768,1024,1280,1536,2048};
 struct View{
     Frame frame;
     IPlugView* view=nullptr;
-    void open(Vst::IEditController* c,int x,int y){
+    tresult attach(Vst::IEditController* c,int x,int y,int parentIndex=-1){
         if(!view)view=c->createView(Vst::ViewType::kEditor);REQUIRE(view);
         frame.detached=false;
         ViewRect initial;REQUIRE(view->getSize(&initial)==kResultOk);
-        RECT rect{0,0,initial.getWidth(),initial.getHeight()};
+        RECT rect{0,0,parentIndex<0?initial.getWidth():widths[parentIndex],parentIndex<0?initial.getHeight():heights[parentIndex]};
         REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
         frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A native audit",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
             x,y,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
         REQUIRE(frame.window);
         REQUIRE(view->setFrame(&frame)==kResultOk);
         ShowWindow(frame.window,SW_SHOWNORMAL);UpdateWindow(frame.window);
-        REQUIRE(view->attached(frame.window,kPlatformTypeHWND)==kResultOk);
-        pump(150);
+        const auto result=view->attached(frame.window,kPlatformTypeHWND);
+        pump(150);return result;
     }
+    void open(Vst::IEditController* c,int x,int y){REQUIRE(attach(c,x,y)==kResultOk);}
     void size(int index){
         ViewRect v;RECT r{};
         REQUIRE(view->getSize(&v)==kResultOk&&GetClientRect(frame.window,&r));
@@ -107,9 +108,14 @@ struct View{
             std::fprintf(stderr,"geometry wanted %d x %d view %d x %d hwnd %ld x %ld\n",widths[index],heights[index],v.getWidth(),v.getHeight(),r.right,r.bottom);
         REQUIRE(v.getWidth()==widths[index]&&v.getHeight()==heights[index]&&r.right==widths[index]&&r.bottom==heights[index]);
     }
-    void close(){
+    void detach(){
         if(!frame.detached){REQUIRE(view->removed()==kResultOk);REQUIRE(view->setFrame(nullptr)==kResultOk);}
-        view->release();view=nullptr;DestroyWindow(frame.window);frame.window=nullptr;pump(20);
+        DestroyWindow(frame.window);frame.window=nullptr;pump(20);
+    }
+    void close(){detach();view->release();view=nullptr;}
+    void discardFailedAttach(){
+        REQUIRE(view->setFrame(nullptr)==kResultOk);
+        DestroyWindow(frame.window);frame.window=nullptr;pump(20);
     }
 };
 // Capture only a visible client ROI from the actual composed desktop.
@@ -211,9 +217,38 @@ int wmain(int argc,wchar_t** argv){
         closing.frame.detachOnResize=order;
         recall(c,1,2);pump(100);
         REQUIRE(closing.frame.detached);survivor.size(2);saved(c,1,2);
+        // Reattach the SAME IPlugView, not a newly created editor.
+        closing.detach();closing.open(c,15,15);closing.size(2);saved(c,1,2);
+        recall(c,1,1);pump(100);closing.size(1);survivor.size(1);saved(c,1,1);
         closing.close();survivor.close();
-        View reopened;reopened.open(c,15,15);reopened.size(2);reopened.close();
+        View reopened;reopened.open(c,15,15);reopened.size(1);reopened.close();
         std::printf("N02 native synchronous detach order %d with survivor/reopen PASS\n",order);
+    }
+    // Initial attach: stale 50% parent, recalled 100% preference.
+    // Accept, refuse, and detach synchronously in both orders. A failed
+    // attach must be retryable on the same view, without a ghost child.
+    for(int mode=0;mode<4;++mode){
+        recall(c,1,0);
+        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
+        recall(c,1,2);
+        initial.frame.accept=mode!=1;
+        initial.frame.detachOnResize=mode>=2?mode-1:0;
+        const int before=initial.frame.requests;
+        const auto result=initial.attach(c,15,15,0);
+        REQUIRE(initial.frame.requests==before+1);
+        if(mode==0){REQUIRE(result==kResultOk);initial.size(2);}
+        else{
+            REQUIRE(result!=kResultOk);
+            if(mode>=2)REQUIRE(initial.frame.detached);
+            REQUIRE(GetWindow(initial.frame.window,GW_CHILD)==nullptr);
+            saved(c,1,2);
+            initial.discardFailedAttach();
+            initial.frame.accept=true;
+            REQUIRE(initial.attach(c,15,15,0)==kResultOk);initial.size(2);
+        }
+        recall(c,1,1);pump(100);initial.size(1);saved(c,1,1);
+        initial.close();
+        std::printf("N03 initial attach mode %d, same-view retry/next zoom PASS\n",mode);
     }
     // If the only view closes, do not save an unaccepted size.
     recall(c,1,0);

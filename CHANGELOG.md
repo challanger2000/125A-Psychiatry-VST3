@@ -1,5 +1,12 @@
 ## P028k / 0.9.27 (2026-11-25) — re-audit candidate, not final
 
+## 0.9.28 — P028l audit-correction candidate (not verified)
+
+- R01–R03 per-stage automation curves, prevalidated host queues, active bypass recall ramp including zero-frame flush.
+- R04–R07 bounded fade retarget composite, live editor preferences, exact ZIP/native dependency checks and MOTION initialization.
+- New targeted native and audio regression probes; CI and independent audit pending. No creative changes or final release.
+
+
 - A01–A10 source corrections, consolidated regressions, centralized factory version and silence flags. Four workflows PASS at `502227585a874dccd84cd5031bbae2092f354ae7`; independent follow-up audit and Studio Pro acceptance pending. See STATUS.md and docs/P028k-AUDIT-CORRECTIONS.md.
 
 # Change history — 125A PSYCHIATRY

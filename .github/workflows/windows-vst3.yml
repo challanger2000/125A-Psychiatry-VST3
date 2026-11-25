@@ -121,3 +121,19 @@ jobs:
             artifacts/125A-PSYCHIATRY-P028l.zip.sha256
           if-no-files-found: error
           retention-days: 7
+
+      - name: R01 four-instance 96 kHz / 64 frame deadline evidence
+        shell: pwsh
+        run: |
+          $auditor = Get-ChildItem build-vst3 -Recurse -File -Filter test_vst3_audio_path.exe | Where-Object { $_.FullName -match 'Release' } | Select-Object -First 1
+          if (-not $auditor) { throw 'R01 actual processor harness missing' }
+          & $auditor.FullName --rt-followup artifacts/P028l-RT-deadlines.csv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain raw R01 measurement even on missed deadlines
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P028l-R01-Hosted-Deadline-Evidence
+          path: artifacts/P028l-RT-deadlines.csv
+          if-no-files-found: ignore
+          retention-days: 7

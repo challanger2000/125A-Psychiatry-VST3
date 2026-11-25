@@ -2,7 +2,9 @@
 
 Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current audited candidate: P028j / v0.9.26 — **NO-GO** after independent Codex audit. P028k / v0.9.27 all four CI workflows PASS on 50222758; independent follow-up audit NO-GO; R01–R07 open (P028l). **Only `main`**; no final or musical approval.
 
-## Current task — independent P028k follow-up audit
+## Current task — P028l / v0.9.28 consolidated corrective candidate (NO-GO)
+
+R01–R07 source repairs and focused tests committed, including real Windows DLL native state/zoom/motion/retarget probes, invalid queue and active recall regressions, extracted ZIP validator and strict four-instance hosted deadline CSV. All new execution pending. No new release or Studio Pro approval. See [P028l follow-up](docs/P028l-FOLLOWUP.md).
 
 ## P028k v0.9.27 verification — 2026-11-25
 

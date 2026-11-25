@@ -20,6 +20,8 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <memory>
+#include <thread>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -1388,7 +1390,92 @@ static void testRejectedQueueTransaction(){
     std::puts("P028l R02 malformed late queue transaction PASS");
 }
 
+
+// R01: report serial four-instance wall deadlines at 96 kHz / 64 samples.
+// This is a hosted SDK-processor stress probe, NOT an ASIO or owner-PC benchmark.
+// Prepare host automation outside measured callbacks; compare quiet and dense
+// load in three repetitions. Preserve all raw group measurements.
+static int testFourInstanceDeadlines(const std::string& file){
+    using Clock=std::chrono::steady_clock;
+    constexpr int n=64,instances=4,warmup=128,groups=1600,rate=96000;
+    constexpr double budget=1.e6*n/rate;
+    const auto period=std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(double(n)/rate));
+    std::ofstream out(file);
+    check(out.good(),"R01 open deadline CSV");
+    out<<"mode,repeat,group,wall_us,deadline_us,miss\n";
+    int failures=0;
+    for(int mode=0;mode<2;++mode)for(int repeat=0;repeat<3;++repeat){
+        std::array<std::unique_ptr<Processor>,instances> processors;
+        for(auto& p:processors){
+            p=std::make_unique<Processor>();
+            check(p->initialize(nullptr)==kResultOk,"R01 init");
+            check(p->activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p->activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"R01 buses");
+            Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,n,rate};
+            check(p->setupProcessing(setup)==kResultOk,"R01 setup");
+            ResizableMemoryIBStream s;IBStreamer w(&s,kLittleEndian);
+            check(w.writeInt32(kStateMagic)&&w.writeInt32(kStateVersion),"R01 state header");
+            for(int i=0;i<9;++i)check(w.writeFloat(.85f),"R01 macro");
+            check(w.writeFloat(.15f)&&w.writeInt32(0),"R01 globals");
+            for(int i=0;i<3;++i)check(w.writeFloat(.85f),"R01 appended macro");
+            s.rewind();check(p->setState(&s)==kResultOk&&p->setActive(true)==kResultOk&&p->setProcessing(true)==kResultOk,"R01 activate");
+        }
+        std::array<float,n> left{},right{};
+        std::array<std::array<float,n>,instances> ol{},orr{};
+        float* ins[]{left.data(),right.data()};
+        Vst::AudioBusBuffers bi{};bi.numChannels=2;bi.channelBuffers32=ins;
+        std::array<Vst::AudioBusBuffers,instances> bo{};
+        std::array<std::array<float*,2>,instances> ptrs{};
+        for(int i=0;i<instances;++i){ptrs[i]={ol[i].data(),orr[i].data()};bo[i].numChannels=2;bo[i].channelBuffers32=ptrs[i].data();}
+        constexpr std::array<Vst::ParamID,14> ids{100,101,102,103,104,105,106,107,108,109,110,111,kTherapy,kBypass};
+        Vst::ParameterChanges changes(14);
+        std::vector<double> elapsed;elapsed.reserve(groups);
+        int missed=0;
+        auto deadline=Clock::now();
+        for(int g=-warmup;g<groups;++g){
+            for(int i=0;i<n;++i){
+                const double time=double((g+warmup)*n+i)/rate;
+                left[i]=.23f*tone(173.,time)+.13f*tone(711.,time);
+                right[i]=.21f*tone(257.,time)+.12f*tone(997.,time);
+            }
+            changes.clearQueue();
+            if(mode)for(int lane=0;lane<14;++lane){
+                int32 qi=0,pi=0;auto* q=changes.addParameterData(ids[lane],qi);check(q!=nullptr,"R01 queue");
+                for(int i=0;i<n;++i){
+                    const double v=lane<12?.75+.2*double((g+warmup+i+lane)%17)/16.:
+                        lane==12?.05+.2*double((g+warmup+i)%19)/18.:double(((g+warmup)*n+i)/97%2);
+                    check(q->addPoint(i,v,pi)==kResultOk,"R01 dense points");
+                }
+            }
+            if(g>=0){std::this_thread::sleep_until(deadline);deadline+=period;}
+            const auto begin=Clock::now();
+            bool ok=true;
+            for(int i=0;i<instances;++i){
+                Vst::ProcessData d{};d.processMode=Vst::kRealtime;d.symbolicSampleSize=Vst::kSample32;
+                d.numSamples=n;d.numInputs=d.numOutputs=1;d.inputs=&bi;d.outputs=&bo[i];
+                d.inputParameterChanges=mode?&changes:nullptr;
+                ok=(processors[i]->process(d)==kResultOk)&&ok;
+            }
+            const auto end=Clock::now();
+            const double us=std::chrono::duration<double,std::micro>(end-begin).count();
+            check(ok,"R01 process");
+            for(int i=0;i<instances;++i)for(int j=0;j<n;++j)
+                check(std::isfinite(ol[i][j])&&std::isfinite(orr[i][j]),"R01 finite");
+            if(g>=0){elapsed.push_back(us);missed+=us>budget;out<<mode<<','<<repeat<<','<<g<<','<<us<<','<<budget<<','<<(us>budget)<<'\n';}
+            if(g<0||deadline<end)deadline=end;
+        }
+        std::sort(elapsed.begin(),elapsed.end());
+        std::printf("R01 96k/64 4 instances mode=%s repeat=%d p50=%.3f p95=%.3f p99=%.3f max=%.3f us misses=%d/%d budget=%.3f us\n",
+            mode?"dense":"steady",repeat,elapsed[groups/2],elapsed[groups*95/100],elapsed[groups*99/100],elapsed.back(),missed,groups,budget);
+        failures+=missed;
+        for(auto& p:processors)check(p->setProcessing(false)==kResultOk&&p->setActive(false)==kResultOk&&p->terminate()==kResultOk,"R01 terminate");
+    }
+    check(out.good(),"R01 write CSV");
+    std::printf("R01 hosted wall-clock deadline %s: %d/%d misses; no native ASIO claim\n",failures?"FAIL":"PASS",failures,6*groups);
+    return failures?4:0;
+}
+
 int main(int argc,char** argv){
+    if(argc==3&&std::string(argv[1])=="--rt-followup")return testFourInstanceDeadlines(argv[2]);
     if(argc==4&&std::string(argv[1])=="--recordings"){
         auditRecordings(argv[2],argv[3]);return 0;
     }

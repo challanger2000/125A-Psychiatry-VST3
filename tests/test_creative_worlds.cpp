@@ -27,7 +27,34 @@ template<class FX> void common(int sr,const Audio& input){
     double energy=0.,delta=0.;for(std::size_t i=0;i<wet.size();++i){energy+=double(wet[i])*wet[i];delta+=std::abs(wet[i]-input[i]);}
     CHECK(energy>1.e-4&&delta>1.);
 }
+// Compare actual scalar and optimized spectral processors on irregular stereo
+// automation, captures, hold decay and reacquisition at all supported test rates.
+static void pairedCatatonia(int sr){
+    psychiatry::CatatoniaImpl<false> reference;psychiatry::Catatonia candidate;
+    reference.prepare(sr);candidate.prepare(sr);
+    constexpr int block=127;
+    std::array<float,block> l{},r{},a{},b{},curve{};
+    double peak=0.,square=0.;std::size_t count=0;
+    for(int pos=0;pos<4*sr;pos+=block){
+        int n=std::min(block,4*sr-pos);
+        for(int i=0;i<n;++i){
+            int sample=pos+i;double time=double(sample)/sr;
+            l[i]=a[i]=float((time<.3?.001:.22)*std::sin(2*psychiatry::creative::pi*(time<1.7?700.:1331.)*time)+.04*std::cos(time*4444.));
+            r[i]=b[i]=float(.17*std::sin(time*2222.)+.05*std::sin(time*7777.));
+            curve[i]=float(.55+.4*std::sin(time*3.));
+        }
+        float* p[]{l.data(),r.data()},*q[]{a.data(),b.data()};
+        reference.process(p,2,n,curve.data());candidate.process(q,2,n,curve.data());
+        for(int i=0;i<n;++i)for(int ch=0;ch<2;++ch){
+            const double delta=double(p[ch][i])-q[ch][i];
+            CHECK(std::isfinite(q[ch][i]));peak=std::max(peak,std::abs(delta));square+=delta*delta;++count;
+        }
+    }
+    std::printf("R01 scalar/SSE2 paired Catatonia %d Hz peak %.9g RMS %.9g (%zu samples)\n",sr,peak,std::sqrt(square/count),count);
+    CHECK(peak<2.e-6&&std::sqrt(square/count)<2.e-7);
+}
 int main(){
+    for(int sr:{44100,48000,96000})pairedCatatonia(sr);
     for(int sr:{44100,48000,96000}){
         Audio input(4*sr);
         for(int n=0;n<4*sr;++n)input[n]=.22f*std::sin(2.*psychiatry::creative::pi*700.*n/sr);

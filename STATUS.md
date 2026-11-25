@@ -446,3 +446,5 @@ P028l second source group: R04 interrupted fade freezes the current opaque photo
 P028m CI 1d34b1fe: DSP PASS, actual DLL/official EditorHost interaction PASS; new audio harness failed C2975, custom native host exited 1 without output. P028n test-only repair: local constexpr inside lambda, native COM initialization and explicit diagnostics, independent R01 timing execution after successful harness compilation. See docs/P028l-FOLLOWUP.md. NO-GO.
 
 P028n edf33fec: DSP, recorded audio, actual state/audio regression PASS; hosted R01 1620/9600 misses (FAIL), R06 missing-DLL diagnostic check FAIL, new GUI geometry fails at host desktop clamp above 100%. P028o fixes and DSP arithmetic optimizations unverified. See docs/P028l-FOLLOWUP.md. NO-GO.
+
+P028o 2182a2f8: DSP and recorded audio PASS; 47/47 validator, state/audio tests PASS; native MOTION/zoom/two-view gates passed, R04 sampling gate FAIL. R06 ctypes discarded numeric loader error. R01 1448/9600 deadline misses, still FAIL. P028p: direct Windows loader error capture, persistent GDI capture and timings, SSE2 FFT exact paired regression. Pending execution. NO-GO.

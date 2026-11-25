@@ -7,6 +7,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#if defined(_M_X64) || defined(__SSE2__)
+#include <emmintrin.h>
+#define PSY_CATATONIA_SSE2 1
+#else
+#define PSY_CATATONIA_SSE2 0
+#endif
 
 namespace psychiatry {
 namespace creative {
@@ -89,7 +95,7 @@ private:
 // STFT freeze. Capture a complex spectrum, estimate phase advance from
 // consecutive real input frames, propagate that phase independently of input.
 // Four-way overlap/add uses Hann analysis and Hann synthesis windows.
-class Catatonia final {
+template<bool Vectorized=true> class CatatoniaImpl final {
     using C=std::complex<float>;
 public:
     void prepare(double sr) {
@@ -100,6 +106,15 @@ public:
         bitReverse_.resize(size_);decay_.resize(size_/2+1);fallbackRotation_.resize(size_/2+1);
         for(std::size_t k=0;k<size_;++k)window_[k]=float(.5-.5*std::cos(2.*creative::pi*double(k)/double(size_)));
         for(std::size_t k=0;k<twiddle_.size();++k)twiddle_[k]=std::polar(1.f,float(-2.*creative::pi*double(k)/double(size_)));
+        // Contiguous twiddles for each radix-2 stage; same values as original.
+        stageForward_.resize(size_-1);stageInverse_.resize(size_-1);
+        for(std::size_t half=1;half<size_;half*=2){
+            const auto stride=size_/(2*half);
+            for(std::size_t k=0;k<half;++k){
+                const auto tw=twiddle_[k*stride];
+                stageForward_[half-1+k]=tw;stageInverse_[half-1+k]=std::conj(tw);
+            }
+        }
         bitReverse_[0]=0;
         for(std::size_t i=1,j=0;i<size_;++i){
             std::size_t bit=size_>>1;for(;j&bit;bit>>=1)j^=bit;
@@ -158,18 +173,40 @@ private:
     };
     void fft(std::vector<C>& a,bool inverse) noexcept {
         for(std::size_t i=1;i<size_;++i)if(i<bitReverse_[i])std::swap(a[i],a[bitReverse_[i]]);
+        const auto& stages=inverse?stageInverse_:stageForward_;
         for(std::size_t len=2;len<=size_;len*=2) {
-            const auto half=len/2,stride=size_/len;
-            for(std::size_t base=0;base<size_;base+=len)
-                for(std::size_t k=0;k<half;++k) {
-                    const C tw=inverse?std::conj(twiddle_[k*stride]):twiddle_[k*stride];
-                    const C u=a[base+k],x=a[base+k+half];
-                    // Bounded finite frame values: avoid generic complex recovery.
+            const auto half=len/2;
+            const C* twiddles=stages.data()+half-1;
+            for(std::size_t base=0;base<size_;base+=len){
+                std::size_t k=0;
+#if PSY_CATATONIA_SSE2
+                if constexpr(Vectorized){
+                    // Two complex butterflies per SSE2 vector. No approximation,
+                    // FMA, different transform size, hop or added latency.
+                    const __m128 signs=_mm_set_ps(0.f,-0.f,0.f,-0.f);
+                    for(;k+1<half;k+=2){
+                        float* lo=reinterpret_cast<float*>(a.data()+base+k);
+                        float* hi=reinterpret_cast<float*>(a.data()+base+k+half);
+                        const auto u=_mm_loadu_ps(lo),x=_mm_loadu_ps(hi);
+                        const auto tw=_mm_loadu_ps(reinterpret_cast<const float*>(twiddles+k));
+                        const auto re=_mm_shuffle_ps(tw,tw,_MM_SHUFFLE(2,2,0,0));
+                        const auto im=_mm_shuffle_ps(tw,tw,_MM_SHUFFLE(3,3,1,1));
+                        const auto swapped=_mm_shuffle_ps(x,x,_MM_SHUFFLE(2,3,0,1));
+                        const auto second=_mm_xor_ps(_mm_mul_ps(swapped,im),signs);
+                        const auto v=_mm_add_ps(_mm_mul_ps(x,re),second);
+                        _mm_storeu_ps(lo,_mm_add_ps(u,v));
+                        _mm_storeu_ps(hi,_mm_sub_ps(u,v));
+                    }
+                }
+#endif
+                for(;k<half;++k){
+                    const C tw=twiddles[k],u=a[base+k],x=a[base+k+half];
                     const float vr=x.real()*tw.real()-x.imag()*tw.imag();
                     const float vi=x.real()*tw.imag()+x.imag()*tw.real();
                     a[base+k]=C(u.real()+vr,u.imag()+vi);
                     a[base+k+half]=C(u.real()-vr,u.imag()-vi);
                 }
+            }
         }
         if(inverse){const float gain=1.f/float(size_);for(auto& x:a)x=C(x.real()*gain,x.imag()*gain);}
     }
@@ -220,13 +257,16 @@ private:
     }
     std::array<Channel,2> state_{};
     std::vector<float> window_;
-    std::vector<C> twiddle_,fallbackRotation_;
+    std::vector<C> twiddle_,fallbackRotation_,stageForward_,stageInverse_;
     std::vector<float> decay_;
     std::vector<std::size_t> bitReverse_;
     std::size_t size_=0,hop_=0,write_=0,ticks_=0,filled_=0;
     double sr_=48000.;
     float amount_=0.f,m_=0.f,step_=.001f;
 };
+
+using Catatonia=CatatoniaImpl<true>;
+#undef PSY_CATATONIA_SSE2
 
 // Erase information rather than add shock sounds: stereo-linked smooth
 // time and complementary-band masks, occasional one-shot past fragment.

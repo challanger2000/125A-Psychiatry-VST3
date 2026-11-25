@@ -102,19 +102,31 @@ struct View{
     }
 };
 // Capture only a visible client ROI from the actual composed desktop.
+struct PixelCapture{
+    HDC screen=nullptr,mem=nullptr;HBITMAP bmp=nullptr;HGDIOBJ old=nullptr;
+    void* raw=nullptr;int width,height;
+    PixelCapture(int w,int h):width(w),height(h){
+        screen=GetDC(nullptr);REQUIRE(screen);
+        mem=CreateCompatibleDC(screen);REQUIRE(mem);
+        BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=w;
+        bi.bmiHeader.biHeight=-h;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
+        bmp=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,&raw,nullptr,0);REQUIRE(bmp&&raw);
+        old=SelectObject(mem,bmp);REQUIRE(old);
+    }
+    ~PixelCapture(){SelectObject(mem,old);DeleteObject(bmp);DeleteDC(mem);ReleaseDC(nullptr,screen);}
+    std::vector<unsigned char> grab(HWND window,int x,int y){
+        POINT p{x,y};REQUIRE(ClientToScreen(window,&p));
+        // Opaque composed desktop; no layered-window capture request or
+        // per-frame creation/destruction of desktop GDI resources.
+        REQUIRE(BitBlt(mem,0,0,width,height,screen,p.x,p.y,SRCCOPY));GdiFlush();
+        std::vector<unsigned char> result;result.reserve(static_cast<size_t>(width*height*3));
+        const auto* bytes=static_cast<const unsigned char*>(raw);
+        for(int i=0;i<width*height;++i)for(int ch=0;ch<3;++ch)result.push_back(bytes[4*i+ch]);
+        return result;
+    }
+};
 static std::vector<unsigned char> pixels(HWND window,int x,int y,int w,int h){
-    POINT p{x,y};REQUIRE(ClientToScreen(window,&p));
-    HDC screen=GetDC(nullptr);REQUIRE(screen);
-    HDC mem=CreateCompatibleDC(screen);REQUIRE(mem);
-    BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=w;
-    bi.bmiHeader.biHeight=-h;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
-    void* raw=nullptr;HBITMAP bmp=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,&raw,nullptr,0);REQUIRE(bmp&&raw);
-    HGDIOBJ old=SelectObject(mem,bmp);REQUIRE(old);
-    REQUIRE(BitBlt(mem,0,0,w,h,screen,p.x,p.y,SRCCOPY|CAPTUREBLT));GdiFlush();
-    std::vector<unsigned char> result;result.reserve(static_cast<size_t>(w*h*3));
-    const auto* bytes=static_cast<const unsigned char*>(raw);
-    for(int i=0;i<w*h;++i)for(int ch=0;ch<3;++ch)result.push_back(bytes[4*i+ch]);
-    SelectObject(mem,old);DeleteObject(bmp);DeleteDC(mem);ReleaseDC(nullptr,screen);return result;
+    PixelCapture capture(w,h);return capture.grab(window,x,y);
 }
 static double delta(const std::vector<unsigned char>& a,const std::vector<unsigned char>& b){
     REQUIRE(a.size()==b.size()&&!a.empty());double sum=0.;
@@ -181,7 +193,8 @@ int wmain(int argc,wchar_t** argv){
     SetForegroundWindow(a.frame.window);
     std::puts("P028l native testing interrupted fade");
     world(c,kDepression);pump(1600);
-    auto before=pixels(a.frame.window,323,190,120,120);
+    PixelCapture capture(120,120);
+    auto before=capture.grab(a.frame.window,323,190);
     auto fixed=pixels(a.frame.window,50,50,60,60);
     std::vector<unsigned char> last=before;
     double maxStep=0.,retarget=0.;int samples=0,validRetarget=0;
@@ -189,13 +202,15 @@ int wmain(int argc,wchar_t** argv){
     world(c,kMania);bool switched=false;
     while(Clock::now()-start<std::chrono::milliseconds(1750)){
         if(!switched&&Clock::now()-start>=std::chrono::milliseconds(310)){world(c,kPanic);switched=true;}
-        pump(12);auto next=pixels(a.frame.window,323,190,120,120);auto now=Clock::now();
+        pump(1);auto next=capture.grab(a.frame.window,323,190);auto now=Clock::now();
         const double t=std::chrono::duration<double,std::milli>(now-start).count();
         const double gap=std::chrono::duration<double,std::milli>(now-lastTime).count();
         double d=delta(last,next);
+        std::printf("R04 frame t=%.2f gap=%.2f delta=%.3f switched=%d\n",t,gap,d,int(switched));
         if(gap<=65){maxStep=std::max(maxStep,d);++samples;if(t>=290&&t<=480){retarget=std::max(retarget,d);++validRetarget;}}
         last=std::move(next);lastTime=now;
     }
+    std::printf("R04 sampling gate short-gap=%d retarget=%d switched=%d\n",samples,validRetarget,int(switched));
     REQUIRE(samples>=15&&validRetarget>=2&&switched);
     REQUIRE(delta(before,last)>5.&&delta(fixed,pixels(a.frame.window,50,50,60,60))<.5);
     std::printf("R04 actual desktop mean RGB step max %.4f retarget %.4f (%d short-gap frames, %d retarget)\n",maxStep,retarget,samples,validRetarget);

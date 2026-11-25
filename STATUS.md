@@ -1,8 +1,21 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current audited candidate: P028j / v0.9.26 — **NO-GO** after independent Codex audit. P028k / v0.9.27 implements A01–A10 corrections; verification pending; prior CI passes are scoped historical evidence. **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current audited candidate: P028j / v0.9.26 — **NO-GO** after independent Codex audit. P028k / v0.9.27 all four CI workflows PASS on 50222758; independent follow-up audit pending; NO-GO for Studio Pro. **Only `main`**; no final or musical approval.
 
-## Current task — P028k audit corrections
+## Current task — independent P028k follow-up audit
+
+## P028k v0.9.27 verification — 2026-11-25
+
+Exact product/test commit: `502227585a874dccd84cd5031bbae2092f354ae7`. Four workflows SUCCESS:
+- [Windows #45628879558](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45628879558): MSVC x64, Steinberg Validator 47/47, SDK-linked state and actual processor audio CTests PASS. A02 sparse/dense/partition THERAPY max PCM error 0, nonzero active delta 371.865058; A07 sample-aligned bypass oracle max 1.68134769e-7; A05/A06 inactive bus and malformed PCM PASS. A10 three real-bundle tamper negatives rejected (fake module, wrong notice, altered PNG), exact 47 PNG and 3 notices, PE32+ AMD64 and factory/module version checks PASS.
+- [DSP #45628879049](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45628879049): 10/10 CTests on both jobs, including scene alpha math; 168-case objective audit step successful on its designated job. This is not a full native four-instance 96 kHz/64-frame realtime acceptance test.
+- [Native GUI #45628879179](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45628879179): actual EditorHost, 13 knobs, randomization, bypass/restore, MOTION, timed scene rotation and 768x512 -> 1152x768 PASS. A09 rejected-host and live/multi-view recall are NOT independently verified by this smoke test.
+- [Recorded audio #45628879053](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45628879053): SUCCESS.
+- Actual [Windows artifact 15030461616](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45628879558/artifacts/15030461616) downloaded and inspected separately in local container. Outer CRC PASS, inner ZIP CRC PASS, 56 members, SHA256 `159dd9f86845291c998740b301dd1d01277041019fda6c15ae3df7d42ff39182` equals CI log, module and both factory classes 0.9.27. No DAW run in container.
+
+**Technical candidate for independent Codex re-audit, not FINAL / not GO for Studio Pro.** Repeat original adversarial A01–A10 probes against exact product SHA, challenge queue bounds and concurrent active recall, native rejected zoom and all six sizes, live recall/multiple editors, realtime deadline behavior, and original audit's remaining gates. No original evidence ZIP available to ChatGPT. Existing new regression tests are self-authored, not independent. 125A Plugin Tester and owner musical/DAW acceptance remain unverified. No product edits or CI in this documentation checkpoint.
+
+## Historical P028k audit corrections
 
 Independent audit confirms nine product findings A01–A09 and package-verifier gap A10. Do not request final Studio Pro test. See [P028k correction gate](docs/P028k-AUDIT-CORRECTIONS.md). Full audit report supplied by owner; evidence ZIP download unavailable. Recreate exact counterprobes as needed. P028k source correction candidate committed; independent original audit counterprobes and target-host acceptance still required.
 

@@ -1,3 +1,7 @@
+## P028k / 0.9.27 (2026-11-25) — re-audit candidate, not final
+
+- A01–A10 source corrections, consolidated regressions, centralized factory version and silence flags. Four workflows PASS at `502227585a874dccd84cd5031bbae2092f354ae7`; independent follow-up audit and Studio Pro acceptance pending. See STATUS.md and docs/P028k-AUDIT-CORRECTIONS.md.
+
 # Change history — 125A PSYCHIATRY
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).

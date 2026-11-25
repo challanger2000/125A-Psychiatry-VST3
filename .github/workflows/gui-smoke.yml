@@ -14,7 +14,7 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/gui-smoke.yml'
       - 'tools/gui_smoke.ps1'
-      - 'tests/test_native_followup.cpp'
+      - 'tests/**'
   workflow_dispatch:
 
 concurrency:

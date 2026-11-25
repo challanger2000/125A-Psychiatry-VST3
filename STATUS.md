@@ -4,7 +4,7 @@ Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24*
 
 ## Current task — P028l / v0.9.28 consolidated corrective candidate (NO-GO)
 
-R01–R07 source repairs and focused tests committed, including real Windows DLL native state/zoom/motion/retarget probes, invalid queue and active recall regressions, extracted ZIP validator and strict four-instance hosted deadline CSV. All new execution pending. No new release or Studio Pro approval. See [P028l follow-up](docs/P028l-FOLLOWUP.md).
+R01–R07 source repairs and focused tests committed, including real Windows DLL native state/zoom/motion/retarget probes, invalid queue and active recall regressions, extracted ZIP validator and strict four-instance hosted deadline CSV. First CI 2ff8a81d: DSP Windows/Linux PASS; actual Windows module compiled and state regression PASS; Windows/recorded audio jobs FAIL compiling new R02 test (C3493 uncaptured constants); GUI did not trigger. Test-only capture/GUI trigger correction pending verification. No new release or Studio Pro approval. See [P028l follow-up](docs/P028l-FOLLOWUP.md).
 
 ## P028k v0.9.27 verification — 2026-11-25
 

@@ -11,3 +11,9 @@ R01–R03 earlier candidate uncompiled. This change is a source candidate only, 
 Native follow-up test source added: actual DLL factory + IEditController, real HWND/IPlugFrame accepted and rejected sizes, multi-view partial refusal, open/close state, MOTION pixel changes and interrupted-fade desktop ROI. No claim of execution yet. Higher zoom tests geometry only, not full physical desktop presentation. v0.9.28 candidate.
 
 R01 actual SDK processor: 4 instances serial, 96k/64, 12 macros .85 steady and all 14 queues dense (64 points each), three 1600-group repetitions per mode, raw wall-clock durations and strict no-missed-deadline result. Hosted VM result is not target ASIO. R02/R03 regressions include late malformed queues, output/state/timeline rollback and 5-ms active recall with/without zero-frame flush. Native CI first consolidated candidate; baseline PCM comparison and independent original counterprobes remain open. No results claimed before runs complete.
+
+## First consolidated CI: 2ff8a81d2411c5a904f158bc8c78752b2be6800d
+- DSP Windows/Linux [45645280809](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45645280809) SUCCESS.
+- Windows [45645280821](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45645280821) actual plugin build and state regression SUCCESS, overall FAIL compiling new R02 test: MSVC C3493 for uncaptured local constants block/total. No audio/package/RT results.
+- Recorded [45645280842](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45645280842) same compile failure. GUI did not trigger; final push changed audio test only, excluded by GUI path filters.
+- Fix lambda capture and include tests/** in GUI workflow trigger. Product source unchanged; next consolidated verification pending. NO-GO.

@@ -1334,7 +1334,7 @@ private:AuditMalformedQueue queue_;
 };
 static void testRejectedQueueTransaction(){
     constexpr int block=64,total=1024;
-    auto run=[](int mode){
+    auto run=[=](int mode){
         Processor p;
         check(p.initialize(nullptr)==kResultOk,"R02 init");
         check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"R02 buses");

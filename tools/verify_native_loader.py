@@ -14,4 +14,8 @@ def check_module(module):
     print("Windows native loader resolved module imports:",", ".join(imports))
 
 if __name__=="__main__":
-    check_module(pathlib.Path(sys.argv[1]))
+    try:
+        check_module(pathlib.Path(sys.argv[1]))
+    except OSError as exc:
+        print(f'Native loader OS error: winerror={getattr(exc, "winerror", None)}', file=sys.stderr)
+        raise

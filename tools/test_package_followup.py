@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory() as tmp:
     changed=copy/MODULE
     changed.write_bytes(mutated)
     negative=subprocess.run([sys.executable,str(loader),str(changed)],capture_output=True,text=True)
-    if negative.returncode==0 or "WinError 126" not in negative.stderr:
+    if negative.returncode==0 or "winerror=126" not in negative.stderr:
         raise AssertionError(negative.stdout+negative.stderr)
     print("R06 missing dependency rejected by actual Windows loader")
     changed.write_bytes(original)

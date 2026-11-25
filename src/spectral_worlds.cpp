@@ -24,7 +24,8 @@ float linearRead(const std::vector<float>& ring,std::size_t write,float delay) n
     const float d=std::clamp(delay,1.f,static_cast<float>(size-3));
     const std::size_t n=static_cast<std::size_t>(d);
     const float frac=d-static_cast<float>(n);
-    const auto a=(write+size-n)%size, b=(write+size-(n+1))%size;
+    const auto a=write>=n?write-n:write+size-n;
+    const auto b=a?a-1:size-1;
     return ring[a]*(1.f-frac)+ring[b]*frac;
 }
 } // namespace

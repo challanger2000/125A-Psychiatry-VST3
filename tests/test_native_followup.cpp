@@ -28,6 +28,15 @@ static void pump(int ms){
         Sleep(1);
     }while(Clock::now()<end);
 }
+// The native host allows off-screen geometry; only 50% is pixel-tested.
+static LRESULT CALLBACK auditWindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
+    if(msg==WM_GETMINMAXINFO){
+        auto* info=reinterpret_cast<MINMAXINFO*>(l);
+        info->ptMaxTrackSize.x=8192;info->ptMaxTrackSize.y=8192;
+        return 0;
+    }
+    return DefWindowProcW(hwnd,msg,w,l);
+}
 struct Frame final:IPlugFrame{
     uint32 refs=1;
     HWND window=nullptr;
@@ -71,7 +80,7 @@ struct View{
         ViewRect initial;REQUIRE(view->getSize(&initial)==kResultOk);
         RECT rect{0,0,initial.getWidth(),initial.getHeight()};
         REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
-        frame.window=CreateWindowExW(0,L"STATIC",L"125A native audit",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
+        frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A native audit",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
             x,y,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
         REQUIRE(frame.window);
         REQUIRE(view->setFrame(&frame)==kResultOk);
@@ -124,6 +133,8 @@ int wmain(int argc,wchar_t** argv){
     const HRESULT com=CoInitialize(nullptr);
     REQUIRE(SUCCEEDED(com));
     SetProcessDPIAware();
+    WNDCLASSW cls{};cls.lpfnWndProc=auditWindowProc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"125A_NativeAuditWindow";
+    REQUIRE(RegisterClassW(&cls)!=0);
     std::puts("P028l native STA COM initialized; loading module");
     HMODULE dll=LoadLibraryExW(argv[1],nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
     if(!dll)std::fprintf(stderr,"LoadLibraryExW error %lu\n",GetLastError());

@@ -14,17 +14,17 @@ class LinearPhaseInterpolator2x {
 public:
     void reset() noexcept {history_={};position_=0;}
     std::array<float,2> process(float x) noexcept {
-        history_[position_]=x;
-        const auto past=[this](std::size_t k) noexcept {return history_[(position_+24-k)%24];};
+        history_[position_]=history_[position_+24]=x;
+        const auto past=[this](std::size_t k) noexcept {return history_[position_+24-k];};
         float odd=0.f;
         for(std::size_t j=0;j<12;++j)
             odd+=kHalfbandPairs[j]*(past(j)+past(23-j));
         const std::array<float,2> out{past(12),2.f*odd};
-        position_=(position_+1)%24;
+        if(++position_==24)position_=0;
         return out;
     }
 private:
-    std::array<float,24> history_{};
+    std::array<float,48> history_{};
     std::size_t position_=0;
 };
 class LinearPhaseDecimator2x {
@@ -32,16 +32,17 @@ public:
     void reset() noexcept {even_={};odd_={};position_=0;}
     float process(float a,float b) noexcept {
         even_[position_]=a;
-        const auto pastOdd=[this](std::size_t k) noexcept {return odd_[(position_+24-k)%24];};
+        const auto pastOdd=[this](std::size_t k) noexcept {return odd_[position_+24-k];};
         float sum=0.5f*even_[(position_+24-12)%24];
         for(std::size_t j=0;j<12;++j)
             sum+=kHalfbandPairs[j]*(pastOdd(j+1)+pastOdd(24-j));
-        odd_[position_]=b;
-        position_=(position_+1)%24;
+        odd_[position_]=odd_[position_+24]=b;
+        if(++position_==24)position_=0;
         return sum;
     }
 private:
-    std::array<float,24> even_{},odd_{};
+    std::array<float,24> even_{};
+    std::array<float,48> odd_{};
     std::size_t position_=0;
 };
 class LinearPhaseOversample2x final {

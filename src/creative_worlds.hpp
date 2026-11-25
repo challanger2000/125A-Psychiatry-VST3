@@ -25,7 +25,8 @@ inline float random(std::uint32_t& r) noexcept {
 inline float read(const std::vector<float>& h,std::size_t w,double lag) noexcept {
     lag=std::clamp(lag,1.,double(h.size()-3));
     const auto k=static_cast<std::size_t>(lag);
-    const auto a=(w+h.size()-k)%h.size(),b=(a+h.size()-1)%h.size();
+    const auto size=h.size();
+    const auto a=w>=k?w-k:w+size-k,b=a?a-1:size-1;
     return h[a]+float(lag-double(k))*(h[b]-h[a]);
 }
 }
@@ -162,16 +163,20 @@ private:
             for(std::size_t base=0;base<size_;base+=len)
                 for(std::size_t k=0;k<half;++k) {
                     const C tw=inverse?std::conj(twiddle_[k*stride]):twiddle_[k*stride];
-                    const C u=a[base+k],v=a[base+k+half]*tw;
-                    a[base+k]=u+v;a[base+k+half]=u-v;
+                    const C u=a[base+k],x=a[base+k+half];
+                    // Bounded finite frame values: avoid generic complex recovery.
+                    const float vr=x.real()*tw.real()-x.imag()*tw.imag();
+                    const float vi=x.real()*tw.imag()+x.imag()*tw.real();
+                    a[base+k]=C(u.real()+vr,u.imag()+vi);
+                    a[base+k+half]=C(u.real()-vr,u.imag()-vi);
                 }
         }
-        if(inverse)for(auto& x:a)x/=float(size_);
+        if(inverse){const float gain=1.f/float(size_);for(auto& x:a)x=C(x.real()*gain,x.imag()*gain);}
     }
     void frame(Channel& c) noexcept {
         double energy=0.;
         for(std::size_t k=0;k<size_;++k) {
-            const float x=c.history[(write_+k)%size_];
+            const float x=c.history[(write_+k)&(size_-1)];
             const float tapered=x*window_[k];
             energy+=double(tapered)*tapered;c.work[k]=C(tapered,0.f);
         }
@@ -211,7 +216,7 @@ private:
         fft(c.work,true);
         // Periodic Hann squared sums to 1.5 at N/4 hops.
         for(std::size_t k=0;k<size_;++k)
-            c.ola[(write_+k)%size_]+=c.work[k].real()*window_[k]*(2.f/3.f);
+            c.ola[(write_+k)&(size_-1)]+=c.work[k].real()*window_[k]*(2.f/3.f);
     }
     std::array<Channel,2> state_{};
     std::vector<float> window_;

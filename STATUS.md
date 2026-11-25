@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028g / v0.9.25 (package verification update; native P028f GUI smoke passed). **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current verified GUI candidate: P028g / v0.9.25 (all four CI workflows PASS; final acceptance pending). **Only `main`**; no final or musical approval.
 
-## Current task — P028g package verification update
+## Current task — P028g verified raster candidate
+
+All four CI workflows PASS on exact source `87be28cb8f4d5c34a9a0bc164e4eda06ec6b03f8`; actual VST3 packaged and ZIP checked, native screenshots visually examined. See [verification evidence and artifact hashes](docs/P028d.md#p028g-verification-result-2026-11-25). Remaining: complete scene selection, actual MOTION/zoom interaction checks, subjective sound and Studio Pro acceptance. No further build for documentation alone.
+
+## Historical P028g package verification update
 
 P028f Windows compilation, 47/47 Validator, native GUI smoke (13 knob drags, randomize, bypass/restore), DSP and state/audio CTests PASS. Overall Windows job FAIL at obsolete legacy package assertions. P028g updates package checks to the approved English raster layout with all 11 exact PNG hashes. No product changes; corrected package job pending. Final scenes, visual/motion/zoom and Studio Pro acceptance remain open. [Evidence](docs/P028d.md).
 

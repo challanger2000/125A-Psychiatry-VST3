@@ -4,7 +4,7 @@ Only the `main` branch is used. The most recent **verified code commit** and tes
 
 ## 0.9.25 — P028d raster editor candidate
 
-- Approved P028c artwork, thirteen native animated controls, momentary LOSS, circular photographic observation, English-only, motion, bypass, zoom and value displays. Native verification pending; DSP unchanged.
+- Approved P028c artwork, thirteen native animated controls, momentary LOSS, circular photographic observation, English-only, motion, bypass, zoom and value displays. P028g all four CI workflows passed on exact source `87be28cb8f4d5c34a9a0bc164e4eda06ec6b03f8`; verified raster candidate, final acceptance pending; DSP unchanged.
 
 ## P027g — integrated functionality gate (factory v0.9.24 unchanged)
 

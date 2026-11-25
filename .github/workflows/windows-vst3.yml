@@ -3,6 +3,9 @@ name: P028 Windows VST3 Raster Audit
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'tools/gui_smoke.ps1'
+      - '.github/workflows/gui-smoke.yml'
   workflow_dispatch:
 
 concurrency:

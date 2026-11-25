@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028i / v0.9.26 (zoom menu state/probe correction; native verification pending). Last verified GUI baseline P028g / v0.9.25. **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028i / v0.9.26 (Windows and DSP PASS; P028j GUI-only environment retest pending). Last verified GUI baseline P028g / v0.9.25. **Only `main`**; no final or musical approval.
 
-## Current task — P028i zoom verification
+## Current task — P028j GUI-only desktop correction
+
+P028i native 75% item selected, window enlarged but clipped to 1028x749 on actual 1024x768 desktop. Windows/DSP PASS. P028j adjusts test desktop to 1920x1080 and retains exact geometry gate; no product changes. See [P028h/P028j](docs/P028h.md). GUI-only retest pending.
+
+## Historical P028i zoom verification
 
 P028h Windows, DSP and recorded workflows PASS; native EditorHost reached final zoom check after all motion/scene/knob probes passed, then failed (unchanged 768x512). P028i synchronizes menu value/index and clicks the actual native 75% item with screenshots and unchanged geometry assertion. No DSP or scene changes. See [P028h/P028i](docs/P028h.md). New GUI and Windows verification pending.
 

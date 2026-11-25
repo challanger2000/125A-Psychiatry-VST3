@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - '.gitattributes'
+      - 'tools/verify_artwork.py'
       - 'vst3/**'
       - 'resource/**'
       - 'src/**'

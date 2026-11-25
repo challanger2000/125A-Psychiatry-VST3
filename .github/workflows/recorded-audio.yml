@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - '.gitattributes'
+      - 'tools/verify_artwork.py'
       - 'tools/prepare_recordings.py'
       - 'tools/recording_sources.json'
       - 'src/**'

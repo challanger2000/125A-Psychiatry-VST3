@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028d / v0.9.25 (native raster editor, verification pending). **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028e / v0.9.25 (checkout correction, native verification pending). **Only `main`**; no final or musical approval.
 
-## Current task — P028d native raster editor candidate
+## Current task — P028e checkout correction
+
+P028d DSP PASS, Windows/EditorHost/recorded configure FAIL on README.txt SHA256. Local autocrlf negative reproduction and positive exact-byte checkout PASS with `.gitattributes`; no product changes. See [P028d/P028e evidence](docs/P028d.md). Await native verification of this candidate.
+
+## Historical P028d native raster editor candidate
 
 See [P028d](docs/P028d.md). Artwork fully transferred and hash-verified; P027g DSP baseline retained. Native build/host evidence not yet available. Five provisional scenes; no final acceptance.
 

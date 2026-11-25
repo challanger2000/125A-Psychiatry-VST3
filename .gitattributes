@@ -1,0 +1,6 @@
+# Preserve exact P028c manifest bytes on every platform.
+/README.txt text eol=lf
+/geometry.json text eol=lf
+/SHA256.json text eol=lf
+/artwork-source/*.png -text
+/resource/artwork/*.png -text

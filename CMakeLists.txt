@@ -120,6 +120,8 @@ if(PSYCHIATRY_BUILD_VST3)
       resource/psychiatry.uidesc
   )
   target_compile_features(PsychiatryPrototype PRIVATE cxx_std_17)
+  # One version authority for both factory classes and the module manifest.
+  target_compile_definitions(PsychiatryPrototype PRIVATE PSYCHIATRY_PRODUCT_VERSION="${PROJECT_VERSION}")
   target_include_directories(PsychiatryPrototype PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_link_libraries(PsychiatryPrototype PRIVATE psychiatry_audio sdk vstgui_support)

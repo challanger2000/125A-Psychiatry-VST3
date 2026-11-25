@@ -96,6 +96,7 @@ private:
 
     void apply(Steinberg::Vst::ParamID id, Steinberg::Vst::ParamValue value) noexcept;
     bool processSpan(Steinberg::Vst::ProcessData& data,
-                     Steinberg::int32 offset, Steinberg::int32 frames) noexcept;
+                     Steinberg::int32 offset, Steinberg::int32 frames,
+                     Steinberg::uint64& silent) noexcept;
 };
 } // namespace psychiatry::vst3

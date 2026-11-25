@@ -60,6 +60,8 @@ jobs:
           Copy-Item -LiteralPath $chosen.FullName -Destination "plugin-package" -Recurse -Force
           python tools/verify_artwork.py . "plugin-package/125A-PSYCHIATRY.vst3"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/test_package_rejection.py . "plugin-package/125A-PSYCHIATRY.vst3"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/verify_package_zip.py plugin-package artifacts/125A-PSYCHIATRY-P028k.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Staged branded plugin:" $chosen.FullName

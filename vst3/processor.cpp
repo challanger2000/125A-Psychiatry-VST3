@@ -226,7 +226,7 @@ std::uint64_t Processor::nextDue() const noexcept {
 }
 
 bool Processor::processSpan(Vst::ProcessData& data,
-                            int32 offset,int32 frames) noexcept {
+                            int32 offset,int32 frames,uint64& silent) noexcept {
     if(frames<=0) return true;
     const auto* outputBus=getAudioOutput(0);
     const auto* inputBus=getAudioInput(0);
@@ -306,12 +306,12 @@ bool Processor::processSpan(Vst::ProcessData& data,
                     // Exact endpoints need no subtract/add round trip.
                     if(w==0.f)ptrs[c][i]=dry;
                     else if(w<1.f)ptrs[c][i]=dry+w*(wet-dry);
+                    if(ptrs[c][i]!=0.f)silent&=~(uint64{1}<<c);
                 }
             }
         }
         pos+=size;
     }
-    output.silenceFlags=0; // Old buffers can yield audible reverb after silent input.
     return true;
 }
 
@@ -343,6 +343,7 @@ tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
             lanes[static_cast<std::size_t>(count++)]=lane;
         }
     }
+    uint64 silent=~uint64{0}; // accumulate across every automation-delimited span
     int32 pos=0;
     for(;;) {
         bool changed=false;
@@ -377,9 +378,14 @@ tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
             if(!changed) return kResultFalse;
             continue;
         }
-        if(!processSpan(data,pos,next-pos)) return kResultFalse;
+        if(!processSpan(data,pos,next-pos,silent)) return kResultFalse;
         clock_+=static_cast<std::uint64_t>(next-pos);
         pos=next;
+    }
+    if(data.numSamples>0&&getAudioOutput(0)&&getAudioOutput(0)->isActive()) {
+        // processSpan already validated the active output and channel count.
+        auto& out=data.outputs[0];
+        out.silenceFlags=silent&((uint64{1}<<out.numChannels)-1);
     }
     publishState();
     return kResultOk;

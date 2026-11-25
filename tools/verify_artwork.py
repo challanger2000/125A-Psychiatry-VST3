@@ -116,7 +116,7 @@ if len(sys.argv) > 2:
     info = json.loads(re.sub(r',(?=\s*[}\]])', '', unique_file("moduleinfo.json").read_text(encoding="utf-8")))
     assert info["Name"] == "125A-PSYCHIATRY" and info["Version"] == expected_version
     assert {c["CID"] for c in info["Classes"]} == {"125A20D2A3D04F919B1074B70119CA26", "125A20D3A3D04F919B1074B70119CA26"}
-    assert all(c["Version"] == expected_version for c in info["Classes"])
+    assert all(c["Version"] == expected_version for c in info["Classes"]), (expected_version, [(c["Name"], c["Version"]) for c in info["Classes"]])
     # Counterexamples must be rejected by the same executable parser.
     for bad in (b"pretend plugin", binary[:64], binary[:0x3c]+b"\xff\xff\xff\x7f"+binary[0x40:]):
         try: inspect_pe(bad)

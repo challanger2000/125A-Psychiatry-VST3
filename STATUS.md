@@ -6,6 +6,13 @@ Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24*
 
 Independent audit confirms nine product findings A01–A09 and package-verifier gap A10. Do not request final Studio Pro test. See [P028k correction gate](docs/P028k-AUDIT-CORRECTIONS.md). Full audit report supplied by owner; evidence ZIP download unavailable. Recreate exact counterprobes as needed. P028k source correction candidate committed; independent original audit counterprobes and target-host acceptance still required.
 
+## P028k verification 2026-11-25 — exact source 8fa1854fd96ce408f9ebdd07022422df158d9602
+
+- [Windows #45624709526](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45624709526): actual MSVC VST3 compiled, Steinberg 47/47, both SDK-linked state/audio regression CTests PASS. Package gate correctly rejected stale factory class version 0.9.26 despite module version 0.9.27; no ZIP published.
+- [DSP #45624709552](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45624709552), [native GUI #45624709755](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45624709755), [recorded audio #45624709515](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45624709515) SUCCESS.
+- Follow-up P028k retains v0.9.27, derives both factory version strings from CMake, extends package negatives against temporary real-bundle copies. Also addresses explicit Steinberg warning about missing output silence flags (accumulate across all spans, leave inactive bus unchanged); tests silent and mixed-channel active output. No creative DSP changes. New exact-SHA CI pending.
+- Independent original audit replay, A09 host refusal/live recall/multi-view coverage, full 125A Tester, measured RT and Studio Pro remain open. NO-GO.
+
 ## Historical P028j verified technical candidate
 
 Native GUI test [45536098801](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45536098801) SUCCESS: exact 50→75% resize, all 13 knobs, MOTION, timed scene rotation, static hold, bypass and randomization. Windows package artifact 14986961132 from unchanged P028i product, all 40 scenes. Final Studio Pro audition and higher zoom factors not yet verified. See [P028h/P028j evidence](docs/P028h.md#p028j-verified-result--2026-11-25).

@@ -1272,8 +1272,19 @@ static void testAuditAudio(){
     for(int n=0;n<block;++n)check(outL[n]==.123f&&outR[n]==-.321f,"inactive output overwritten");
     check(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk,"stop before bus activation");
     check(p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk&&p.setActive(true)==kResultOk&&p.setProcessing(true)==kResultOk,"activate output only");
-    check(p.process(d)==kResultOk,"inactive input nonnull");
+    check(p.process(d)==kResultOk&&bo.silenceFlags==3,"inactive input nonnull: output silent");
     for(int n=0;n<block;++n)check(outL[n]==0.f&&outR[n]==0.f,"inactive input sentinel read");
+    check(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk,"stop before input activation");
+    check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.setActive(true)==kResultOk&&p.setProcessing(true)==kResultOk,"reactivate input");
+    l.fill(0.f);r.fill(0.f);l[0]=.5f;
+    Vst::ParameterChanges split(1);int32 qi=0,pi=0;
+    auto* q=split.addParameterData(kTherapy,qi);
+    check(q&&q->addPoint(192,0.,pi)==kResultOk,"silent flag span split");
+    d.inputParameterChanges=&split;
+    check(p.process(d)==kResultOk&&bo.silenceFlags==2,"left impulse before later silent span must retain active flag");
+    check(outL[kLatency]==.5f&&outR[kLatency]==0.f,"reactivated input actual PCM");
+    l.fill(0.f);d.inputParameterChanges=nullptr;
+    check(p.process(d)==kResultOk&&bo.silenceFlags==3,"fully silent next block");
     check(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk&&p.terminate()==kResultOk,"bus terminate");
     std::puts("P028k A05/A06 inactive buses and malformed PCM PASS");
 }

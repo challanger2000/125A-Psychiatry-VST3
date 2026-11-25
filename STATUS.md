@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028e / v0.9.25 (checkout correction, native verification pending). **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028f / v0.9.25 (SDK compile correction, native verification pending). **Only `main`**; no final or musical approval.
 
-## Current task — P028e checkout correction
+## Current task — P028f SDK compile correction
+
+P028e: DSP and recorded audio SUCCESS; Windows and EditorHost configure/hash checks PASS, compile FAIL (eight C2668 ambiguous `owned` calls). Qualified all eight with `VSTGUI::owned`; no audio or artwork change. [Evidence](docs/P028d.md). Corrected Windows compilation and native interaction pending.
+
+## Historical P028e checkout correction
 
 P028d DSP PASS, Windows/EditorHost/recorded configure FAIL on README.txt SHA256. Local autocrlf negative reproduction and positive exact-byte checkout PASS with `.gitattributes`; no product changes. See [P028d/P028e evidence](docs/P028d.md). Await native verification of this candidate.
 

@@ -187,16 +187,16 @@ public:
             "scene-treatment-room-bw.png","scene-corridor-color.png",
             "scene-treatment-room-color.png"};
         for(std::size_t i=0;i<scenes_.size();++i)
-            scenes_[i]=owned(new CBitmap(CResourceDescription(names[i])));
-        glass_=owned(new CBitmap(CResourceDescription("porthole-glass.png")));
+            scenes_[i]=VSTGUI::owned(new CBitmap(CResourceDescription(names[i])));
+        glass_=VSTGUI::owned(new CBitmap(CResourceDescription("porthole-glass.png")));
         // Copy only the outside of the fixed aperture from the exact faceplate.
         // This masks the moving photograph, NOT the fixed glass or metal ring.
-        auto plate=owned(new CBitmap(CResourceDescription("faceplate.png")));
-        edge_=owned(new CBitmap(376,376));
+        auto plate=VSTGUI::owned(new CBitmap(CResourceDescription("faceplate.png")));
+        edge_=VSTGUI::owned(new CBitmap(376,376));
         bool maskOk=false;
         {
-            auto source=owned(CBitmapPixelAccess::create(plate,false));
-            auto target=owned(CBitmapPixelAccess::create(edge_,false));
+            auto source=VSTGUI::owned(CBitmapPixelAccess::create(plate,false));
+            auto target=VSTGUI::owned(CBitmapPixelAccess::create(edge_,false));
             if(source&&target&&plate->getWidth()==1536&&plate->getHeight()==1024) {
                 for(uint32_t y=0;y<376;++y)for(uint32_t x=0;x<376;++x){
                     CColor color{0,0,0,0};
@@ -304,8 +304,8 @@ class RasterLossButton final : public VSTGUI::CTextButton {
 public:
     RasterLossButton():CTextButton(VSTGUI::CRect(0,0,110,106),nullptr,-1,nullptr,kKickStyle) {
         using namespace VSTGUI;
-        released_=owned(new CBitmap(CResourceDescription("loss-released.png")));
-        pressed_=owned(new CBitmap(CResourceDescription("loss-pressed.png")));
+        released_=VSTGUI::owned(new CBitmap(CResourceDescription("loss-released.png")));
+        pressed_=VSTGUI::owned(new CBitmap(CResourceDescription("loss-pressed.png")));
     }
     void draw(VSTGUI::CDrawContext* dc) override {
         auto image=getValueNormalized()>.5f?pressed_:released_;

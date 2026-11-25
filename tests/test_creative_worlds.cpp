@@ -79,12 +79,13 @@ int main(){
     for(int sr:{44100,48000,96000}){
         pairedCatatonia<psychiatry::CatatoniaImpl<false,false>>(sr,"immediate full FFT");
         pairedCatatonia<psychiatry::CatatoniaImpl<true,false>>(sr,"distributed full inverse");
+        pairedCatatonia<psychiatry::CatatoniaImpl<true,true,false>>(sr,"immediate packed inverse");
     }
     for(int round=0;round<4;++round){
         double old=0.,now=0.;
-        if(round%2==0){old=hopMedian<psychiatry::CatatoniaImpl<true,false>>();now=hopMedian<psychiatry::Catatonia>();}
-        else{now=hopMedian<psychiatry::Catatonia>();old=hopMedian<psychiatry::CatatoniaImpl<true,false>>();}
-        std::printf("R01 matched isolated 4x Catatonia hop median round=%d full %.3f us packed %.3f us ratio %.4f\n",round,old,now,now/old);
+        if(round%2==0){old=hopMedian<psychiatry::CatatoniaImpl<true,true,false>>();now=hopMedian<psychiatry::Catatonia>();}
+        else{now=hopMedian<psychiatry::Catatonia>();old=hopMedian<psychiatry::CatatoniaImpl<true,true,false>>();}
+        std::printf("R01 matched isolated 4x Catatonia hop median round=%d immediate packed %.3f us spread packed %.3f us ratio %.4f\n",round,old,now,now/old);
     }
     for(int sr:{44100,48000,96000}){
         Audio input(4*sr);

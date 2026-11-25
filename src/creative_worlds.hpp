@@ -89,7 +89,7 @@ private:
 // STFT freeze. Capture a complex spectrum, estimate phase advance from
 // consecutive real input frames, propagate that phase independently of input.
 // Four-way overlap/add uses Hann analysis and Hann synthesis windows.
-template<bool Distributed=true,bool PackedInverse=Distributed> class CatatoniaImpl final {
+template<bool Distributed=true,bool PackedInverse=Distributed,bool SpreadInverse=PackedInverse> class CatatoniaImpl final {
     using C=std::complex<float>;
 public:
     void prepare(double sr) {
@@ -117,6 +117,7 @@ public:
             c.history.assign(size_,0.f);c.ola.assign(size_,0.f);
             c.work.assign(size_,C{});c.previous.assign(size_,C{});
             c.held.assign(size_/2+1,C{});c.rotation.assign(size_/2+1,C{});
+            if constexpr(SpreadInverse){c.future.assign(size_/2,C{});c.predicted.assign(size_/2+1,C{});}
         }
         reset();
     }
@@ -127,7 +128,7 @@ public:
             std::fill(c.history.begin(),c.history.end(),0.f);std::fill(c.ola.begin(),c.ola.end(),0.f);
             std::fill(c.previous.begin(),c.previous.end(),C{});std::fill(c.held.begin(),c.held.end(),C{});
             c.age=0;c.captureEnergy=0.;c.active=false;c.previousValid=false;
-            c.pending=false;c.half=1;c.base=c.k=0;
+            c.pending=false;c.half=1;c.base=c.k=0;c.futureValid=false;c.jobStage=3;
         }
     }
     void process(float* const* p,unsigned channels,std::size_t n,const float* curve=nullptr) noexcept {
@@ -144,13 +145,17 @@ public:
             if(filled_<size_)++filled_;
             if constexpr(Distributed){
                 if((ticks_&15u)==15u)for(unsigned ch=0;ch<channels;++ch)
-                    advance(state_[ch],butterfliesPerSlice_);
+                {
+                    auto& c=state_[ch];
+                    advance(c,butterfliesPerSlice_);
+                    if constexpr(SpreadInverse)advanceFuture(c,16*(slices_+4));
+                }
             }
             if(++ticks_==hop_) {
                 ticks_=0;
                 for(unsigned ch=0;ch<channels;++ch) {
                     auto& c=state_[ch];
-                    if(m_==0.f){c.active=false;c.previousValid=false;c.pending=false;c.age=0;c.captureEnergy=0.;continue;}
+                    if(m_==0.f){c.active=false;c.previousValid=false;c.pending=false;c.futureValid=false;c.jobStage=3;c.age=0;c.captureEnergy=0.;continue;}
                     frame(c);
                 }
             }
@@ -159,11 +164,14 @@ public:
 private:
     struct Channel {
         std::vector<float> history,ola;
-        std::vector<C> work,previous,held,rotation;
+        std::vector<C> work,previous,held,rotation,future,predicted;
         std::size_t age=0;
         double captureEnergy=0.;
         bool active=false,previousValid=false,pending=false;
         std::size_t half=1,base=0,k=0;
+        bool futureValid=false;
+        unsigned jobStage=3;
+        std::size_t jobPos=0,jobHalf=1,jobBase=0,jobK=0;
     };
     void fft(std::vector<C>& a,bool inverse,std::size_t n=0) noexcept {
         if(!n)n=size_;
@@ -211,6 +219,60 @@ private:
             }
         }
     }
+    C packBin(const std::vector<C>& bins,std::size_t k) const noexcept {
+        const auto half=size_/2;
+        const C a=k?bins[k]:C(bins[0].real(),0.f);
+        const C b=k?std::conj(bins[half-k]):C(bins[half].real(),0.f);
+        const C ev=(a+b)*.5f,od=(a-b)*.5f;
+        const C tw=std::conj(twiddle_[k]);
+        const float r=od.real()*tw.real()-od.imag()*tw.imag();
+        const float i=od.real()*tw.imag()+od.imag()*tw.real();
+        return C(ev.real()-i,ev.imag()+r);
+    }
+    // Predict the next HOLD spectrum (not a future input frame). Spread
+    // decay, packing, and inverse butterflies over the following hop.
+    // On capture, discard prediction; never change capture or output timing.
+    void advanceFuture(Channel& c,std::size_t budget) noexcept {
+        const auto halfSize=size_/2;
+        while(c.futureValid&&c.jobStage<3&&budget){
+            if(c.jobStage==0){
+                const auto count=std::min(budget,c.held.size()-c.jobPos);
+                const auto end=c.jobPos+count;
+                for(auto k=c.jobPos;k<end;++k){
+                    C value=c.held[k];value*=c.rotation[k]*decay_[k];
+                    if(std::abs(value)<1.e-12f)value=C{};
+                    c.predicted[k]=value;
+                }
+                c.jobPos=end;budget-=count;
+                if(end==c.held.size()){c.jobStage=1;c.jobPos=0;}
+            }else if(c.jobStage==1){
+                const auto count=std::min(budget,halfSize-c.jobPos);
+                const auto end=c.jobPos+count;
+                for(auto k=c.jobPos;k<end;++k)c.future[bitReverse_[k]>>1]=packBin(c.predicted,k);
+                c.jobPos=end;budget-=count;
+                if(end==halfSize){c.jobStage=2;c.jobHalf=1;c.jobBase=c.jobK=0;}
+            }else{
+                const auto h=c.jobHalf,base=c.jobBase,stride=size_/(2*h);
+                const auto count=std::min(budget,h-c.jobK),end=c.jobK+count;
+                for(auto k=c.jobK;k<end;++k){
+                    const C tw=std::conj(twiddle_[k*stride]);
+                    const C u=c.future[base+k],x=c.future[base+k+h];
+                    const float vr=x.real()*tw.real()-x.imag()*tw.imag();
+                    const float vi=x.real()*tw.imag()+x.imag()*tw.real();
+                    c.future[base+k]=C(u.real()+vr,u.imag()+vi);
+                    c.future[base+k+h]=C(u.real()-vr,u.imag()-vi);
+                }
+                budget-=count;c.jobK=end;
+                if(c.jobK==h){
+                    c.jobK=0;c.jobBase+=2*h;
+                    if(c.jobBase==halfSize){
+                        c.jobBase=0;c.jobHalf*=2;
+                        if(c.jobHalf==halfSize)c.jobStage=3;
+                    }
+                }
+            }
+        }
+    }
     void frame(Channel& c) noexcept {
         double energy=0.;
         for(std::size_t k=0;k<size_;++k) {
@@ -236,6 +298,8 @@ private:
                 fft(c.work,false);
             }
         }
+        const bool useFuture=SpreadInverse&&!capture&&c.active&&c.futureValid;
+        if(useFuture&&c.jobStage<3)advanceFuture(c,size_*(slices_+4));
         for(std::size_t k=0;k<c.held.size();++k) {
             if(capture) {
                 const C now=c.work[k];
@@ -244,8 +308,11 @@ private:
                 c.rotation[k]=c.previousValid&&magnitude>1.e-12f?cross/magnitude:fallbackRotation_[k];
                 c.held[k]=now;
             } else if(c.active) {
-                c.held[k]*=c.rotation[k]*decay_[k];
-                if(std::abs(c.held[k])<1.e-12f)c.held[k]=C{};
+                if(useFuture)c.held[k]=c.predicted[k];
+                else{
+                    c.held[k]*=c.rotation[k]*decay_[k];
+                    if(std::abs(c.held[k])<1.e-12f)c.held[k]=C{};
+                }
             }
             if constexpr(!Distributed)c.previous[k]=c.work[k];
         }
@@ -265,8 +332,15 @@ private:
         }
         if(capture){c.active=true;c.age=0;c.captureEnergy=energy;}
         else if(c.age<1000000u)++c.age;
-        if(!c.active)return;
-        if constexpr(PackedInverse){
+        if(!c.active){c.futureValid=false;c.jobStage=3;return;}
+        if(useFuture){
+            const auto half=size_/2;const float gain=1.f/float(half);
+            for(std::size_t k=0;k<half;++k){
+                const auto even=2*k,odd=even+1;
+                c.ola[(write_+even)&(size_-1)]+=(c.future[k].real()*gain)*window_[even]*(2.f/3.f);
+                c.ola[(write_+odd)&(size_-1)]+=(c.future[k].imag()*gain)*window_[odd]*(2.f/3.f);
+            }
+        }else if constexpr(PackedInverse){
             // Real IFFT via an N/2 complex IFFT. The held spectrum is
             // Hermitian; even/odd time samples share a single transform.
             // E=(X[k]+X[k+N/2])/2, O=exp(+j2pi*k/N)*(X[k]-X[k+N/2])/2.
@@ -274,15 +348,7 @@ private:
             // The original N-point analysis, phase rotations, window,
             // overlap and exact output sample indices are unchanged.
             const auto half=size_/2;
-            for(std::size_t k=0;k<half;++k){
-                const C a=k?c.held[k]:C(c.held[0].real(),0.f);
-                const C b=k?std::conj(c.held[half-k]):C(c.held[half].real(),0.f);
-                const C ev=(a+b)*.5f,od=(a-b)*.5f;
-                const C tw=std::conj(twiddle_[k]);
-                const float r=od.real()*tw.real()-od.imag()*tw.imag();
-                const float i=od.real()*tw.imag()+od.imag()*tw.real();
-                c.work[k]=C(ev.real()-i,ev.imag()+r);
-            }
+            for(std::size_t k=0;k<half;++k)c.work[k]=packBin(c.held,k);
             fft(c.work,true,half);
             for(std::size_t k=0;k<half;++k){
                 const auto even=2*k,odd=even+1;
@@ -300,6 +366,7 @@ private:
             for(std::size_t k=0;k<size_;++k)
                 c.ola[(write_+k)&(size_-1)]+=c.work[k].real()*window_[k]*(2.f/3.f);
         }
+        if constexpr(SpreadInverse){c.futureValid=true;c.jobStage=0;c.jobPos=0;}
     }
     std::array<Channel,2> state_{};
     std::vector<float> window_;

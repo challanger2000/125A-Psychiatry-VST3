@@ -456,3 +456,5 @@ P028q a3a30167: scalar/distributed PCM, DSP and recorded audio PASS Windows/Linu
 P028r 76c6a918: DSP/recorded/native GUI PASS; actual validator/state/audio/package PASS; R01 4247/9600 misses FAIL. P028s removes speculative inverse prediction, batches forward FFT, hoists exact duplicate DSP math and precomputes grain window, adds thread-cycle diagnostics. Unverified. NO-GO.
 
 P028s e8fa904f: DSP/recorded/native GUI/validator/state/audio/package PASS, R01 1196/9600 misses FAIL. P028t packed Hermitian inverse FFT N/2, paired full-inverse PCM and same-host isolated hop timing, actual callback phase/cycle diagnostics. Local standalone transform check only; full CI pending. NO-GO.
+
+P028t 8d094733: all function/PCM/GUI/package checks PASS; R01 1169/9600 misses, 1011 in callback phase 7. P028u spreads packed inverse hold prediction including decay/packing, no change to output latency, retains capture fallback and paired regressions. CI pending. NO-GO.

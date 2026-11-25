@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028f / v0.9.25 (SDK compile correction, native verification pending). **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028g / v0.9.25 (package verification update; native P028f GUI smoke passed). **Only `main`**; no final or musical approval.
 
-## Current task — P028f SDK compile correction
+## Current task — P028g package verification update
+
+P028f Windows compilation, 47/47 Validator, native GUI smoke (13 knob drags, randomize, bypass/restore), DSP and state/audio CTests PASS. Overall Windows job FAIL at obsolete legacy package assertions. P028g updates package checks to the approved English raster layout with all 11 exact PNG hashes. No product changes; corrected package job pending. Final scenes, visual/motion/zoom and Studio Pro acceptance remain open. [Evidence](docs/P028d.md).
+
+## Historical P028f SDK compile correction
 
 P028e: DSP and recorded audio SUCCESS; Windows and EditorHost configure/hash checks PASS, compile FAIL (eight C2668 ambiguous `owned` calls). Qualified all eight with `VSTGUI::owned`; no audio or artwork change. [Evidence](docs/P028d.md). Corrected Windows compilation and native interaction pending.
 

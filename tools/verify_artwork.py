@@ -33,3 +33,42 @@ for atlas, size in [("MacroAtlas","128, 128"),("TherapyAtlas","224, 224")]:
 assert tags["LOSS_OF_CONTROL"]==9000 and tags["MONITOR_MOTION"]==9002
 assert tags["BYPASS"]==999 and tags["UI_ZOOM"]==9003 and "UI_LANGUAGE" not in tags
 print(f"P028c: {len(manifest)} SHA256 entries; 13 knob/parameter/readout bindings; atlas geometry PASS")
+
+# Optional second argument: the actual built VST3 bundle, not the source tree.
+# The full source layout/manifest checks above still execute first.
+if len(sys.argv) > 2:
+    bundle = pathlib.Path(sys.argv[2])
+    assert bundle.is_dir() and bundle.name == "125A-PSYCHIATRY.vst3", bundle
+    def unique_file(name):
+        files = [p for p in bundle.rglob(name) if p.is_file()]
+        assert len(files) == 1, f"Expected exactly one {name}, found {len(files)}"
+        return files[0]
+    expected_xml = root / "resource/psychiatry.uidesc"
+    assert unique_file("psychiatry.uidesc").read_bytes() == expected_xml.read_bytes(), "Bundled GUI definition differs from verified source"
+    templates = ui.findall("./template")
+    assert len(templates) == 1 and templates[0].attrib["name"] == "view"
+    assert templates[0].attrib["size"] == "1536, 1024"
+    assert templates[0].attrib["bitmap"] == "Faceplate"
+    for kind, tag in [("CTextButton", "LOSS_OF_CONTROL"), ("CCheckBox", "BYPASS"),
+                      ("CCheckBox", "MONITOR_MOTION"), ("COptionMenu", "UI_ZOOM")]:
+        views = ui.findall(f".//view[@class='{kind}'][@control-tag='{tag}']")
+        assert len(views) == 1, tag
+        if tag == "LOSS_OF_CONTROL":
+            assert views[0].attrib["kick-style"] == "true"
+            assert views[0].attrib["custom-view-name"] == "PSYCHIATRY_LOSS"
+    assert len(ui.findall(".//view[@custom-view-name='PSYCHIATRY_OBSERVATION']")) == 1
+    assert not ui.findall(".//view[@control-tag='UI_LANGUAGE']")
+    assets = (
+        "faceplate.png", "macro-atlas.png", "therapy-atlas.png",
+        "porthole-glass.png", "loss-pressed.png", "loss-released.png",
+        "scene-corridor-bw.png", "scene-corridor-color.png",
+        "scene-treatment-room-bw.png", "scene-treatment-room-color.png",
+        "scene-fictional-horror-portrait-bw.png",
+    )
+    for name in assets:
+        path = unique_file(name)
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == manifest["resource/artwork/" + name], f"Packaged PNG hash mismatch: {name}"
+    for name in ("LICENSE-VST3-SDK.txt", "LICENSE-VSTGUI.txt", "LICENSE-ACOUSTIC-SOURCES.txt"):
+        assert unique_file(name).stat().st_size > 0, name
+    assert (bundle / "Contents/x86_64-win/125A-PSYCHIATRY.vst3").is_file(), "Branded x64 binary missing"
+    print("P028g packaged GUI: verified source XML, 13 animated controls/readouts, single English template, 4 utility controls, 11 exact PNG hashes, 3 notices and x64 binary PASS")

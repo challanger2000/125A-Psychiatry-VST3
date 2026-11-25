@@ -460,3 +460,5 @@ P028s e8fa904f: DSP/recorded/native GUI/validator/state/audio/package PASS, R01 
 P028t 8d094733: all function/PCM/GUI/package checks PASS; R01 1169/9600 misses, 1011 in callback phase 7. P028u spreads packed inverse hold prediction including decay/packing, no change to output latency, retains capture fallback and paired regressions. CI pending. NO-GO.
 
 P028u 6238afef: DSP/recorded/GUI/validator/state/audio/package PASS, R01 871/9600 misses FAIL (phase 7: 254). P028v exact cached spectral constants and synthesis-only SSE2, conservative magnitude threshold; matched scalar spread PCM/timing oracle, verbose evidence. Pending CI. NO-GO.
+
+P028v 8d3aa654: DSP/PCM/recorded/GUI/validator/state/audio/package PASS; R01 183/9600 misses FAIL (1.91%). Owner-directed separate practical matrix at 44.1/48 kHz, 64/128/256 frames, 1/4 instances, representative/high-dense. Test-only change, DSP unchanged. Existing R01 stays FAIL until independently proven otherwise; practice matrix pending. No FULL AUDIT or Studio Pro/ASIO result yet. See docs/P028l-FOLLOWUP.md.

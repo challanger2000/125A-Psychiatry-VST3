@@ -1494,8 +1494,108 @@ static int testFourInstanceDeadlines(const std::string& file){
     return failures?4:0;
 }
 
+template<int n,int instances> static int practiceCase(std::ostream& out,int rate){
+    using Clock=std::chrono::steady_clock;
+    constexpr int warmup=128;
+    // At least three seconds of audio per case, including several freeze recaptures.
+    const int groups=std::max(800,(3*rate+n-1)/n);
+    const double budget=1.e6*n/rate;
+    const auto period=std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(double(n)/rate));
+    int failures=0;
+    for(int mode=0;mode<2;++mode){
+        std::array<std::unique_ptr<Processor>,instances> processors;
+        for(auto& p:processors){
+            p=std::make_unique<Processor>();
+            check(p->initialize(nullptr)==kResultOk,"R01 init");
+            check(p->activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p->activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"R01 buses");
+            Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,n,rate};
+            check(p->setupProcessing(setup)==kResultOk,"R01 setup");
+            ResizableMemoryIBStream s;IBStreamer w(&s,kLittleEndian);
+            check(w.writeInt32(kStateMagic)&&w.writeInt32(kStateVersion),"R01 state header");
+            for(int i=0;i<9;++i)check(w.writeFloat(mode?.85f:(i==0?.45f:i==1?.35f:i==4?.50f:0.f)),"practice macro");
+            check(w.writeFloat(mode?.15f:.25f)&&w.writeInt32(0),"practice globals");
+            for(int i=0;i<3;++i)check(w.writeFloat(mode?.85f:(i==1?.55f:0.f)),"practice appended macro");
+            s.rewind();check(p->setState(&s)==kResultOk&&p->setActive(true)==kResultOk&&p->setProcessing(true)==kResultOk,"R01 activate");
+        }
+        std::array<float,n> left{},right{};
+        std::array<std::array<float,n>,instances> ol{},orr{};
+        float* ins[]{left.data(),right.data()};
+        Vst::AudioBusBuffers bi{};bi.numChannels=2;bi.channelBuffers32=ins;
+        std::array<Vst::AudioBusBuffers,instances> bo{};
+        std::array<std::array<float*,2>,instances> ptrs{};
+        for(int i=0;i<instances;++i){ptrs[i]={ol[i].data(),orr[i].data()};bo[i].numChannels=2;bo[i].channelBuffers32=ptrs[i].data();}
+        constexpr std::array<Vst::ParamID,14> ids{100,101,102,103,104,105,106,107,108,109,110,111,kTherapy,kBypass};
+        Vst::ParameterChanges changes(14);
+        std::vector<double> elapsed;elapsed.reserve(groups);
+        int missed=0;
+        std::vector<unsigned long long> cycles;cycles.reserve(groups);
+        auto deadline=Clock::now();
+        for(int g=-warmup;g<groups;++g){
+            for(int i=0;i<n;++i){
+                const double time=double((g+warmup)*n+i)/rate;
+                left[i]=.23f*tone(173.,time)+.13f*tone(711.,time);
+                right[i]=.21f*tone(257.,time)+.12f*tone(997.,time);
+            }
+            changes.clearQueue();
+            if(mode)for(int lane=0;lane<14;++lane){
+                int32 qi=0,pi=0;auto* q=changes.addParameterData(ids[lane],qi);check(q!=nullptr,"R01 queue");
+                for(int i=0;i<n;++i){
+                    const double v=lane<12?.75+.2*double((g+warmup+i+lane)%17)/16.:
+                        lane==12?.05+.2*double((g+warmup+i)%19)/18.:double(((g+warmup)*n+i)/97%2);
+                    check(q->addPoint(i,v,pi)==kResultOk,"R01 dense points");
+                }
+            }
+            if(g>=0){std::this_thread::sleep_until(deadline);deadline+=period;}
+            unsigned long long cycleBegin=0,cycleEnd=0;
+#ifdef _WIN32
+            check(QueryThreadCycleTime(GetCurrentThread(),&cycleBegin)!=0,"R01 thread cycle begin");
+#endif
+            const auto begin=Clock::now();
+            bool ok=true;
+            for(int i=0;i<instances;++i){
+                Vst::ProcessData d{};d.processMode=Vst::kRealtime;d.symbolicSampleSize=Vst::kSample32;
+                d.numSamples=n;d.numInputs=d.numOutputs=1;d.inputs=&bi;d.outputs=&bo[i];
+                d.inputParameterChanges=mode?&changes:nullptr;
+                ok=(processors[i]->process(d)==kResultOk)&&ok;
+            }
+            const auto end=Clock::now();
+#ifdef _WIN32
+            check(QueryThreadCycleTime(GetCurrentThread(),&cycleEnd)!=0,"R01 thread cycle end");
+#endif
+            const double us=std::chrono::duration<double,std::micro>(end-begin).count();
+            check(ok,"R01 process");
+            for(int i=0;i<instances;++i)for(int j=0;j<n;++j)
+                check(std::isfinite(ol[i][j])&&std::isfinite(orr[i][j]),"R01 finite");
+            if(g>=0){elapsed.push_back(us);missed+=us>budget;cycles.push_back(cycleEnd-cycleBegin);out<<rate<<','<<n<<','<<instances<<','<<mode<<','<<g<<','<<us<<','<<budget<<','<<(us>budget)<<','<<(cycleEnd-cycleBegin)<<'\n';}
+            if(g<0||deadline<end)deadline=end;
+        }
+        std::sort(elapsed.begin(),elapsed.end());
+        std::sort(cycles.begin(),cycles.end());
+        std::printf("PRACTICE %dHz/%d samples %d instances mode=%s p50=%.3f p95=%.3f p99=%.3f max=%.3f us misses=%d/%d budget=%.3f us median cycles=%llu status=%s\n",
+            rate,n,instances,mode?"high-dense":"representative-steady",elapsed[groups/2],elapsed[groups*95/100],elapsed[groups*99/100],elapsed.back(),missed,groups,budget,cycles[groups/2],missed?"FAIL":"PASS");
+        failures+=missed;
+        for(auto& p:processors)check(p->setProcessing(false)==kResultOk&&p->setActive(false)==kResultOk&&p->terminate()==kResultOk,"R01 terminate");
+    }
+    return failures;
+}
+
+static int testPracticalDeadlines(const std::string& file){
+    std::ofstream out(file);check(out.good(),"practice CSV open");
+    out<<"sample_rate,block,instances,mode,group,wall_us,deadline_us,miss,thread_cycles\n";
+    int misses=0;
+    for(int rate:{44100,48000}){
+        misses+=practiceCase<64,1>(out,rate);misses+=practiceCase<64,4>(out,rate);
+        misses+=practiceCase<128,1>(out,rate);misses+=practiceCase<128,4>(out,rate);
+        misses+=practiceCase<256,1>(out,rate);misses+=practiceCase<256,4>(out,rate);
+    }
+    check(out.good(),"practice CSV write");
+    std::printf("PRACTICE hosted matrix %s misses=%d; no native DAW/ASIO claim\n",misses?"FAIL":"PASS",misses);
+    return misses?4:0;
+}
+
 int main(int argc,char** argv){
     if(argc==3&&std::string(argv[1])=="--rt-followup")return testFourInstanceDeadlines(argv[2]);
+    if(argc==3&&std::string(argv[1])=="--rt-practice")return testPracticalDeadlines(argv[2]);
     if(argc==4&&std::string(argv[1])=="--recordings"){
         auditRecordings(argv[2],argv[3]);return 0;
     }

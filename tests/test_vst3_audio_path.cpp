@@ -1210,6 +1210,15 @@ static void testAuditAudio(){
                     for(int i=0;i<n;++i)check(q->addPoint(i,double(start-at+i+1)/block,point)==kResultOk,"dense linear point");
                 }else check(q->addPoint(n-1,double(start-at+n)/block,point)==kResultOk,"sparse linear endpoint");
             }
+            if((mode==5||mode==6)&&(start==at||start==at+1024)){
+                ResizableMemoryIBStream recall;
+                writeState(recall,8,1.f,0.f,start==at);
+                check(p.setState(&recall)==kResultOk,"R03 active recall");
+                if(mode==6){
+                    Vst::ProcessData flush{};flush.symbolicSampleSize=Vst::kSample32;
+                    check(p.process(flush)==kResultOk,"R03 active zero-frame recall");
+                }
+            }
             if(mode==4&&start==at){
                 int32 index=0,point=0;auto* q=changes.addParameterData(kBypass,index);
                 check(q->addPoint(0,1.,point)==kResultOk,"bypass on");
@@ -1230,7 +1239,8 @@ static void testAuditAudio(){
         return output;
     };
     const auto sparse=run(0),dense=run(1),partition=run(2),wet=run(3),bypass=run(4);
-    double difference=0.,change=0.,fadeError=0.;
+    const auto recall=run(5),flushRecall=run(6);
+    double difference=0.,change=0.,fadeError=0.,recallError=0.;
     constexpr int ramp=240;
     for(int n=0;n<total;++n){
         difference=std::max({difference,std::abs(double(sparse.l[n])-dense.l[n]),
@@ -1244,10 +1254,20 @@ static void testAuditAudio(){
         fadeError=std::max({fadeError,std::abs(double(bypass.l[n])-(dl+(1.-dryMix)*(wet.l[n]-dl))),
             std::abs(double(bypass.r[n])-(dr+(1.-dryMix)*(wet.r[n]-dr)))});
         if(dryMix==1.)check(bypass.l[n]==dl&&bypass.r[n]==dr,"bypass exact dry plateau");
+        // Recall applies at the next output frame, not as a host input event.
+        const int rt=n-at;
+        const double rm=rt<0?0.:rt<ramp?double(rt+1)/ramp:rt<1024?1.:rt<1024+ramp?1.-double(rt-1024+1)/ramp:0.;
+        for(const auto* rendered:{&recall,&flushRecall}){
+            recallError=std::max({recallError,std::abs(double(rendered->l[n])-(dl+(1.-rm)*(wet.l[n]-dl))),
+                std::abs(double(rendered->r[n])-(dr+(1.-rm)*(wet.r[n]-dr)))});
+            if(rm==1.)check(rendered->l[n]==dl&&rendered->r[n]==dr,"R03 recalled bypass exact dry plateau");
+        }
     }
     std::printf("P028k A02/A07 sparse-dense-partition max %.9g, active delta %.9g, bypass oracle %.9g\n",difference,change,fadeError);
     check(difference<2.e-6&&change>1.,"equivalent VST3 linear automation must be identical within numeric precision");
     check(fadeError<3.e-6,"sample-aligned 5ms bypass crossfade");
+    std::printf("P028l R03 active recall/zero-frame recall oracle %.9g\n",recallError);
+    check(recallError<3.e-6,"R03 recall must ramp from current mix, including zero-frame recall");
     // Fresh neutral, therapy-dry and bypass modes: malformed PCM becomes zero.
     for(int mode=0;mode<3;++mode){
         Stereo malformed(512),clean(512);
@@ -1288,6 +1308,86 @@ static void testAuditAudio(){
     check(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk&&p.terminate()==kResultOk,"bus terminate");
     std::puts("P028k A05/A06 inactive buses and malformed PCM PASS");
 }
+
+// Invalid host queues bypass the SDK example's sorting/deduplication to reproduce
+// late-invalid offsets and failed reads exactly as supplied by the host.
+class AuditMalformedQueue final:public Vst::ParameterValueQueue {
+public:
+    explicit AuditMalformedQueue(int mode):Vst::ParameterValueQueue(kTherapy),mode_(mode){}
+    int32 PLUGIN_API getPointCount() override{return 2;}
+    tresult PLUGIN_API getPoint(int32 index,int32& offset,Vst::ParamValue& value) override{
+        if(index==0){offset=8;value=.75;return kResultOk;}
+        if(index!=1||mode_==3)return kResultFalse;
+        offset=mode_==0?64:mode_==1?4:8;value=.9;
+        return kResultOk;
+    }
+private:int mode_;
+};
+class AuditMalformedChanges final:public Vst::ParameterChanges{
+public:
+    explicit AuditMalformedChanges(int mode):Vst::ParameterChanges(0),queue_(mode){}
+    int32 PLUGIN_API getParameterCount() override{return 1;}
+    Vst::IParamValueQueue* PLUGIN_API getParameterData(int32 i) override{return i==0?&queue_:nullptr;}
+private:AuditMalformedQueue queue_;
+};
+static void testRejectedQueueTransaction(){
+    constexpr int block=64,total=1024;
+    auto run=[](int mode){
+        Processor p;
+        check(p.initialize(nullptr)==kResultOk,"R02 init");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"R02 buses");
+        Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,block,48000.};
+        check(p.setupProcessing(setup)==kResultOk,"R02 setup");
+        ResizableMemoryIBStream state;writeState(state,8,.8f,.125f,false);
+        check(p.setState(&state)==kResultOk&&p.setActive(true)==kResultOk&&p.setProcessing(true)==kResultOk,"R02 active");
+        auto verifyTherapy=[&](){
+            ResizableMemoryIBStream saved;
+            check(p.getState(&saved)==kResultOk,"R02 saved state");saved.rewind();
+            IBStreamer r(&saved,kLittleEndian);int32 magic=0,version=0;float v=0;
+            check(r.readInt32(magic)&&r.readInt32(version)&&magic==kStateMagic&&version==kStateVersion,"R02 saved header");
+            for(int i=0;i<10;++i)check(r.readFloat(v),"R02 saved float");
+            check(v==.125f,"R02 malformed queue changed saved parameter");
+        };
+        Stereo result(total);
+        std::array<float,block> l{},r{},ol{},orr{};
+        float* ins[]{l.data(),r.data()},*outs[]{ol.data(),orr.data()};
+        Vst::AudioBusBuffers bi{},bo{};bi.numChannels=bo.numChannels=2;
+        bi.channelBuffers32=ins;bo.channelBuffers32=outs;
+        Vst::ProcessData d{};d.symbolicSampleSize=Vst::kSample32;d.numSamples=block;
+        d.numInputs=d.numOutputs=1;d.inputs=&bi;d.outputs=&bo;
+        for(int start=0;start<total;start+=block){
+            if(start==256){
+                verifyTherapy();
+                if(mode>=0){
+                    AuditMalformedChanges bad(mode);
+                    l.fill(.4f);r.fill(-.3f);ol.fill(.123f);orr.fill(-.321f);bo.silenceFlags=3;
+                    d.inputParameterChanges=&bad;
+                    check(p.process(d)==kResultFalse,"R02 malformed late queue accepted");
+                    d.inputParameterChanges=nullptr;
+                    check(bo.silenceFlags==3,"R02 rejected queue changed silence flags");
+                    for(int i=0;i<block;++i)check(ol[i]==.123f&&orr[i]==-.321f,"R02 rejected queue wrote output");
+                }
+                Vst::ProcessData flush{};flush.symbolicSampleSize=Vst::kSample32;
+                check(p.process(flush)==kResultOk,"R02 empty flush");
+                verifyTherapy();
+            }
+            for(int i=0;i<block;++i){
+                l[i]=(start+i==256?.5f:0.f)+.2f*tone(237.,double(start+i)/48000.);
+                r[i]=.17f*tone(411.,double(start+i)/48000.);
+            }
+            check(p.process(d)==kResultOk,"R02 clean render");
+            std::copy(ol.begin(),ol.end(),result.l.begin()+start);
+            std::copy(orr.begin(),orr.end(),result.r.begin()+start);
+        }
+        verifyTherapy();
+        check(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk&&p.terminate()==kResultOk,"R02 terminate");
+        return result;
+    };
+    const auto baseline=run(-1);
+    for(int mode=0;mode<4;++mode)check(identical(baseline,run(mode)),"R02 rejected queue advanced DSP or audio timeline");
+    std::puts("P028l R02 malformed late queue transaction PASS");
+}
+
 int main(int argc,char** argv){
     if(argc==4&&std::string(argv[1])=="--recordings"){
         auditRecordings(argv[2],argv[3]);return 0;
@@ -1301,6 +1401,7 @@ int main(int argc,char** argv){
         csv<<"source,macro,amount,therapy,dry_rms,output_rms,gain_db,peak_dbfs,raw_null_ratio,gain_matched_residual,band_shape_distance\n";
     }
     testAuditAudio();
+    testRejectedQueueTransaction();
     testAutomation();
     testHighBandAliasing(exportWav?std::string(argv[1]):std::string{});
     testMultirateIntermod(exportWav?std::string(argv[1]):std::string{});

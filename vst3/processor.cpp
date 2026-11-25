@@ -100,6 +100,7 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
 }
 
 tresult PLUGIN_API Processor::setActive(TBool state) {
+    if(!state)processing_=false;
     if(state && prepared_) {
         consumeRecall();
         resetTimeline();
@@ -118,8 +119,9 @@ tresult PLUGIN_API Processor::setActive(TBool state) {
     return AudioEffect::setActive(state);
 }
 
-tresult PLUGIN_API Processor::setProcessing(TBool) {
+tresult PLUGIN_API Processor::setProcessing(TBool state) {
     // VST3 processing transitions must not allocate, lock or reset DSP history.
+    processing_=state!=0;
     return kResultOk;
 }
 
@@ -324,7 +326,7 @@ tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
             lane.count=static_cast<std::size_t>(n);
         }
     }
-    consumeRecall(data.numSamples>0&&prepared_);
+    consumeRecall(prepared_&&(data.numSamples>0||processing_));
     const auto values=captureState().values;
     for(unsigned i=0;i<lanes_.size();++i){
         auto& lane=lanes_[i];lane.input=values[i];lane.previousOffset=-1;lane.previousValue=values[i];

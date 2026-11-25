@@ -79,6 +79,7 @@ private:
     void consumeRecall(bool live=false) noexcept;
     float therapyDSP_=0.f;
     bool prepared_=false;
+    bool processing_=false; // serialized host processing lifecycle
     Steinberg::uint32 tailSamples_=30*48000+kLatency;
     std::array<std::vector<float>,2> original_{};
     std::array<psychiatry::detail::FixedDelay<kLatency>,2> dryDelay_{};

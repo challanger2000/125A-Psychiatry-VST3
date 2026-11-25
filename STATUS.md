@@ -452,3 +452,5 @@ P028o 2182a2f8: DSP and recorded audio PASS; 47/47 validator, state/audio tests 
 P028p 6063273a: native R04/R05/R07 and R06 package/loader PASS; actual R02/R03 and 47/47 validator PASS; Linux scalar/SSE2 PCM regression FAIL and R01 2444/9600 deadline misses FAIL. P028q rejects SSE2 and distributes scalar previous-frame FFT work, with unchanged PCM tolerance; verify again. NO-GO. See docs/P028l-FOLLOWUP.md.
 
 P028q a3a30167: scalar/distributed PCM, DSP and recorded audio PASS Windows/Linux, Windows 47/47 validator/R02/R03/R06 PASS; R01 1306/9600 misses FAIL; R04 insufficient retarget sampling, other native checks passed. P028r distributes predictable inverse FFT and improves sampling without weakening gates. Pending CI, NO-GO.
+
+P028r 76c6a918: DSP/recorded/native GUI PASS; actual validator/state/audio/package PASS; R01 4247/9600 misses FAIL. P028s removes speculative inverse prediction, batches forward FFT, hoists exact duplicate DSP math and precomputes grain window, adds thread-cycle diagnostics. Unverified. NO-GO.

@@ -65,6 +65,9 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
         // third musically perceptible without shifting the 0% or 100% ends.
         const float m=smoothed_/(0.50f+0.50f*smoothed_);
         const float mix=mixDelay_.process(m);
+        const float drive=1.f+4.5f*m*m;
+        const float cutoff=7500.f*std::pow(0.062f,m);
+        const float a=1.f-std::exp(-6.28318530718f*cutoff/static_cast<float>(rate_));
         for(unsigned ch=0;ch<count;++ch) {
             auto& c=state_[ch];
             const float original=channels[ch][n];
@@ -84,7 +87,6 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
             const float bodyGain=transientGain*levelGain;
             const float delayedGain=c.gainDelay.process(bodyGain);
             c.dynamics+=step_*4.f*(level-c.dynamics);
-            const float drive=1.f+4.5f*m*m;
             // P013: 2x filtered wet-only tanh saturation. Original high
             // source frequencies generated aliases before the lowpass;
             // first create the harmonics at 2x, then decimate safely.
@@ -92,8 +94,6 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
                 return std::tanh(drive*up);
             })/(1.f+0.3f*m*c.dynamics*drive);
             // A dynamically narrowing band, not a passive EQ preset.
-            const float cutoff=7500.f*std::pow(0.062f,m);
-            const float a=1.f-std::exp(-6.28318530718f*cutoff/static_cast<float>(rate_));
             c.darkness+=a*(compressed-c.darkness);
             // The presence path is also processed (attenuated transients,
             // low-pass shelf), not an untouched parallel dry overlay.
@@ -108,8 +108,8 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
             const auto read=[&](float phase) noexcept {
                 const float lag=static_cast<float>(rate_)*(.001f+.015f*m*phase);
                 const auto whole=static_cast<std::size_t>(lag);
-                const auto i=(c.driftWrite+cap-whole)%cap;
-                const auto j=(i+cap-1)%cap;
+                const auto i=c.driftWrite>=whole?c.driftWrite-whole:c.driftWrite+cap-whole;
+                const auto j=i?i-1:cap-1;
                 return c.drift[i]+(lag-static_cast<float>(whole))*(c.drift[j]-c.drift[i]);
             };
             const float weight=1.f-std::abs(2.f*p-1.f);

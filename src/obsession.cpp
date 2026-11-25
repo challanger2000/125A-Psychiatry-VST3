@@ -32,7 +32,7 @@ void Obsession::process(float* const* channels,unsigned count,std::size_t frames
         const float rawL=channels[0][n],rawR=count==2?channels[1][n]:rawL;
         history_[cursor_]={safe(rawL),safe(rawR)};
         if(filled_<cap)++filled_;
-        cursor_=(cursor_+1)%cap;
+        if(++cursor_==cap)cursor_=0;
         if(captured_&&phase_>=loopLength_) {phase_=0;++repeats_;++retriggers_;}
         if(!captured_||(phase_==0&&repeats_>=repeatsPerCapture_)) {
             const auto targetLen=std::clamp<std::size_t>(
@@ -43,7 +43,7 @@ void Obsession::process(float* const* channels,unsigned count,std::size_t frames
                     static_cast<unsigned>(2.f+11.f*m),(cap-loopLength_-1)/loopLength_));
                 // Capture a complete preceding grain. Freeze length and repeat
                 // count together so later automation cannot invalidate history.
-                start_=(cursor_+cap-loopLength_)%cap;
+                start_=cursor_>=loopLength_?cursor_-loopLength_:cursor_+cap-loopLength_;
                 phase_=0;repeats_=0;captured_=true;colour_={};
             }
         }
@@ -51,7 +51,8 @@ void Obsession::process(float* const* channels,unsigned count,std::size_t frames
             const float wet=m*(0.48f+0.52f*m);
             float loopL=0.f,loopR=0.f;
             if(captured_) {
-                const Sample sample=history_[(start_+phase_)%cap];
+                const auto read=start_+phase_;
+                const Sample sample=history_[read>=cap?read-cap:read];
                 const float fadeFrames=std::max(1.f,std::min<float>(
                     static_cast<float>(rate_*.002),static_cast<float>(loopLength_)*.18f));
                 const float fade=std::min({1.f,static_cast<float>(phase_)/fadeFrames,

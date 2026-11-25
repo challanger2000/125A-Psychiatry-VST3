@@ -141,14 +141,14 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames,con
                 static_cast<float>(rate_)*(.002f+.014f*m)*smooth01(u/.7f);
             drop=kind_==0 ? .88f : .36f;
         }
+        const float d=std::clamp(lag,0.f,static_cast<float>(cap-3));
+        const auto whole=static_cast<std::size_t>(d);
+        const float frac=d-static_cast<float>(whole);
+        const auto a=write_>=whole?write_-whole:write_+cap-whole,b=a?a-1:cap-1;
         for(unsigned ch=0;ch<channels;++ch) {
             auto& c=state_[ch];
             const float raw=audio[ch][i],x=sane(raw),dry=c.dryDelay.process(raw);
             c.history[write_]=x;
-            const float d=std::clamp(lag,0.f,static_cast<float>(cap-3));
-            const auto whole=static_cast<std::size_t>(d);
-            const float frac=d-static_cast<float>(whole);
-            const auto a=(write_+cap-whole)%cap,b=(a+cap-1)%cap;
             const float fragment=c.history[a]+frac*(c.history[b]-c.history[a]);
             c.body+=bpLow*(x-c.body);c.edge+=bpHigh*((x-c.body)-c.edge);
             const float e=m*env;

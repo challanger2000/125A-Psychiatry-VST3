@@ -16,6 +16,11 @@ public:
         rate_=sr;
         hop_=std::max<std::size_t>(2,static_cast<std::size_t>(std::round(.048*sr)));
         grain_=2*hop_;
+        weights_.resize(hop_);
+        for(std::size_t i=0;i<hop_;++i){
+            const double u=static_cast<double>(i)/static_cast<double>(hop_);
+            weights_[i]=static_cast<float>(.5-.5*std::cos(3.14159265358979323846*u));
+        }
         const auto cap=2*grain_+static_cast<std::size_t>(std::ceil(.090*sr))+8;
         for(std::size_t ch=0;ch<state_.size();++ch) {
             auto& c=state_[ch];c.history.assign(cap,0.f);
@@ -49,8 +54,7 @@ public:
         ++sequence_;
     }
     float weight() const noexcept {
-        const double u=static_cast<double>(position_)/static_cast<double>(hop_);
-        return static_cast<float>(.5-.5*std::cos(3.14159265358979323846*u));
+        return weights_[position_];
     }
     float processChannel(unsigned ch,float x,float m,float w) noexcept {
         auto& c=state_[ch];
@@ -58,7 +62,8 @@ public:
             const auto& h=c.heads[lane];
             if(!h.active)return 0.f;
             const auto index=h.reverse?grain_-1-age:age;
-            return c.history[(h.start+index)%c.history.size()];
+            const auto at=h.start+index,cap=c.history.size();
+            return c.history[at>=cap?at-cap:at];
         };
         const float grainSignal=w*read(current_,position_)+(1.f-w)*read(1-current_,hop_+position_);
         c.history[write_]=x;
@@ -89,6 +94,7 @@ private:
         std::array<Allpass,2> diffusion{};
     };
     std::array<Channel,2> state_{};
+    std::vector<float> weights_;
     double rate_=48000.;
     std::size_t hop_=0,grain_=0,write_=0,position_=0,current_=0;
     std::uint64_t sequence_=0;

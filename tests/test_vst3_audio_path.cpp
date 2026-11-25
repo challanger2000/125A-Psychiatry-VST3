@@ -25,6 +25,12 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 using namespace Steinberg;
 using namespace psychiatry::vst3;
@@ -1402,7 +1408,7 @@ static int testFourInstanceDeadlines(const std::string& file){
     const auto period=std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(double(n)/rate));
     std::ofstream out(file);
     check(out.good(),"R01 open deadline CSV");
-    out<<"mode,repeat,group,wall_us,deadline_us,miss\n";
+    out<<"mode,repeat,group,wall_us,deadline_us,miss,thread_cycles\n";
     int failures=0;
     for(int mode=0;mode<2;++mode)for(int repeat=0;repeat<3;++repeat){
         std::array<std::unique_ptr<Processor>,instances> processors;
@@ -1447,6 +1453,10 @@ static int testFourInstanceDeadlines(const std::string& file){
                 }
             }
             if(g>=0){std::this_thread::sleep_until(deadline);deadline+=period;}
+            unsigned long long cycleBegin=0,cycleEnd=0;
+#ifdef _WIN32
+            check(QueryThreadCycleTime(GetCurrentThread(),&cycleBegin)!=0,"R01 thread cycle begin");
+#endif
             const auto begin=Clock::now();
             bool ok=true;
             for(int i=0;i<instances;++i){
@@ -1456,11 +1466,14 @@ static int testFourInstanceDeadlines(const std::string& file){
                 ok=(processors[i]->process(d)==kResultOk)&&ok;
             }
             const auto end=Clock::now();
+#ifdef _WIN32
+            check(QueryThreadCycleTime(GetCurrentThread(),&cycleEnd)!=0,"R01 thread cycle end");
+#endif
             const double us=std::chrono::duration<double,std::micro>(end-begin).count();
             check(ok,"R01 process");
             for(int i=0;i<instances;++i)for(int j=0;j<n;++j)
                 check(std::isfinite(ol[i][j])&&std::isfinite(orr[i][j]),"R01 finite");
-            if(g>=0){elapsed.push_back(us);missed+=us>budget;out<<mode<<','<<repeat<<','<<g<<','<<us<<','<<budget<<','<<(us>budget)<<'\n';}
+            if(g>=0){elapsed.push_back(us);missed+=us>budget;out<<mode<<','<<repeat<<','<<g<<','<<us<<','<<budget<<','<<(us>budget)<<','<<(cycleEnd-cycleBegin)<<'\n';}
             if(g<0||deadline<end)deadline=end;
         }
         std::sort(elapsed.begin(),elapsed.end());

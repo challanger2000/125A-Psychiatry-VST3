@@ -46,11 +46,12 @@ public:
         c.low1+=lowPole_*(x-c.low1);c.low2+=lowPole_*(c.low1-c.low2);
         float replay=0.f;
         if(age_<2*grain_) {
-            const auto pos=age_%grain_;
+            const auto pos=age_<grain_?age_:age_-grain_;
             const float u=static_cast<float>(pos)/static_cast<float>(grain_-1);
             const auto taper=[](float z){z=std::clamp(z,0.f,1.f);return z*z*(3.f-2.f*z);};
             const float window=taper(u/.12f)*taper((1.f-u)/.12f);
-            replay=.65f*m*m*window*(c.history[(start_+pos)%cap]-c.low2);
+            const auto at=start_+pos;
+            replay=.65f*m*m*window*(c.history[at>=cap?at-cap:at]-c.low2);
         }
         c.history[write_]=c.low2;
         // TPT state-variable bandpass: positive damping and bounded conductance.

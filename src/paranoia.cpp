@@ -15,7 +15,8 @@ float safeSample(float x) noexcept {
     return std::clamp(x, -16.0f, 16.0f);
 }
 std::size_t wrapBack(std::size_t idx, std::size_t back, std::size_t size) noexcept {
-    return (idx + size - (back % size)) % size;
+    if(back>=size)back%=size;
+    return idx>=back?idx-back:idx+size-back;
 }
 } // namespace
 
@@ -175,7 +176,7 @@ void Paranoia::process(float* const* channels, unsigned channelCount,
             if (channelCount == 2)
                 channels[1][i] = inR + wetAmount * (affectedR - inR);
         }
-        cursor_ = (cursor_ + 1) % size;
+        if(++cursor_==size)cursor_=0;
     }
 }
 } // namespace psychiatry

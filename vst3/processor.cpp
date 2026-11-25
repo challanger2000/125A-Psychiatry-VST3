@@ -2,7 +2,7 @@
 #include "parameter_smoothing.hpp"
 #include "ids.h"
 
-#include "base/source/fstreamer.h"
+#include "state_stream.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 
 #include <algorithm>
@@ -24,6 +24,9 @@ struct Lane {
     int32 count=0;
     int32 nextOffset=0;
     Vst::ParamValue nextValue=0;
+    int32 previousOffset=-1;
+    double previousValue=0.;
+    bool discrete=false;
 };
 bool advance(Lane& lane, int32 blockFrames) noexcept {
     if(!lane.queue || lane.index>=lane.count) return false;
@@ -33,8 +36,11 @@ bool advance(Lane& lane, int32 blockFrames) noexcept {
         lane.index=lane.count;
         return false;
     }
-    lane.nextOffset=std::clamp(offset,0,blockFrames);
-    lane.nextValue=value;
+    if(offset<0||offset>std::max(0,blockFrames-1)||offset<=lane.previousOffset){
+        lane.index=lane.count;return false;
+    }
+    lane.nextOffset=offset;
+    lane.nextValue=normalized(value);
     return true;
 }
 } // namespace
@@ -76,6 +82,8 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
         return kResultFalse;
     const auto result=AudioEffect::setupProcessing(setup);
     if(result==kResultOk) {
+        consumeRecall();
+        bypassStep_=1.f/static_cast<float>(std::max(1.,std::ceil(.005*setup.sampleRate)));
         tailSamples_=static_cast<uint32>(std::ceil(30.*setup.sampleRate))+kLatency;
         depression_.prepare(setup.sampleRate);
         paranoia_.prepare(setup.sampleRate);
@@ -109,6 +117,7 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
 
 tresult PLUGIN_API Processor::setActive(TBool state) {
     if(state && prepared_) {
+        consumeRecall();
         resetTimeline();
         depression_.reset();
         paranoia_.reset();
@@ -123,6 +132,11 @@ tresult PLUGIN_API Processor::setActive(TBool state) {
         wetSmoothed_=1.f-therapyAmount_;
     }
     return AudioEffect::setActive(state);
+}
+
+tresult PLUGIN_API Processor::setProcessing(TBool) {
+    // VST3 processing transitions must not allocate, lock or reset DSP history.
+    return kResultOk;
 }
 
 tresult PLUGIN_API Processor::canProcessSampleSize(int32 symbolic) {
@@ -141,6 +155,7 @@ void Processor::resetTimeline() noexcept {
     applyDSP(6,obsessionAmount_);applyDSP(7,hallucinationAmount_);
     applyDSP(8,psychosisAmount_);applyDSP(9,therapyAmount_);applyDSP(10,bypass_?1.f:0.f);
     applyDSP(11,deliriumAmount_);applyDSP(12,catatoniaAmount_);applyDSP(13,amnesiaAmount_);
+    bypassMix_=bypass_?1.f:0.f;
 }
 void Processor::applyDSP(unsigned lane,float v) noexcept {
     switch(lane) {
@@ -213,18 +228,22 @@ std::uint64_t Processor::nextDue() const noexcept {
 bool Processor::processSpan(Vst::ProcessData& data,
                             int32 offset,int32 frames) noexcept {
     if(frames<=0) return true;
-    if(data.numInputs<1||data.numOutputs<1||!data.inputs||!data.outputs) return false;
-    auto& input=data.inputs[0];
+    const auto* outputBus=getAudioOutput(0);
+    const auto* inputBus=getAudioInput(0);
+    if(!outputBus||!inputBus)return false;
+    if(!outputBus->isActive())return true; // never touch inactive host buffers/flags
+    if(data.numOutputs<1||!data.outputs)return false;
     auto& output=data.outputs[0];
-    if(!input.channelBuffers32||!output.channelBuffers32||
-       (input.numChannels!=1 && input.numChannels!=2)||
-       input.numChannels!=output.numChannels) return false;
+    const bool inputActive=inputBus->isActive();
+    if(!output.channelBuffers32||(output.numChannels!=1&&output.numChannels!=2))return false;
+    if(inputActive && (data.numInputs<1||!data.inputs||
+        !data.inputs[0].channelBuffers32||data.inputs[0].numChannels!=output.numChannels))return false;
 
     std::array<float*,2> src{},dst{};
-    for(int32 ch=0;ch<input.numChannels;++ch) {
-        src[static_cast<std::size_t>(ch)]=input.channelBuffers32[ch];
+    for(int32 ch=0;ch<output.numChannels;++ch) {
+        if(inputActive)src[static_cast<std::size_t>(ch)]=data.inputs[0].channelBuffers32[ch];
         dst[static_cast<std::size_t>(ch)]=output.channelBuffers32[ch];
-        if(!src[static_cast<std::size_t>(ch)]||!dst[static_cast<std::size_t>(ch)])
+        if((inputActive&&!src[static_cast<std::size_t>(ch)])||!dst[static_cast<std::size_t>(ch)])
             return false;
     }
     if(original_[0].empty()) return false;
@@ -235,47 +254,54 @@ bool Processor::processSpan(Vst::ProcessData& data,
         const auto size=static_cast<int32>(std::min<std::size_t>(
             static_cast<std::size_t>(frames-pos),original_[0].size()));
         std::array<float*,2> ptrs{};
-        for(int32 ch=0;ch<input.numChannels;++ch) {
+        for(int32 ch=0;ch<output.numChannels;++ch) {
             const auto c=static_cast<std::size_t>(ch);
-            const auto* from=src[c]+offset+pos;
+            const auto* from=inputActive?src[c]+offset+pos:nullptr;
             auto* to=dst[c]+offset+pos;
-            for(int32 i=0;i<size;++i)original_[c][static_cast<std::size_t>(i)]=dryDelay_[c].process(from[i]);
-            if(from!=to) std::memmove(to,from,static_cast<std::size_t>(size)*sizeof(float));
+            for(int32 i=0;i<size;++i){
+                const float raw=from?from[i]:0.f;
+                const float sample=std::isfinite(raw)?raw:0.f;
+                original_[c][static_cast<std::size_t>(i)]=dryDelay_[c].process(sample);
+                to[i]=sample;
+            }
             ptrs[c]=to;
         }
         { // Keep wet and dry timelines continuous even during native bypass.
             // Fixed order yields designed interaction; individual macro
             // processors each return exact dry at zero amount.
-            depression_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            depression_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                                 static_cast<std::size_t>(size));
-            schizophrenia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            schizophrenia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                                     static_cast<std::size_t>(size));
-            mania_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            mania_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                            static_cast<std::size_t>(size));
-            panic_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            panic_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                            static_cast<std::size_t>(size));
-            paranoia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            paranoia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                               static_cast<std::size_t>(size));
-            dissociation_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            dissociation_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                                   static_cast<std::size_t>(size));
-            obsession_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            obsession_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                                static_cast<std::size_t>(size));
-            hallucination_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            hallucination_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                                    static_cast<std::size_t>(size));
-            psychosis_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),
+            psychosis_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
                                static_cast<std::size_t>(size));
-            delirium_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),static_cast<std::size_t>(size));
-            catatonia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),static_cast<std::size_t>(size));
-            amnesia_.process(ptrs.data(),static_cast<unsigned>(input.numChannels),static_cast<std::size_t>(size));
+            delirium_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size));
+            catatonia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size));
+            amnesia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size));
             for(int32 i=0;i<size;++i) {
                 wetSmoothed_=psychiatry::detail::smoothToward(wetSmoothed_,1.f-therapyDSP_,wetStep_);
-                const float w=std::clamp(wetSmoothed_,0.f,1.f);
-                for(int32 ch=0;ch<input.numChannels;++ch) {
+                const float target=bypassDSP_?1.f:0.f;
+                if(bypassMix_<target)bypassMix_=std::min(target,bypassMix_+bypassStep_);
+                else if(bypassMix_>target)bypassMix_=std::max(target,bypassMix_-bypassStep_);
+                const float w=std::clamp(wetSmoothed_,0.f,1.f)*(1.f-bypassMix_);
+                for(int32 ch=0;ch<output.numChannels;++ch) {
                     const auto c=static_cast<std::size_t>(ch);
                     const float dry=original_[c][static_cast<std::size_t>(i)];
                     const float wet=ptrs[c][i];
                     // Exact endpoints need no subtract/add round trip.
-                    if(bypassDSP_||w==0.f)ptrs[c][i]=dry;
+                    if(w==0.f)ptrs[c][i]=dry;
                     else if(w<1.f)ptrs[c][i]=dry+w*(wet-dry);
                 }
             }
@@ -287,17 +313,30 @@ bool Processor::processSpan(Vst::ProcessData& data,
 }
 
 tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
-    if(data.numSamples<0) return kResultFalse;
+    if(data.numSamples<0 || data.symbolicSampleSize!=Vst::kSample32) return kResultFalse;
+    consumeRecall();
     std::array<Lane,32> lanes{};
     int32 count=0;
     if(data.inputParameterChanges) {
         const int32 total=data.inputParameterChanges->getParameterCount();
-        if(total>static_cast<int32>(lanes.size())) return kResultFalse;
+        if(total<0||total>static_cast<int32>(lanes.size())) return kResultFalse;
         for(int32 k=0;k<total;++k) {
             auto* q=data.inputParameterChanges->getParameterData(k);
-            if(!q||q->getPointCount()==0) continue;
-            Lane lane;lane.queue=q;lane.count=q->getPointCount();
-            if(!advance(lane,data.numSamples)) continue;
+            if(!q)continue;
+            const auto points=q->getPointCount();
+            if(points<0||points>std::max(1,data.numSamples))return kResultFalse;
+            if(!points)continue;
+            const auto id=q->getParameterId();
+            const auto values=captureState().values;
+            unsigned slot=14;
+            if(id>=kDepression&&id<=kPsychosis)slot=id-kDepression;
+            else if(id>=kDelirium&&id<=kAmnesia)slot=11+id-kDelirium;
+            else if(id==kTherapy)slot=9;
+            else if(id==kBypass)slot=10;
+            if(slot==14)continue;
+            for(int32 n=0;n<count;++n)if(lanes[n].queue->getParameterId()==id)return kResultFalse;
+            Lane lane;lane.queue=q;lane.count=points;lane.previousValue=values[slot];lane.discrete=id==kBypass;
+            if(!advance(lane,data.numSamples))return kResultFalse;
             lanes[static_cast<std::size_t>(count++)]=lane;
         }
     }
@@ -306,11 +345,16 @@ tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
         bool changed=false;
         for(int32 n=0;n<count;++n) {
             Lane& lane=lanes[static_cast<std::size_t>(n)];
-            while(lane.index<lane.count && lane.nextOffset<=pos) {
+            if(lane.index>=lane.count)continue;
+            if(pos==lane.nextOffset){
                 apply(lane.queue->getParameterId(),lane.nextValue);
+                lane.previousOffset=lane.nextOffset;lane.previousValue=lane.nextValue;
                 ++lane.index;
-                advance(lane,data.numSamples);
+                if(lane.index<lane.count&&!advance(lane,data.numSamples))return kResultFalse;
                 changed=true;
+            }else if(!lane.discrete&&pos<lane.nextOffset&&lane.previousValue!=lane.nextValue){
+                const double t=double(pos-lane.previousOffset)/double(lane.nextOffset-lane.previousOffset);
+                apply(lane.queue->getParameterId(),lane.previousValue+t*(lane.nextValue-lane.previousValue));
             }
         }
         dispatchPending();
@@ -321,7 +365,10 @@ tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
             next=pos+static_cast<int32>(due-clock_);
         for(int32 n=0;n<count;++n) {
             const Lane& lane=lanes[static_cast<std::size_t>(n)];
-            if(lane.index<lane.count) next=std::min(next,lane.nextOffset);
+            if(lane.index<lane.count){
+                next=std::min(next,lane.nextOffset);
+                if(!lane.discrete&&lane.previousValue!=lane.nextValue)next=std::min(next,pos+1);
+            }
         }
         if(next<=pos) {
             if(!changed) return kResultFalse;
@@ -331,12 +378,13 @@ tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
         clock_+=static_cast<std::uint64_t>(next-pos);
         pos=next;
     }
+    publishState();
     return kResultOk;
 }
 
 tresult PLUGIN_API Processor::setState(IBStream* state) {
     if(!state) return kResultFalse;
-    IBStreamer s(state,kLittleEndian);
+    StateStream s(state);
     int32 magic=0,version=0,bypass=0;
     float d=0.f,p=0.f,schizo=0.f,m=0.f,panic=0.f,
           diss=0.f,o=0.f,hall=0.f,psychosis=0.f,therapy=0.f;
@@ -369,52 +417,58 @@ tresult PLUGIN_API Processor::setState(IBStream* state) {
     const float vals[]{d,p,schizo,m,panic,diss,o,hall,psychosis,therapy,delirium,catatonia,amnesia};
     for(const auto value:vals)
         if(!std::isfinite(value))return kResultFalse;
-    depressionAmount_=static_cast<float>(normalized(d));
-    paranoiaSettings_.amount=static_cast<float>(normalized(p));
-    schizophreniaAmount_=static_cast<float>(normalized(schizo));
-    maniaAmount_=static_cast<float>(normalized(m));
-    panicAmount_=static_cast<float>(normalized(panic));
-    dissociationAmount_=static_cast<float>(normalized(diss));
-    obsessionAmount_=static_cast<float>(normalized(o));
-    hallucinationAmount_=static_cast<float>(normalized(hall));
-    psychosisAmount_=static_cast<float>(normalized(psychosis));
-    deliriumAmount_=static_cast<float>(normalized(delirium));
-    catatoniaAmount_=static_cast<float>(normalized(catatonia));
-    amnesiaAmount_=static_cast<float>(normalized(amnesia));
-    therapyAmount_=static_cast<float>(normalized(therapy));
-    bypass_=(bypass!=0);
-    depression_.setAmount(depressionAmount_);
-    paranoia_.setSettings(paranoiaSettings_);
-    schizophrenia_.setAmount(schizophreniaAmount_);
-    mania_.setAmount(maniaAmount_);
-    panic_.setAmount(panicAmount_);
-    dissociation_.setAmount(dissociationAmount_);
-    obsession_.setAmount(obsessionAmount_);
-    hallucination_.setAmount(hallucinationAmount_);
-    psychosis_.setAmount(psychosisAmount_);
-    delirium_.setAmount(deliriumAmount_);catatonia_.setAmount(catatoniaAmount_);amnesia_.setAmount(amnesiaAmount_);
-    pending_={};
-    therapyDSP_=therapyAmount_;bypassDSP_=bypass_;
-    wetSmoothed_=1.f-therapyAmount_;
+    StateFrame frame;
+    const float wire[]{d,p,schizo,m,panic,diss,o,hall,psychosis,therapy,bypass?1.f:0.f,delirium,catatonia,amnesia};
+    for(std::size_t i=0;i<frame.values.size();++i)frame.values[i]=static_cast<float>(normalized(wire[i]));
+    {
+        std::lock_guard<std::mutex> lock(controlStateMutex_);
+        frame.generation=latestRecall_.generation+1;
+        latestRecall_=frame;
+        recallState_.publish(frame);
+    }
     return kResultOk;
 }
 
+StateFrame Processor::captureState() const noexcept {
+    return {{depressionAmount_,paranoiaSettings_.amount,schizophreniaAmount_,maniaAmount_,
+        panicAmount_,dissociationAmount_,obsessionAmount_,hallucinationAmount_,psychosisAmount_,
+        therapyAmount_,bypass_?1.f:0.f,deliriumAmount_,catatoniaAmount_,amnesiaAmount_},appliedGeneration_};
+}
+void Processor::publishState() noexcept {
+    const auto frame=captureState();
+    if(frame.generation!=lastPublished_.generation||frame.values!=lastPublished_.values){
+        audioState_.publish(frame);lastPublished_=frame;
+    }
+}
+void Processor::consumeRecall() noexcept {
+    StateFrame frame;
+    if(!recallState_.tryRead(frame)||frame.generation<=appliedGeneration_)return;
+    const auto& v=frame.values;
+    depressionAmount_=v[0];paranoiaSettings_.amount=v[1];schizophreniaAmount_=v[2];
+    maniaAmount_=v[3];panicAmount_=v[4];dissociationAmount_=v[5];
+    obsessionAmount_=v[6];hallucinationAmount_=v[7];psychosisAmount_=v[8];
+    therapyAmount_=v[9];bypass_=v[10]>=.5f;deliriumAmount_=v[11];catatoniaAmount_=v[12];amnesiaAmount_=v[13];
+    appliedGeneration_=frame.generation;
+    pending_={};
+    if(prepared_)for(unsigned i=0;i<v.size();++i)applyDSP(i,v[i]);
+    therapyDSP_=therapyAmount_;bypassDSP_=bypass_;bypassMix_=bypass_?1.f:0.f;
+    wetSmoothed_=1.f-therapyAmount_;
+    publishState();
+}
 tresult PLUGIN_API Processor::getState(IBStream* state) {
     if(!state)return kResultFalse;
-    IBStreamer s(state,kLittleEndian);
-    if(!s.writeInt32(kStateMagic)||!s.writeInt32(kStateVersion)||
-       !s.writeFloat(depressionAmount_)||
-       !s.writeFloat(paranoiaSettings_.amount)||
-       !s.writeFloat(schizophreniaAmount_)||
-       !s.writeFloat(maniaAmount_)||
-       !s.writeFloat(panicAmount_)||
-       !s.writeFloat(dissociationAmount_)||
-       !s.writeFloat(obsessionAmount_)||
-       !s.writeFloat(hallucinationAmount_)||
-       !s.writeFloat(psychosisAmount_)||
-       !s.writeFloat(therapyAmount_)||
-       !s.writeInt32(bypass_?1:0)||!s.writeFloat(deliriumAmount_)||
-       !s.writeFloat(catatoniaAmount_)||!s.writeFloat(amnesiaAmount_))return kResultFalse;
+    StateFrame frame;
+    {
+        std::lock_guard<std::mutex> lock(controlStateMutex_);
+        while(!audioState_.tryRead(frame)){} // non-audio host thread only
+        if(latestRecall_.generation>frame.generation)frame=latestRecall_;
+    }
+    // No mutex or mutable audio state is retained across host stream calls.
+    StateStream s(state);
+    if(!s.writeInt32(kStateMagic)||!s.writeInt32(kStateVersion))return kResultFalse;
+    for(unsigned i=0;i<10;++i)if(!s.writeFloat(frame.values[i]))return kResultFalse;
+    if(!s.writeInt32(frame.values[10]>=.5f?1:0))return kResultFalse;
+    for(unsigned i=11;i<14;++i)if(!s.writeFloat(frame.values[i]))return kResultFalse;
     return kResultOk;
 }
 } // namespace psychiatry::vst3

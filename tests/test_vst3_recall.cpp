@@ -125,6 +125,8 @@ static void testRandomizerRecall(){
     CHECK(reopened.initialize(nullptr)==kResultOk);
     for(auto* p:{&live,&restored,&unchanged}){
         CHECK(p->initialize(nullptr)==kResultOk);
+        CHECK(p->activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk);
+        CHECK(p->activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk);
         Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,block,48000.};
         CHECK(p->setupProcessing(setup)==kResultOk);
     }
@@ -140,6 +142,7 @@ static void testRandomizerRecall(){
     initial.rewind();CHECK(unchanged.setState(&initial)==kResultOk);
     initial.rewind();CHECK(control.setComponentState(&initial)==kResultOk);
     CHECK(live.setActive(true)==kResultOk);
+    CHECK(live.setProcessing(true)==kResultOk&&live.setProcessing(false)==kResultOk&&live.setProcessing(true)==kResultOk);
     CHECK(unchanged.setActive(true)==kResultOk);
     control.setGermanUi(true);control.setMotionEnabled(true);
     auto* spy=new HandlerSpy;

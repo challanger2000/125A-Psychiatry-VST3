@@ -125,6 +125,7 @@ Stereo render(const Stereo& dry,int macro,float amount,
               bool compensateLatency=true,const std::array<float,12>* combination=nullptr) {
     Processor p;
     check(p.initialize(nullptr)==kResultOk,"real VST3 initialize");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"activate audio buses");
     Vst::ProcessSetup setup{};
     setup.processMode=Vst::kRealtime;
     setup.symbolicSampleSize=Vst::kSample32;
@@ -327,6 +328,7 @@ void checkTherapy(const Stereo& dry,int effect){
 void testAutomation(){
     Processor p;
     check(p.initialize(nullptr)==kResultOk,"automation init");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"activate audio buses");
     Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,kBlock,kRate};
     check(p.setupProcessing(setup)==kResultOk,"automation setup");
     ResizableMemoryIBStream initial;writeState(initial,-1,0.f,0.f,false);
@@ -335,6 +337,7 @@ void testAutomation(){
     Vst::ParameterChanges changes(1);
     int32 index=0,point=0;
     auto* q=changes.addParameterData(kMania,index);
+    check(q && q->addPoint(127,0.0,point)==kResultTrue,"step anchor");
     check(q && q->addPoint(128,1.0,point)==kResultTrue,"automation point at sample 128");
     std::array<float,256> inL{},inR{},outL{},outR{};
     for(int i=0;i<256;++i){
@@ -438,6 +441,7 @@ void testHighBandAliasing(const std::string& dir) {
     for(bool twelve:{false,true})for(float level:{0.f,.85f,1.f}) {
         Processor p;
         check(p.initialize(nullptr)==kResultOk,"P012 realtime initialize");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"activate audio buses");
         Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,kBlock,kRate};
         check(p.setupProcessing(setup)==kResultOk,"P012 realtime setup");
         ResizableMemoryIBStream state;
@@ -710,6 +714,7 @@ void testHostIntegrity() {
     const auto src=source(1);
     const auto setup=[&](Processor& p,int channels,int rate,bool twelve,float amount,float therapy){
         check(p.initialize(nullptr)==kResultOk,"P019 host init");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"activate audio buses");
         auto layout=channels==1?Vst::SpeakerArr::kMono:Vst::SpeakerArr::kStereo;
         check(p.setBusArrangements(&layout,1,&layout,1)==kResultTrue,"P019 bus arrangement");
         Vst::ProcessSetup st{Vst::kRealtime,Vst::kSample32,maxBlock,static_cast<double>(rate)};
@@ -794,6 +799,7 @@ void testAutomatedEndpoints() {
             for(bool global:{false,true}) {
                 Processor p;
                 check(p.initialize(nullptr)==kResultOk,"P017 initialize");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"activate audio buses");
                 Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,kBlock,static_cast<double>(sr)};
                 check(p.setupProcessing(setup)==kResultOk,"P017 setup");
                 ResizableMemoryIBStream state;writeState(state,fx,1.f,0.f,false);
@@ -860,6 +866,7 @@ void testReportedTail() {
     for(bool twelve:{false,true})for(int sr:{44100,48000,96000}) {
         Processor p;
         check(p.initialize(nullptr)==kResultOk,"P023 init");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"activate audio buses");
         Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,1024,double(sr)};
         check(p.setupProcessing(setup)==kResultOk,"P023 setup");
         ResizableMemoryIBStream state;
@@ -946,6 +953,15 @@ void testDenseAutomationStress() {
         events.push_back({sr,kBypass,0.});
         events.push_back({6*sr,kTherapy,1.});
         std::stable_sort(events.begin(),events.end(),[](const Event& a,const Event& b){return a.sample<b.sample;});
+        // Explicit previous-sample anchors encode actual steps, not ramps.
+        std::vector<Event> anchored;
+        std::array<double,1000> last{};
+        for(const auto& event:events){
+            if(event.id!=kBypass&&event.sample>0)anchored.push_back({event.sample-1,event.id,last[event.id]});
+            anchored.push_back(event);last[event.id]=event.value;
+        }
+        std::stable_sort(anchored.begin(),anchored.end(),[](const Event& a,const Event& b){return a.sample<b.sample;});
+        events.swap(anchored);
         for(int n=0;n<total;++n) {
             if(n>=3*sr&&n<6*sr)continue; // listen for decay, not new excitation
             const double t=double(n)/sr;
@@ -956,6 +972,7 @@ void testDenseAutomationStress() {
         const auto run=[&](bool irregular) {
             Processor p;
             check(p.initialize(nullptr)==kResultOk,"P021 initialize");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"activate audio buses");
             Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,1024,double(sr)};
             check(p.setupProcessing(setup)==kResultOk,"P021 setup");
             ResizableMemoryIBStream state;writeState(state,-1,0.f,0.f,false);
@@ -989,7 +1006,7 @@ void testDenseAutomationStress() {
                           "P021 nonfinite or uncontrolled peak");
                     peak=std::max({peak,std::abs(double(l)),std::abs(double(r))});
                     if(n>=3*sr+kLatency&&n<6*sr)tailEnergy+=double(l)*l+double(r)*r;
-                    if((n>=sr/2+kLatency&&n<sr+kLatency)||n>=6*sr+sr/2+kLatency) {
+                    if((n>=sr/2+kLatency+static_cast<int>(std::ceil(.005*sr))+2&&n<sr+kLatency)||n>=6*sr+sr/2+kLatency) {
                         check(l==input.l[n-kLatency]&&r==input.r[n-kLatency],"P021 exact latency-matched bypass or therapy");
                         ++exact;
                     }

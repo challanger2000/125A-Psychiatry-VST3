@@ -10,6 +10,8 @@
 
 #include <array>
 #include <vector>
+#include <mutex>
+#include "state_snapshot.h"
 
 namespace psychiatry::vst3 {
 class Processor final : public Steinberg::Vst::AudioEffect {
@@ -22,6 +24,7 @@ public:
     Steinberg::tresult PLUGIN_API initialize(Steinberg::FUnknown* context) override;
     Steinberg::tresult PLUGIN_API setupProcessing(Steinberg::Vst::ProcessSetup& setup) override;
     Steinberg::tresult PLUGIN_API setActive(Steinberg::TBool state) override;
+    Steinberg::tresult PLUGIN_API setProcessing(Steinberg::TBool state) override;
     Steinberg::tresult PLUGIN_API setBusArrangements(Steinberg::Vst::SpeakerArrangement* inputs,
             Steinberg::int32 numIns, Steinberg::Vst::SpeakerArrangement* outputs,
             Steinberg::int32 numOuts) override;
@@ -65,6 +68,14 @@ private:
     float wetStep_=0.001f;
     bool bypass_=false;
     bool bypassDSP_=false;
+    float bypassMix_=0.f,bypassStep_=1.f;
+    StateMailbox audioState_,recallState_;
+    std::mutex controlStateMutex_; // host state methods only; never process()
+    StateFrame latestRecall_{},lastPublished_{};
+    std::uint64_t appliedGeneration_=0;
+    StateFrame captureState() const noexcept;
+    void publishState() noexcept;
+    void consumeRecall() noexcept;
     float therapyDSP_=0.f;
     bool prepared_=false;
     Steinberg::uint32 tailSamples_=30*48000+kLatency;

@@ -5,7 +5,8 @@
 #include <chrono>
 #include "loss_of_control.h"
 
-#include "base/source/fstreamer.h"
+#include "state_stream.h"
+#include "vstgui/lib/cframe.h"
 #include "pluginterfaces/base/ustring.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "vstgui/lib/cview.h"
@@ -65,7 +66,7 @@ tresult PLUGIN_API Controller::initialize(FUnknown* context) {
 
 tresult PLUGIN_API Controller::setComponentState(IBStream* state) {
     if(!state)return kResultFalse;
-    IBStreamer s(state,kLittleEndian);
+    StateStream s(state);
     int32 magic=0,version=0,bypass=0;
     float d=0.f,p=0.f,schizo=0.f,m=0.f,panic=0.f,
           diss=0.f,o=0.f,hall=0.f,psychosis=0.f,therapy=0.f;
@@ -112,7 +113,7 @@ tresult PLUGIN_API Controller::setComponentState(IBStream* state) {
 // Empty state means an older version which saved no UI preferences.
 tresult PLUGIN_API Controller::getState(IBStream* state) {
     if(!state)return kResultFalse;
-    IBStreamer stream(state,kLittleEndian);
+    StateStream stream(state);
     if(!stream.writeInt32(kLanguageStateMagic)||
        !stream.writeInt32(kLanguageStateVersion)||
        !stream.writeInt32(germanUi_?1:0)||
@@ -122,15 +123,15 @@ tresult PLUGIN_API Controller::getState(IBStream* state) {
 }
 tresult PLUGIN_API Controller::setState(IBStream* state) {
     if(!state)return kResultFalse;
-    IBStreamer stream(state,kLittleEndian);
+    StateStream stream(state);
     int32 magic=0,version=0,lang=0,motion=0,zoom=0;
-    if(!stream.readInt32(magic)) {
+    if(stream.empty()) {
         germanUi_=false;
         motionEnabled_=false;
         zoomIndex_=0; // legacy sessions open at the safe 50% zoom
         return kResultOk;
     }
-    if(magic!=kLanguageStateMagic||
+    if(!stream.readInt32(magic)||magic!=kLanguageStateMagic||
        !stream.readInt32(version)||(version<1||version>kLanguageStateVersion)||
        !stream.readInt32(lang)||(lang!=0&&lang!=1))return kResultFalse;
     if(version>=2 && (!stream.readInt32(motion)||(motion!=0&&motion!=1)))
@@ -268,8 +269,11 @@ public:
         const float level=model_.peak>0.f?.50f+.50f*model_.peak:.30f;
         const int current=currentScene_;
         if(motion_&&fade_<1.&&previousScene_!=current){
-            paint(scenes_[previousScene_],level,scale,dx,dy);
-            paint(scenes_[current],level*static_cast<float>(fade_),scale,dx,dy);
+            // Source-over weights: old*(1-f)*level + new*f*level.
+            const float a=level*static_cast<float>(fade_);
+            const float b=a<1.f?level*(1.f-static_cast<float>(fade_))/(1.f-a):0.f;
+            paint(scenes_[previousScene_],std::clamp(b,0.f,1.f),scale,dx,dy);
+            paint(scenes_[current],a,scale,dx,dy);
         }else paint(scenes_[current],level,scale,dx,dy);
         const int secondary=model_.secondary();
         if(secondary>=0&&model_.peak>0.f) {
@@ -342,7 +346,8 @@ public:
         : VSTGUI::VST3Editor(parent,"view","psychiatry.uidesc"), parent_(parent) {
         setDelegate(this);
         setAllowedZoomFactors(std::vector<double>(kZoomFactors.begin(),kZoomFactors.end()));
-        setZoomFactor(kZoomFactors[static_cast<std::size_t>(parent_->zoomIndex())]);
+        acceptedZoom_=parent_->zoomIndex();
+        setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
     }
     VSTGUI::CView* createCustomView(VSTGUI::UTF8StringPtr name,
             const VSTGUI::UIAttributes&,
@@ -365,9 +370,19 @@ public:
         return nullptr;
     }
     void onZoomChanged(VSTGUI::VST3Editor*,double factor) override {
+        if(rollingBack_)return;
         for(std::size_t i=0;i<kZoomFactors.size();++i)if(factor==kZoomFactors[i]){
-            parent_->setZoomIndex(static_cast<int>(i));
-            if(zoomMenu_){zoomMenu_->setValue(static_cast<float>(i));zoomMenu_->invalid();}
+            // VSTGUI 4.15 notifies even if CFrame::setZoom rolled back.
+            if(getFrame()&&std::abs(getFrame()->getTransform().m11-getAbsScaleFactor())<1.e-6){
+                acceptedZoom_=static_cast<int>(i);
+                parent_->setZoomIndex(acceptedZoom_);
+            }else{
+                rollingBack_=true;
+                setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
+                rollingBack_=false;
+            }
+            if(zoomMenu_){zoomMenu_->setValue(static_cast<float>(acceptedZoom_));zoomMenu_->invalid();}
+            break;
         }
     }
 protected:
@@ -407,6 +422,8 @@ protected:
 private:
     Controller* parent_;
     VSTGUI::COptionMenu* zoomMenu_=nullptr;
+    int acceptedZoom_=0;
+    bool rollingBack_=false;
 };
 
 IPlugView* PLUGIN_API Controller::createView(FIDString name) {

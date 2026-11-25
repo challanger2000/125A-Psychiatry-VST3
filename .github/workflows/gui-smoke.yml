@@ -57,6 +57,7 @@ jobs:
         run: |
           cmake -S . -B build-vst3 "-DPython3_EXECUTABLE=${{ steps.acoustic-python.outputs.python-path }}" -G "Visual Studio 17 2022" -A x64 -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=ON -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=ON
       - name: Build Windows VST3 and official Steinberg GUI host
+        id: native-build
         shell: pwsh
         run: |
           cmake --build build-vst3 --config Release --target PsychiatryPrototype editorhost test_native_followup --parallel 4
@@ -67,7 +68,7 @@ jobs:
           & "./tools/gui_smoke.ps1"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Native DLL follow-up recall, resize refusal and interrupted fade
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         shell: pwsh
         run: |
           $hostExe = Get-ChildItem build-vst3 -Recurse -File -Filter test_native_followup.exe | Select-Object -First 1

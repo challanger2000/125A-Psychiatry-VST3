@@ -67,7 +67,8 @@ struct Frame final:IPlugFrame{
         if(!accept||!size||size->getWidth()<=0||size->getHeight()<=0)return kResultFalse;
         if(equalSizeShortcut){
             ViewRect current;REQUIRE(view->getSize(&current)==kResultOk);
-            if(current==*size)return kResultTrue; // official EditorHost semantics
+            if(current.left==size->left&&current.top==size->top&&
+               current.right==size->right&&current.bottom==size->bottom)return kResultTrue; // official EditorHost semantics
         }
         RECT r{0,0,size->getWidth(),size->getHeight()};
         if(!AdjustWindowRectEx(&r,WS_OVERLAPPEDWINDOW,FALSE,0))return kResultFalse;

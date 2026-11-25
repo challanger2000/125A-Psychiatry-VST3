@@ -470,3 +470,5 @@ P028w follows independent closing audit N01/N02/N03 (full report supplied): cand
 P028x: independent P028w audit N01 PASS (24/24), original live detach fixed; new initial attach detach/refusal and same-view reattach FAIL. Candidate separates VSTGUI construction from host resize, resets size caches, transactional attach failure; native accept/refuse/detach/retry same-view probes. DSP unchanged. CI pending; NO-GO. See docs/P028l-FOLLOWUP.md.
 
 P028y: P028x official EditorHost revealed initial parent size mismatch (1536x1024 instead of 768x512); next 75% actually reached 1152x768. Correct host getSize/resizeView handshake and native equality-shortcut test; native follow-up no longer skipped on preceding test failure. DSP unchanged; P028x timing strict FAIL (4/32308 practical, 3026/9600 extreme). Pending verification; NO-GO.
+
+P028z: correct test-only ViewRect comparison C2678 and gate native follow-up on successful build. P028y product compiled/validator 47/47; GUI runtime NOT RUN. P028y timing strict FAIL 5/32308 practical, 2365/9600 extreme; no DSP changes. Pending native verification; NO-GO.

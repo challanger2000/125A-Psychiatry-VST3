@@ -26,6 +26,18 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare sufficient native display space before build
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.Windows.Forms
+          Set-DisplayResolution -Width 1920 -Height 1080 -Force
+          Start-Sleep -Seconds 2
+          $screen = [System.Windows.Forms.Screen]::PrimaryScreen
+          Write-Host "P028j desktop $($screen.Bounds.Width)x$($screen.Bounds.Height), work area $($screen.WorkingArea.Width)x$($screen.WorkingArea.Height)"
+          if ($screen.Bounds.Width -ne 1920 -or $screen.Bounds.Height -ne 1080 -or $screen.WorkingArea.Width -lt 1200 -or $screen.WorkingArea.Height -lt 840) {
+            throw 'P028j test environment cannot accommodate the 75% editor; no build attempted'
+          }
       - uses: actions/setup-python@v5
         id: acoustic-python
         with:

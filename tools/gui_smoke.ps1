@@ -47,6 +47,7 @@ public static class PSYGUI {
         }
         return false;
     }
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd,IntPtr after,int x,int y,int cx,int cy,uint flags);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hwnd,ref RECT rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hwnd,ref POINT point);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
@@ -103,9 +104,11 @@ try {
     [PSYGUI]::SetForegroundWindow($handle) | Out-Null
     Start-Sleep -Milliseconds 700
     $bounds=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-    if($bounds.Width -lt 1024 -or $bounds.Height -lt 650) {
-        throw 'P009 GUI test: desktop resolution too small for full GUI screenshot'
-    }
+    $work=[System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+    Write-Host "P028j runtime desktop $($bounds.Width)x$($bounds.Height), work area $($work.Width)x$($work.Height)"
+    if($work.Width -lt 1200 -or $work.Height -lt 840){throw 'P028j insufficient native desktop capacity for 75% zoom'}
+    if(-not [PSYGUI]::SetWindowPos($handle,[IntPtr]::Zero,($work.X+10),($work.Y+10),0,0,0x15)){throw 'P028j could not position actual EditorHost window'}
+    Start-Sleep -Milliseconds 300
     New-Item -ItemType Directory -Force -Path 'artifacts' | Out-Null
     $origin=[PSYGUI+POINT]::new()
     if(-not [PSYGUI]::ClientToScreen($handle,[ref]$origin)) {
@@ -190,8 +193,8 @@ try {
     }
     $proc.Refresh()
     if($proc.HasExited){throw 'P028d EditorHost terminated during interaction'}
-    # Test actual native zoom menu selection. At 75% the 1152x768 editor
-    # exceeds the CI desktop width; verify HWND geometry rather than cropped pixels.
+    # Test actual native zoom menu selection with a desktop that fits 1152x768.
+    # Keep the exact HWND geometry gate; a clamped or cropped window is not a pass.
     $rect0=[PSYGUI+RECT]::new()
     if(-not [PSYGUI]::GetClientRect($handle,[ref]$rect0)){throw 'P028h initial client geometry unavailable'}
     ClickClient $handle 450 493
@@ -223,7 +226,10 @@ try {
     $zoomShot=Screenshot 'P009-Editor-Zoom-After.png'
     $zoomShot.Dispose()
     if(-not $zoomOk){throw "P028i zoom 50 to 75 percent did not resize the host client: $w0 x $h0 -> $w1 x $h1"}
-    Write-Host "P028h actual zoom menu resize PASS: $w0 x $h0 -> $w1 x $h1"
+    $zoomOrigin=[PSYGUI+POINT]::new()
+    if(-not [PSYGUI]::ClientToScreen($handle,[ref]$zoomOrigin)){throw 'P028j zoomed client origin unavailable'}
+    if($zoomOrigin.X -lt $work.Left -or $zoomOrigin.Y -lt $work.Top -or ($zoomOrigin.X+$w1) -gt $work.Right -or ($zoomOrigin.Y+$h1) -gt $work.Bottom){throw 'P028j zoomed client not fully visible'}
+    Write-Host "P028j actual zoom menu resize PASS: $w0 x $h0 -> $w1 x $h1"
     Write-Host 'P028h native faceplate, randomization, bypass/restore, 13 knobs, MOTION, timed scene change and zoom PASS'
 } finally {
     if($before){$before.Dispose()}

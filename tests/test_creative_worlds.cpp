@@ -50,7 +50,8 @@ static void pairedCatatonia(int sr){
             CHECK(std::isfinite(q[ch][i]));peak=std::max(peak,std::abs(delta));square+=delta*delta;++count;
         }
     }
-    std::printf("R01 scalar/SSE2 paired Catatonia %d Hz peak %.9g RMS %.9g (%zu samples)\n",sr,peak,std::sqrt(square/count),count);
+    std::printf("R01 scalar/distributed paired Catatonia %d Hz peak %.9g RMS %.9g (%zu samples)\n",sr,peak,std::sqrt(square/count),count);
+    std::fflush(stdout);
     CHECK(peak<2.e-6&&std::sqrt(square/count)<2.e-7);
 }
 int main(){

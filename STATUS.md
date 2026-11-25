@@ -448,3 +448,5 @@ P028m CI 1d34b1fe: DSP PASS, actual DLL/official EditorHost interaction PASS; ne
 P028n edf33fec: DSP, recorded audio, actual state/audio regression PASS; hosted R01 1620/9600 misses (FAIL), R06 missing-DLL diagnostic check FAIL, new GUI geometry fails at host desktop clamp above 100%. P028o fixes and DSP arithmetic optimizations unverified. See docs/P028l-FOLLOWUP.md. NO-GO.
 
 P028o 2182a2f8: DSP and recorded audio PASS; 47/47 validator, state/audio tests PASS; native MOTION/zoom/two-view gates passed, R04 sampling gate FAIL. R06 ctypes discarded numeric loader error. R01 1448/9600 deadline misses, still FAIL. P028p: direct Windows loader error capture, persistent GDI capture and timings, SSE2 FFT exact paired regression. Pending execution. NO-GO.
+
+P028p 6063273a: native R04/R05/R07 and R06 package/loader PASS; actual R02/R03 and 47/47 validator PASS; Linux scalar/SSE2 PCM regression FAIL and R01 2444/9600 deadline misses FAIL. P028q rejects SSE2 and distributes scalar previous-frame FFT work, with unchanged PCM tolerance; verify again. NO-GO. See docs/P028l-FOLLOWUP.md.

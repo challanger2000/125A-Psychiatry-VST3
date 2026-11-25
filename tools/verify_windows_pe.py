@@ -22,9 +22,9 @@ def inspect_pe(data):
     for i in range(sections):
         s=table+40*i; size=u32(s+16); raw=u32(s+20); rva=u32(s+12)
         need(raw+size<=len(data),"section exceeds file")
-        if size: maps.append((rva,size,raw))
+        if size: maps.append((rva,size,raw,u32(s+36)))
     def offset(rva,count=1):
-        for base,size,raw in maps:
+        for base,size,raw,flags in maps:
             if base<=rva and rva-base+count<=size:
                 return raw+rva-base
         raise ValueError("unmapped RVA")
@@ -39,14 +39,20 @@ def inspect_pe(data):
     need(0<names<=functions<=4096,"invalid export counts")
     fn=offset(u32(e+28),4*functions); ns=offset(u32(e+32),4*names); ords=offset(u32(e+36),2*names)
     exports=set()
+    required={"GetPluginFactory","InitDll","ExitDll"}
     for i in range(names):
         ordinal=u16(ords+2*i)
         need(ordinal<functions,"invalid export ordinal")
         target=u32(fn+4*ordinal)
         need(target and not export_rva<=target<export_rva+export_size,"invalid or forwarded VST3 export")
         offset(target)
-        exports.add(name(u32(ns+4*i)))
-    need({"GetPluginFactory","InitDll","ExitDll"}<=exports,"required VST3 exports absent")
+        symbol=name(u32(ns+4*i))
+        if symbol in required:
+            need(any(base<=target<base+size and flags&0x20000000
+                     for base,size,raw,flags in maps),
+                 "VST3 export target not executable: "+symbol)
+        exports.add(symbol)
+    need(required<=exports,"required VST3 exports absent")
     irva,isize=struct.unpack_from("<II",data,opt+120)
     need(irva and isize>=20 and isize<=1024*1024,"missing or invalid import directory")
     imports=[]

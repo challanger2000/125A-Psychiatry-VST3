@@ -2,8 +2,10 @@
 
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include <random>
+#include <vector>
 
 namespace psychiatry::vst3 {
+class PsychiatryEditor;
 class Controller final : public Steinberg::Vst::EditControllerEx1 {
 public:
     static Steinberg::FUnknown* createInstance(void*) {
@@ -18,9 +20,11 @@ public:
     bool isGermanUi() const noexcept {return germanUi_;}
     void setGermanUi(bool german) noexcept {germanUi_=german;}
     bool isMotionEnabled() const noexcept {return motionEnabled_;}
-    void setMotionEnabled(bool value) noexcept {motionEnabled_=value;}
+    void setMotionEnabled(bool value);
     int zoomIndex() const noexcept {return zoomIndex_;}
-    void setZoomIndex(int index) noexcept {if(index>=0&&index<6)zoomIndex_=index;}
+    void setZoomIndex(int index);
+    void editorOpened(PsychiatryEditor*);
+    void editorClosed(PsychiatryEditor*) noexcept;
     Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override;
     Steinberg::tresult PLUGIN_API setState(Steinberg::IBStream* state) override;
     Steinberg::tresult PLUGIN_API getParamStringByValue(
@@ -28,6 +32,9 @@ public:
         Steinberg::Vst::ParamValue value,
         Steinberg::Vst::String128 string) override;
 private:
+    void applyUiState(bool german, bool motion, int zoom);
+    std::vector<PsychiatryEditor*> editors_; // UI thread, attached views only
+    bool applyingUi_=false;
     bool germanUi_=false;
     bool motionEnabled_=false; // reduced-motion mode is the default
     int zoomIndex_=0; // 50% initial size fits smaller host displays

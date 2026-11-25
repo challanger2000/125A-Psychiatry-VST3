@@ -14,6 +14,7 @@
 #include "vstgui/lib/cbitmap.h"
 #include "vstgui/lib/cresourcedescription.h"
 #include "vstgui/lib/cdrawcontext.h"
+#include "vstgui/lib/coffscreencontext.h"
 #include "vstgui/lib/cfont.h"
 #include "vstgui/lib/controls/cbuttons.h"
 #include "vstgui/lib/controls/coptionmenu.h"
@@ -127,9 +128,7 @@ tresult PLUGIN_API Controller::setState(IBStream* state) {
     StateStream stream(state);
     int32 magic=0,version=0,lang=0,motion=0,zoom=0;
     if(stream.empty()) {
-        germanUi_=false;
-        motionEnabled_=false;
-        zoomIndex_=0; // legacy sessions open at the safe 50% zoom
+        applyUiState(false,false,0); // legacy sessions open at the safe 50% zoom
         return kResultOk;
     }
     if(!stream.readInt32(magic)||magic!=kLanguageStateMagic||
@@ -139,9 +138,7 @@ tresult PLUGIN_API Controller::setState(IBStream* state) {
         return kResultFalse;
     if(version>=3 && (!stream.readInt32(zoom)||zoom<0||zoom>=static_cast<int32>(kZoomFactors.size())))
         return kResultFalse;
-    germanUi_=(lang==1); // preserve historical controller-state bytes, English-only editor
-    motionEnabled_=(motion!=0);
-    zoomIndex_=zoom;
+    applyUiState(lang==1,motion!=0,zoom); // English-only editor; preserve state bytes
     return kResultOk;
 }
 
@@ -211,7 +208,7 @@ public:
         if(!maskOk)edge_=nullptr;
         model_=readModel();
         sequence_.update(model_.peak>0.f?model_.dominant:-1,false,0.);
-        currentScene_=previousScene_=sequence_.current();
+        currentScene_=sequence_.current();
         lastIdle_=Clock::now();
         refreshTextures();
         motion_=controller_->isMotionEnabled();
@@ -226,22 +223,36 @@ public:
         const bool changed=!(next==model_)||motion!=motion_;
         sequence_.update(next.peak>0.f?next.dominant:-1,motion,dt);
         const int selected=sequence_.current();
-        const bool sceneChanged=selected!=currentScene_;
-        if(sceneChanged){
-            previousScene_=currentScene_;
-            currentScene_=selected;
-            fade_=0.;
+        bool sceneChanged=false;
+        if(selected!=currentScene_){
+            // Keep the visible mixture, not the old target, when interrupted.
+            // A failed offscreen allocation defers the switch rather than jumping.
+            if(motion&&next.peak>0.f){
+                auto from=freezeCurrentMix();
+                if(from){
+                    previous_=from;
+                    currentScene_=selected;
+                    fade_=0.;
+                    sceneChanged=true;
+                }
+            }else{
+                previous_=nullptr;
+                currentScene_=selected;
+                fade_=1.;
+                sceneChanged=true;
+            }
         }
         model_=next;motion_=motion;
         if(motion_&&model_.peak>0.f) {
             phase_=std::fmod(phase_+dt*.9,6283.185307179586);
-            fade_=std::min(1.,fade_+dt/1.2);
+            if(!sceneChanged)fade_=std::min(1.,fade_+dt/1.2);
+            if(fade_>=1.)previous_=nullptr;
             refreshTextures();
             redrawElapsed_+=dt;
             if(changed||sceneChanged||redrawElapsed_>=1./30.){redrawElapsed_=0.;invalid();}
         } else {
             const bool reset=phase_!=0.||fade_!=1.;
-            phase_=0.;fade_=1.;redrawElapsed_=0.;
+            phase_=0.;fade_=1.;redrawElapsed_=0.;previous_=nullptr;
             refreshTextures();
             if(changed||sceneChanged||reset)invalid();
         }
@@ -269,10 +280,10 @@ public:
         };
         const float level=model_.peak>0.f?.50f+.50f*model_.peak:.30f;
         const int current=currentScene_;
-        if(motion_&&fade_<1.&&previousScene_!=current){
+        if(motion_&&fade_<1.&&previous_){
             // Source-over weights: old*(1-f)*level + new*f*level.
             const auto alpha=sceneAlpha(level,static_cast<float>(fade_));
-            paint(scenes_[previousScene_],alpha.previous,scale,dx,dy);
+            paint(previous_,alpha.previous,scale,dx,dy);
             paint(scenes_[current],alpha.current,scale,dx,dy);
         }else paint(scenes_[current],level,scale,dx,dy);
         const int secondary=model_.secondary();
@@ -291,7 +302,28 @@ public:
     }
 private:
     using Clock=std::chrono::steady_clock;
-    // Retain at most current, fading predecessor and secondary images.
+    // Freeze the opaque photo blend before the common scene opacity, motion
+    // transform, aperture mask and glass. At most one persistent composite
+    // plus current/secondary textures; no accumulating image stack.
+    VSTGUI::SharedPointer<VSTGUI::CBitmap> freezeCurrentMix() {
+        using namespace VSTGUI;
+        auto current=scenes_[currentScene_];
+        if(!current||!current->isLoaded())return nullptr;
+        if(!previous_||fade_>=1.)return current;
+        if(fade_<=0.)return previous_;
+        const auto previous=previous_;
+        const auto f=static_cast<float>(fade_);
+        return renderBitmapOffscreen(CPoint(768,768),1.,[&](CDrawContext& dc){
+            auto draw=[&](CBitmap* bitmap,float alpha){
+                CGraphicsTransform tr;
+                tr.scale(768./bitmap->getWidth(),768./bitmap->getHeight());
+                CDrawContext::Transform transform(dc,tr);
+                bitmap->draw(&dc,CRect(0,0,bitmap->getWidth(),bitmap->getHeight()),CPoint(0,0),alpha);
+            };
+            draw(previous,1.f);
+            draw(current,f);
+        });
+    }
     // Decode and release only on the GUI thread; never in audio processing.
     void refreshTextures() {
         using namespace VSTGUI;
@@ -299,8 +331,7 @@ private:
         const int other=secondary>=0&&model_.peak>0.f?sequence_.forWorld(secondary):-1;
         for(std::size_t i=0;i<scenes_.size();++i) {
             const int index=static_cast<int>(i);
-            const bool wanted=index==currentScene_||index==other||
-                (motion_&&model_.peak>0.f&&fade_<1.&&index==previousScene_);
+            const bool wanted=index==currentScene_||index==other;
             if(!wanted)scenes_[i]=nullptr;
             else if(!scenes_[i])scenes_[i]=VSTGUI::owned(new CBitmap(CResourceDescription(kSceneFiles[i])));
         }
@@ -315,9 +346,9 @@ private:
     Controller* controller_;
     std::array<VSTGUI::SharedPointer<VSTGUI::CBitmap>,kSceneFiles.size()> scenes_{};
     SceneSequence sequence_{};
-    VSTGUI::SharedPointer<VSTGUI::CBitmap> glass_,edge_;
+    VSTGUI::SharedPointer<VSTGUI::CBitmap> glass_,edge_,previous_;
     MonitorModel model_{};
-    int currentScene_=0,previousScene_=0;
+    int currentScene_=0;
     bool motion_=false;
     Clock::time_point lastIdle_{};
     double phase_=0.,fade_=1.,redrawElapsed_=0.;
@@ -369,32 +400,61 @@ public:
         }
         return nullptr;
     }
+    void didOpen(VSTGUI::VST3Editor*) override {
+        open_=true;
+        parent_->editorOpened(this);
+        syncMotion();
+        syncZoomMenu();
+    }
+    void willClose(VSTGUI::VST3Editor*) override {
+        open_=false;
+        parent_->editorClosed(this);
+    }
+    ~PsychiatryEditor() override {parent_->editorClosed(this);}
+    void syncMotion() {
+        if(open_&&motionControl_){
+            motionControl_->setValueNormalized(parent_->isMotionEnabled()?1.f:0.f);
+            motionControl_->invalid();
+        }
+    }
+    bool applyZoom(int index) {
+        if(!open_)return false;
+        applyingZoom_=true;
+        setZoomFactor(kZoomFactors[static_cast<std::size_t>(index)]);
+        applyingZoom_=false;
+        syncZoomMenu();
+        return open_&&acceptedZoom_==index;
+    }
+    void syncZoomMenu() {
+        if(open_&&zoomMenu_){zoomMenu_->setValue(static_cast<float>(acceptedZoom_));zoomMenu_->invalid();}
+    }
     void onZoomChanged(VSTGUI::VST3Editor*,double factor) override {
-        if(rollingBack_)return;
+        if(rollingBack_||!open_)return;
         for(std::size_t i=0;i<kZoomFactors.size();++i)if(factor==kZoomFactors[i]){
             // VSTGUI 4.15 notifies even if CFrame::setZoom rolled back.
             if(getFrame()&&std::abs(getFrame()->getTransform().m11-getAbsScaleFactor())<1.e-6){
                 acceptedZoom_=static_cast<int>(i);
-                parent_->setZoomIndex(acceptedZoom_);
+                if(!applyingZoom_)parent_->setZoomIndex(acceptedZoom_);
             }else{
                 rollingBack_=true;
                 setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
                 rollingBack_=false;
             }
-            if(zoomMenu_){zoomMenu_->setValue(static_cast<float>(acceptedZoom_));zoomMenu_->invalid();}
+            syncZoomMenu();
             break;
         }
     }
 protected:
     void valueChanged(VSTGUI::CControl* control) override {
         if(control&&control->getTag()==kMotionUiTag){
-            parent_->setMotionEnabled(control->getValueNormalized()>.5f);return;
+            if(open_&&control->isEditing())parent_->setMotionEnabled(control->getValueNormalized()>.5f);
+            return;
         }
         if(control&&control->getTag()==kZoomUiTag){
             if(auto* menu=dynamic_cast<VSTGUI::COptionMenu*>(control)){
                 const int index=menu->getCurrentIndex();
                 if(index>=0&&index<static_cast<int>(kZoomFactors.size()))
-                    setZoomFactor(kZoomFactors[static_cast<std::size_t>(index)]);
+                    if(open_)parent_->setZoomIndex(index);
             }
             return;
         }
@@ -408,6 +468,7 @@ protected:
         VSTGUI::VST3Editor::onViewAdded(frame,view);
         if(auto* control=dynamic_cast<VSTGUI::CControl*>(view)){
             if(control->getTag()==kMotionUiTag){
+                motionControl_=control;
                 control->setValueNormalized(parent_->isMotionEnabled()?1.f:0.f);control->invalid();
             }else if(control->getTag()==kZoomUiTag){
                 // The SDK XML creator may apply default values after construction.
@@ -417,14 +478,53 @@ protected:
     }
     void onViewRemoved(VSTGUI::CFrame* frame,VSTGUI::CView* view) override {
         if(view==zoomMenu_)zoomMenu_=nullptr;
+        if(view==motionControl_)motionControl_=nullptr;
         VSTGUI::VST3Editor::onViewRemoved(frame,view);
     }
 private:
     Controller* parent_;
     VSTGUI::COptionMenu* zoomMenu_=nullptr;
+    VSTGUI::CControl* motionControl_=nullptr;
     int acceptedZoom_=0;
-    bool rollingBack_=false;
+    bool rollingBack_=false,open_=false,applyingZoom_=false;
 };
+
+// UI thread only. Keep actual per-view geometry and menu on refusal.
+// Shared saved zoom becomes the requested index when at least one attached
+// view accepts it; if all refuse, retain the old preference. With no views,
+// store the preference for the next attachment. No repeated resize retries.
+void Controller::editorOpened(PsychiatryEditor* editor) {
+    if(std::find(editors_.begin(),editors_.end(),editor)==editors_.end())
+        editors_.push_back(editor);
+}
+void Controller::editorClosed(PsychiatryEditor* editor) noexcept {
+    editors_.erase(std::remove(editors_.begin(),editors_.end(),editor),editors_.end());
+}
+void Controller::setMotionEnabled(bool value) {
+    motionEnabled_=value;
+    for(auto* editor:editors_)editor->syncMotion();
+}
+void Controller::setZoomIndex(int index) {
+    if(index<0||index>=static_cast<int>(kZoomFactors.size())||applyingUi_)return;
+    if(editors_.empty()){zoomIndex_=index;return;}
+    // resizeView is host code and may synchronously remove a view.
+    const auto snapshot=editors_;
+    for(auto* editor:snapshot)editor->addRef();
+    applyingUi_=true;
+    bool accepted=false;
+    for(auto* editor:snapshot){
+        if(std::find(editors_.begin(),editors_.end(),editor)!=editors_.end())
+            accepted=editor->applyZoom(index)||accepted;
+    }
+    if(accepted)zoomIndex_=index;
+    applyingUi_=false;
+    for(auto* editor:snapshot)editor->release();
+}
+void Controller::applyUiState(bool german,bool motion,int zoom) {
+    germanUi_=german;
+    setMotionEnabled(motion);
+    setZoomIndex(zoom);
+}
 
 IPlugView* PLUGIN_API Controller::createView(FIDString name) {
     // P028d raster editor candidate; preserve the existing VST3 host adapter.

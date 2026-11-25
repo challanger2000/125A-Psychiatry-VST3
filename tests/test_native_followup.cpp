@@ -1,6 +1,8 @@
 // P028l: actual DLL controller and native HWND host, not a duplicated UI model.
 #define NOMINMAX
 #include <windows.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 #include <objbase.h>
 #pragma comment(lib, "ole32.lib")
 #include "vst3/ids.h"
@@ -145,6 +147,7 @@ int wmain(int argc,wchar_t** argv){
     const HRESULT com=CoInitialize(nullptr);
     REQUIRE(SUCCEEDED(com));
     SetProcessDPIAware();
+    REQUIRE(timeBeginPeriod(1)==TIMERR_NOERROR);
     WNDCLASSW cls{};cls.lpfnWndProc=auditWindowProc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"125A_NativeAuditWindow";
     REQUIRE(RegisterClassW(&cls)!=0);
     std::puts("P028l native STA COM initialized; loading module");
@@ -192,31 +195,46 @@ int wmain(int argc,wchar_t** argv){
     a.open(c,15,15);a.size(0);saved(c,1,0);
     SetForegroundWindow(a.frame.window);
     std::puts("P028l native testing interrupted fade");
-    world(c,kDepression);pump(1600);
     PixelCapture capture(120,120);
-    auto before=capture.grab(a.frame.window,323,190);
-    auto fixed=pixels(a.frame.window,50,50,60,60);
-    std::vector<unsigned char> last=before;
-    double maxStep=0.,retarget=0.;int samples=0,validRetarget=0;
-    auto lastTime=Clock::now();const auto start=lastTime;
-    world(c,kMania);bool switched=false;
-    while(Clock::now()-start<std::chrono::milliseconds(1750)){
-        if(!switched&&Clock::now()-start>=std::chrono::milliseconds(310)){world(c,kPanic);switched=true;}
-        pump(1);auto next=capture.grab(a.frame.window,323,190);auto now=Clock::now();
-        const double t=std::chrono::duration<double,std::milli>(now-start).count();
-        const double gap=std::chrono::duration<double,std::milli>(now-lastTime).count();
-        double d=delta(last,next);
-        std::printf("R04 frame t=%.2f gap=%.2f delta=%.3f switched=%d\n",t,gap,d,int(switched));
-        if(gap<=65){maxStep=std::max(maxStep,d);++samples;if(t>=290&&t<=480){retarget=std::max(retarget,d);++validRetarget;}}
-        last=std::move(next);lastTime=now;
+    bool measured=false;
+    for(int trial=0;trial<3&&!measured;++trial){
+        world(c,kDepression);pump(1600);
+        auto before=capture.grab(a.frame.window,323,190);
+        auto fixed=pixels(a.frame.window,50,50,60,60);
+        auto last=before;
+        double maxStep=0.,retarget=0.;int samples=0,validRetarget=0;
+        auto lastTime=Clock::now();const auto start=lastTime;
+        auto switchTime=start;bool switched=false,bracketed=false;
+        world(c,kMania);
+        while(Clock::now()-start<std::chrono::milliseconds(1850)){
+            if(!switched&&Clock::now()-start>=std::chrono::milliseconds(310)){
+                switchTime=Clock::now();world(c,kPanic);switched=true;
+            }
+            pump(1);auto next=capture.grab(a.frame.window,323,190);auto now=Clock::now();
+            const double t=std::chrono::duration<double,std::milli>(now-start).count();
+            const double gap=std::chrono::duration<double,std::milli>(now-lastTime).count();
+            double d=delta(last,next);
+            const double sinceSwitch=std::chrono::duration<double,std::milli>(now-switchTime).count();
+            std::printf("R04 trial=%d t=%.2f gap=%.2f delta=%.3f switched=%d\n",trial,t,gap,d,int(switched));
+            if(gap<=65){
+                maxStep=std::max(maxStep,d);++samples;
+                if(switched&&sinceSwitch<=190){
+                    retarget=std::max(retarget,d);++validRetarget;
+                    if(lastTime<=switchTime)bracketed=true;
+                }
+                // Never retry a valid observed discontinuity.
+                REQUIRE(d<15.);
+            }
+            last=std::move(next);lastTime=now;
+        }
+        REQUIRE(delta(before,last)>5.&&delta(fixed,pixels(a.frame.window,50,50,60,60))<.5);
+        measured=samples>=15&&validRetarget>=2&&switched&&bracketed;
+        std::printf("R04 trial %d max %.4f retarget %.4f short-gap=%d retarget=%d bracketed=%d valid=%d\n",
+            trial,maxStep,retarget,samples,validRetarget,int(bracketed),int(measured));
     }
-    std::printf("R04 sampling gate short-gap=%d retarget=%d switched=%d\n",samples,validRetarget,int(switched));
-    REQUIRE(samples>=15&&validRetarget>=2&&switched);
-    REQUIRE(delta(before,last)>5.&&delta(fixed,pixels(a.frame.window,50,50,60,60))<.5);
-    std::printf("R04 actual desktop mean RGB step max %.4f retarget %.4f (%d short-gap frames, %d retarget)\n",maxStep,retarget,samples,validRetarget);
-    REQUIRE(retarget<15.&&maxStep<15.);
+    REQUIRE(measured);
     a.close();saved(c,1,0);
-    REQUIRE(c->terminate()==kResultOk);c->release();factory->release();REQUIRE(exit());FreeLibrary(dll);CoUninitialize();
+    REQUIRE(c->terminate()==kResultOk);c->release();factory->release();REQUIRE(exit());FreeLibrary(dll);timeEndPeriod(1);CoUninitialize();
     std::puts("P028l R04/R05/R07 native HWND actual DLL probes PASS (six geometry levels; visible pixels at 50%)");
     return 0;
 }

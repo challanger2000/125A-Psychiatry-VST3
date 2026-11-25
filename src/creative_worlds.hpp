@@ -117,6 +117,7 @@ public:
             c.history.assign(size_,0.f);c.ola.assign(size_,0.f);
             c.work.assign(size_,C{});c.previous.assign(size_,C{});
             c.held.assign(size_/2+1,C{});c.rotation.assign(size_/2+1,C{});
+            c.future.assign(size_,C{});c.predicted.assign(size_/2+1,C{});
         }
         reset();
     }
@@ -127,7 +128,7 @@ public:
             std::fill(c.history.begin(),c.history.end(),0.f);std::fill(c.ola.begin(),c.ola.end(),0.f);
             std::fill(c.previous.begin(),c.previous.end(),C{});std::fill(c.held.begin(),c.held.end(),C{});
             c.age=0;c.captureEnergy=0.;c.active=false;c.previousValid=false;
-            c.pending=false;c.half=1;c.base=c.k=0;
+            c.analysisJob={};c.synthesisJob={};c.futureValid=false;
         }
     }
     void process(float* const* p,unsigned channels,std::size_t n,const float* curve=nullptr) noexcept {
@@ -144,26 +145,31 @@ public:
             if(filled_<size_)++filled_;
             if constexpr(Distributed){
                 if((ticks_&15u)==15u)for(unsigned ch=0;ch<channels;++ch)
-                    advance(state_[ch],butterfliesPerSlice_);
+                {
+                    auto& c=state_[ch];
+                    advance(c.previous,c.analysisJob,false,butterfliesPerSlice_);
+                    advance(c.future,c.synthesisJob,true,butterfliesPerSlice_);
+                }
             }
             if(++ticks_==hop_) {
                 ticks_=0;
                 for(unsigned ch=0;ch<channels;++ch) {
                     auto& c=state_[ch];
-                    if(m_==0.f){c.active=false;c.previousValid=false;c.pending=false;c.age=0;c.captureEnergy=0.;continue;}
+                    if(m_==0.f){c.active=false;c.previousValid=false;c.analysisJob={};c.synthesisJob={};c.futureValid=false;c.age=0;c.captureEnergy=0.;continue;}
                     frame(c);
                 }
             }
         }
     }
 private:
+    struct TransformJob {bool pending=false;std::size_t half=1,base=0,k=0;};
     struct Channel {
         std::vector<float> history,ola;
-        std::vector<C> work,previous,held,rotation;
+        std::vector<C> work,previous,held,rotation,future,predicted;
         std::size_t age=0;
         double captureEnergy=0.;
-        bool active=false,previousValid=false,pending=false;
-        std::size_t half=1,base=0,k=0;
+        bool active=false,previousValid=false,futureValid=false;
+        TransformJob analysisJob{},synthesisJob{};
     };
     void fft(std::vector<C>& a,bool inverse) noexcept {
         for(std::size_t i=1;i<size_;++i)if(i<bitReverse_[i])std::swap(a[i],a[bitReverse_[i]]);
@@ -185,23 +191,48 @@ private:
     // Previous analysis is only consumed when a new frame is captured.
     // Keep the exact radix-2 order and twiddles, distributing the transform
     // over the following hop. Current-frame FFT is required only at capture.
-    void advance(Channel& c,std::size_t budget) noexcept {
-        while(c.pending&&budget--){
-            const auto half=c.half,base=c.base,k=c.k;
-            const C tw=twiddle_[k*(size_/(2*half))];
-            const C u=c.previous[base+k],x=c.previous[base+k+half];
-            const float vr=x.real()*tw.real()-x.imag()*tw.imag();
-            const float vi=x.real()*tw.imag()+x.imag()*tw.real();
-            c.previous[base+k]=C(u.real()+vr,u.imag()+vi);
-            c.previous[base+k+half]=C(u.real()-vr,u.imag()-vi);
-            if(++c.k==half){
-                c.k=0;c.base+=2*half;
-                if(c.base==size_){
-                    c.base=0;c.half*=2;
-                    if(c.half==size_)c.pending=false;
+    void advance(std::vector<C>& buffer,TransformJob& job,bool inverse,std::size_t budget) noexcept {
+        // Run contiguous butterflies in batches. No variable divide per
+        // butterfly and no additional precision/rounding changes.
+        while(job.pending&&budget){
+            const auto half=job.half,base=job.base,stride=size_/(2*half);
+            const auto count=std::min(budget,half-job.k);
+            const auto end=job.k+count;
+            for(auto k=job.k;k<end;++k){
+                const C tw=inverse?std::conj(twiddle_[k*stride]):twiddle_[k*stride];
+                const C u=buffer[base+k],x=buffer[base+k+half];
+                const float vr=x.real()*tw.real()-x.imag()*tw.imag();
+                const float vi=x.real()*tw.imag()+x.imag()*tw.real();
+                buffer[base+k]=C(u.real()+vr,u.imag()+vi);
+                buffer[base+k+half]=C(u.real()-vr,u.imag()-vi);
+            }
+            budget-=count;job.k=end;
+            if(job.k==half){
+                job.k=0;job.base+=2*half;
+                if(job.base==size_){
+                    job.base=0;job.half*=2;
+                    if(job.half==size_)job.pending=false;
                 }
             }
         }
+    }
+    // During a hold the next decayed spectrum is completely determined.
+    // Predict only that case. A capture always discards the prediction.
+    // Output remains at the original hop boundary, with no added latency.
+    void prepareFuture(Channel& c) noexcept {
+        c.futureValid=true;
+        for(std::size_t k=0;k<c.held.size();++k){
+            C value=c.held[k];value*=c.rotation[k]*decay_[k];
+            if(std::abs(value)<1.e-12f)value=C{};
+            c.predicted[k]=value;
+        }
+        c.future[bitReverse_[0]]=C(c.predicted[0].real(),0.f);
+        c.future[bitReverse_[size_/2]]=C(c.predicted[size_/2].real(),0.f);
+        for(std::size_t k=1;k<size_/2;++k){
+            c.future[bitReverse_[k]]=c.predicted[k];
+            c.future[bitReverse_[size_-k]]=std::conj(c.predicted[k]);
+        }
+        c.synthesisJob={true,1,0,0};
     }
     void frame(Channel& c) noexcept {
         double energy=0.;
@@ -224,10 +255,12 @@ private:
             if(capture){
                 // Normally finished before this boundary. Complete a partial
                 // channel's prior analysis if the host changed active channels.
-                if(c.previousValid&&c.pending)advance(c,size_*slices_);
+                if(c.previousValid&&c.analysisJob.pending)advance(c.previous,c.analysisJob,false,size_*slices_);
                 fft(c.work,false);
             }
         }
+        const bool useFuture=Distributed&&!capture&&c.active&&c.futureValid;
+        if(useFuture&&c.synthesisJob.pending)advance(c.future,c.synthesisJob,true,size_*slices_);
         for(std::size_t k=0;k<c.held.size();++k) {
             if(capture) {
                 const C now=c.work[k];
@@ -236,14 +269,17 @@ private:
                 c.rotation[k]=c.previousValid&&magnitude>1.e-12f?cross/magnitude:fallbackRotation_[k];
                 c.held[k]=now;
             } else if(c.active) {
-                c.held[k]*=c.rotation[k]*decay_[k];
-                if(std::abs(c.held[k])<1.e-12f)c.held[k]=C{};
+                if(useFuture)c.held[k]=c.predicted[k];
+                else{
+                    c.held[k]*=c.rotation[k]*decay_[k];
+                    if(std::abs(c.held[k])<1.e-12f)c.held[k]=C{};
+                }
             }
             if constexpr(!Distributed)c.previous[k]=c.work[k];
         }
         c.previousValid=energy>double(size_)*1.e-14;
         if constexpr(Distributed){
-            c.pending=false;
+            c.analysisJob={};
             if(c.previousValid){
                 if(capture){
                     // Already transformed; reuse this exact spectrum.
@@ -251,22 +287,28 @@ private:
                 }else{
                     // Fuse the previous transform's bit reversal with snapshot.
                     for(std::size_t k=0;k<size_;++k)c.previous[bitReverse_[k]]=c.work[k];
-                    c.half=1;c.base=c.k=0;c.pending=true;
+                    c.analysisJob={true,1,0,0};
                 }
             }
         }
         if(capture){c.active=true;c.age=0;c.captureEnergy=energy;}
         else if(c.age<1000000u)++c.age;
-        if(!c.active)return;
-        c.work[0]=C(c.held[0].real(),0.f);
-        c.work[size_/2]=C(c.held[size_/2].real(),0.f);
-        for(std::size_t k=1;k<size_/2;++k) {
-            c.work[k]=c.held[k];c.work[size_-k]=std::conj(c.held[k]);
+        if(!c.active){c.futureValid=false;c.synthesisJob={};return;}
+        if(useFuture){
+            const float gain=1.f/float(size_);
+            for(std::size_t k=0;k<size_;++k)
+                c.ola[(write_+k)&(size_-1)]+=(c.future[k].real()*gain)*window_[k]*(2.f/3.f);
+        }else{
+            c.work[0]=C(c.held[0].real(),0.f);
+            c.work[size_/2]=C(c.held[size_/2].real(),0.f);
+            for(std::size_t k=1;k<size_/2;++k) {
+                c.work[k]=c.held[k];c.work[size_-k]=std::conj(c.held[k]);
+            }
+            fft(c.work,true);
+            for(std::size_t k=0;k<size_;++k)
+                c.ola[(write_+k)&(size_-1)]+=c.work[k].real()*window_[k]*(2.f/3.f);
         }
-        fft(c.work,true);
-        // Periodic Hann squared sums to 1.5 at N/4 hops.
-        for(std::size_t k=0;k<size_;++k)
-            c.ola[(write_+k)&(size_-1)]+=c.work[k].real()*window_[k]*(2.f/3.f);
+        if constexpr(Distributed)prepareFuture(c);
     }
     std::array<Channel,2> state_{};
     std::vector<float> window_;

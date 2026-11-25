@@ -35,13 +35,13 @@ static void pairedCatatonia(int sr){
     constexpr int block=127;
     std::array<float,block> l{},r{},a{},b{},curve{};
     double peak=0.,square=0.;std::size_t count=0;
-    for(int pos=0;pos<4*sr;pos+=block){
-        int n=std::min(block,4*sr-pos);
+    for(int pos=0;pos<8*sr;pos+=block){
+        int n=std::min(block,8*sr-pos);
         for(int i=0;i<n;++i){
             int sample=pos+i;double time=double(sample)/sr;
             l[i]=a[i]=float((time<.3?.001:.22)*std::sin(2*psychiatry::creative::pi*(time<1.7?700.:1331.)*time)+.04*std::cos(time*4444.));
             r[i]=b[i]=float(.17*std::sin(time*2222.)+.05*std::sin(time*7777.));
-            curve[i]=float(.55+.4*std::sin(time*3.));
+            curve[i]=time>4.&&time<5.?0.f:float(.55+.4*std::sin(time*3.));
         }
         float* p[]{l.data(),r.data()},*q[]{a.data(),b.data()};
         reference.process(p,2,n,curve.data());candidate.process(q,2,n,curve.data());

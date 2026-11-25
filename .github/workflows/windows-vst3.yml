@@ -43,6 +43,7 @@ jobs:
       - name: Validate v1-v5 state and twelve-world randomizer with real VST3 processor/controller
         run: ctest --test-dir build-vst3 -C Release -R "^P006_VST3LegacyState$" --output-on-failure
       - name: Build real VST3 audio path metrology executable
+        id: build-audio-auditor
         run: cmake --build build-vst3 --config Release --target test_vst3_audio_path --parallel 4
       - name: P010 real VST3 audio null tests, gain-placebo controls and THERAPY
         run: ctest --test-dir build-vst3 -C Release -R "^P010_ActualVST3AudioWetDry$" --output-on-failure
@@ -123,10 +124,12 @@ jobs:
           retention-days: 7
 
       - name: R01 four-instance 96 kHz / 64 frame deadline evidence
+        if: ${{ !cancelled() && steps.build-audio-auditor.outcome == 'success' }}
         shell: pwsh
         run: |
           $auditor = Get-ChildItem build-vst3 -Recurse -File -Filter test_vst3_audio_path.exe | Where-Object { $_.FullName -match 'Release' } | Select-Object -First 1
           if (-not $auditor) { throw 'R01 actual processor harness missing' }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           & $auditor.FullName --rt-followup artifacts/P028l-RT-deadlines.csv
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain raw R01 measurement even on missed deadlines

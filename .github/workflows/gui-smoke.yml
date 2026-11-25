@@ -73,8 +73,14 @@ jobs:
           $bundle = Get-ChildItem build-vst3 -Recurse -Directory -Filter 125A-PSYCHIATRY.vst3 | Where-Object { $_.FullName -match 'Release' } | Select-Object -First 1
           if (-not $hostExe -or -not $bundle) { throw 'Native follow-up host or bundle missing' }
           $module = Join-Path $bundle.FullName 'Contents/x86_64-win/125A-PSYCHIATRY.vst3'
-          & $hostExe.FullName $module
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "Native audit executable: $($hostExe.FullName)"
+          Write-Host "Native audit module: $module"
+          if (-not (Test-Path -LiteralPath $module -PathType Leaf)) { throw 'Native audit DLL path missing' }
+          $native = Start-Process -FilePath $hostExe.FullName -ArgumentList ('"'+$module+'"') -PassThru -Wait -NoNewWindow -RedirectStandardOutput native-stdout.txt -RedirectStandardError native-stderr.txt
+          Get-Content native-stdout.txt
+          Get-Content native-stderr.txt
+          Write-Host "Native follow-up exit code: $($native.ExitCode)"
+          if ($native.ExitCode -ne 0) { throw "Native follow-up failed: $($native.ExitCode)" }
       - name: Publish GUI smoke screenshot if captured
         if: always()
         uses: actions/upload-artifact@v4

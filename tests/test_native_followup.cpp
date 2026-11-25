@@ -1,6 +1,8 @@
 // P028l: actual DLL controller and native HWND host, not a duplicated UI model.
 #define NOMINMAX
 #include <windows.h>
+#include <objbase.h>
+#pragma comment(lib, "ole32.lib")
 #include "vst3/ids.h"
 #include "pluginterfaces/base/ipluginbase.h"
 #include "pluginterfaces/gui/iplugview.h"
@@ -114,21 +116,37 @@ static void world(Vst::IEditController* c,Vst::ParamID id){
     for(Vst::ParamID i=100;i<112;++i)REQUIRE(c->setParamNormalized(i,i==id?.5:0.)==kResultOk);
 }
 int wmain(int argc,wchar_t** argv){
+    std::setvbuf(stdout,nullptr,_IONBF,0);
+    std::setvbuf(stderr,nullptr,_IONBF,0);
+    std::puts("P028l native harness entered");
     REQUIRE(argc==2);
+    // The official Win32 EditorHost initializes STA COM before loading a module.
+    const HRESULT com=CoInitialize(nullptr);
+    REQUIRE(SUCCEEDED(com));
     SetProcessDPIAware();
+    std::puts("P028l native STA COM initialized; loading module");
     HMODULE dll=LoadLibraryExW(argv[1],nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+    if(!dll)std::fprintf(stderr,"LoadLibraryExW error %lu\n",GetLastError());
     REQUIRE(dll);
+    std::puts("P028l native module loaded");
     auto init=reinterpret_cast<bool(*)()>(GetProcAddress(dll,"InitDll"));
     auto exit=reinterpret_cast<bool(*)()>(GetProcAddress(dll,"ExitDll"));
     auto factoryFn=reinterpret_cast<IPluginFactory*(PLUGIN_API*)()>(GetProcAddress(dll,"GetPluginFactory"));
-    REQUIRE(init&&exit&&factoryFn&&init());
+    REQUIRE(init&&exit&&factoryFn);
+    std::puts("P028l native calling InitDll");
+    REQUIRE(init());
+    std::puts("P028l native InitDll returned");
     auto* factory=factoryFn();REQUIRE(factory&&factory->countClasses()==2);
     Vst::IEditController* c=nullptr;
     TUID cid,iid;kControllerCID.toTUID(cid);Vst::IEditController::iid.toTUID(iid);
     REQUIRE(factory->createInstance(cid,iid,reinterpret_cast<void**>(&c))==kResultOk&&c);
+    std::puts("P028l native controller created");
     REQUIRE(c->initialize(nullptr)==kResultOk);
+    std::puts("P028l native controller initialized");
     recall(c,1,0);saved(c,1,0);
+    std::puts("P028l native opening first editor");
     View a;a.open(c,15,15);a.size(0);saved(c,1,0);
+    std::puts("P028l native first editor attached; checking MOTION");
     SetForegroundWindow(a.frame.window);pump(150);
     auto motionOn=pixels(a.frame.window,291,482,24,24);
     recall(c,0,0);pump(180);saved(c,0,0);
@@ -136,17 +154,21 @@ int wmain(int argc,wchar_t** argv){
     REQUIRE(delta(motionOn,motionOff)>.25);
     recall(c,1,0);pump(180);saved(c,1,0);
     REQUIRE(delta(motionOn,pixels(a.frame.window,291,482,24,24))<.5);
+    std::puts("P028l native testing accepted zooms");
     for(int z=0;z<6;++z){recall(c,1,z);pump(60);a.size(z);saved(c,1,z);}
     recall(c,1,0);pump(100);a.size(0);
+    std::puts("P028l native testing refused zooms");
     a.frame.accept=false;
     for(int z=1;z<6;++z){recall(c,1,z);pump(40);a.size(0);saved(c,1,0);}
     a.frame.accept=true;
+    std::puts("P028l native testing second view");
     View b;b.open(c,810,20);b.size(0);saved(c,1,0);
     recall(c,0,1);pump(100);a.size(1);b.size(1);saved(c,0,1);
     b.frame.accept=false;recall(c,1,0);pump(100);a.size(0);b.size(1);saved(c,1,0);
     b.close();a.close();saved(c,1,0);
     a.open(c,15,15);a.size(0);saved(c,1,0);
     SetForegroundWindow(a.frame.window);
+    std::puts("P028l native testing interrupted fade");
     world(c,kDepression);pump(1600);
     auto before=pixels(a.frame.window,323,190,120,120);
     auto fixed=pixels(a.frame.window,50,50,60,60);
@@ -168,7 +190,7 @@ int wmain(int argc,wchar_t** argv){
     std::printf("R04 actual desktop mean RGB step max %.4f retarget %.4f (%d short-gap frames, %d retarget)\n",maxStep,retarget,samples,validRetarget);
     REQUIRE(retarget<15.&&maxStep<15.);
     a.close();saved(c,1,0);
-    REQUIRE(c->terminate()==kResultOk);c->release();factory->release();REQUIRE(exit());FreeLibrary(dll);
+    REQUIRE(c->terminate()==kResultOk);c->release();factory->release();REQUIRE(exit());FreeLibrary(dll);CoUninitialize();
     std::puts("P028l R04/R05/R07 native HWND actual DLL probes PASS (six geometry levels; visible pixels at 50%)");
     return 0;
 }

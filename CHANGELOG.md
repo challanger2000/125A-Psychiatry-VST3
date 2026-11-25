@@ -4,7 +4,7 @@ Only the `main` branch is used. The most recent **verified code commit** and tes
 
 ## 0.9.26 — P028h scene library candidate
 
-- 40 unique new historical-fiction scene textures with twelve-world mapping, bounded GUI texture loading, slow timed crossfade/rotation, MOTION hold and native zoom probe. No DSP changes. Verification pending.
+- 40 unique new historical-fiction scene textures with twelve-world mapping, bounded GUI texture loading, slow timed crossfade/rotation, MOTION hold and native zoom probe. No DSP changes. P028j native GUI PASS, P028i Windows/DSP PASS and P028h recorded audio PASS; final DAW acceptance pending.
 
 ## 0.9.25 — P028d raster editor candidate
 

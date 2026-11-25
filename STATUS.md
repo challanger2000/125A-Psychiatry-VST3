@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028i / v0.9.26 (Windows and DSP PASS; P028j GUI-only environment retest pending). Last verified GUI baseline P028g / v0.9.25. **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current technically verified candidate: P028j / v0.9.26 (P028i product, P028j native GUI PASS; P028h recorded audio PASS). **Only `main`**; no final or musical approval.
 
-## Current task — P028j GUI-only desktop correction
+## Current task — P028j verified technical candidate
+
+Native GUI test [45536098801](https://github.com/challanger2000/125A-Psychiatry-VST3/actions/runs/45536098801) SUCCESS: exact 50→75% resize, all 13 knobs, MOTION, timed scene rotation, static hold, bypass and randomization. Windows package artifact 14986961132 from unchanged P028i product, all 40 scenes. Final Studio Pro audition and higher zoom factors not yet verified. See [P028h/P028j evidence](docs/P028h.md#p028j-verified-result--2026-11-25).
+
+## Historical P028j GUI-only desktop correction
 
 P028i native 75% item selected, window enlarged but clipped to 1028x749 on actual 1024x768 desktop. Windows/DSP PASS. P028j adjusts test desktop to 1920x1080 and retains exact geometry gate; no product changes. See [P028h/P028j](docs/P028h.md). GUI-only retest pending.
 

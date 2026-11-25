@@ -1,0 +1,835 @@
+{
+  "schema": "125A-PSYCHIATRY-P028h-scene-library-v1",
+  "destination": "resource/artwork/",
+  "source_archive": "125A-PSYCHIATRY-P028h-Szenen-40(1).zip",
+  "source_archive_sha256": "38b3f34b9ac87b947dd226303f54224637686bd05621675909d76ced723ae7cf",
+  "format": "RGB PNG 768x768, square crop, Lanczos, no added frame/glass, fictional AI-generated scenes",
+  "worlds": {
+    "DEPRESSION": [
+      "scene-p028h-01-depression-isolation.png",
+      "scene-p028h-31-abandoned-common-room.png",
+      "scene-p028h-26-patient-portrait-young.png",
+      "scene-p028h-36-elderly-patient-portrait.png"
+    ],
+    "PARANOIA": [
+      "scene-p028h-11-paranoia-observer.png",
+      "scene-p028h-27-matron-with-keys.png",
+      "scene-p028h-33-basement-corridor.png",
+      "scene-p028h-37-nurse-portrait.png"
+    ],
+    "SCHIZOPHRENIA": [
+      "scene-p028h-08-eeg-mannequin.png",
+      "scene-p028h-32-institution-staircase.png",
+      "scene-p028h-22-historical-electrode-portrait.png"
+    ],
+    "MANIA": [
+      "scene-p028h-04-mania-scribbled-walls.png",
+      "scene-p028h-40-disordered-common-room.png",
+      "scene-p028h-10-mania-motion-blur.png"
+    ],
+    "PANIC": [
+      "scene-p028h-02-panic-medical-room.png",
+      "scene-p028h-38-neurological-instruments.png",
+      "scene-p028h-20-historical-restraint-chair.png"
+    ],
+    "DISSOCIATION": [
+      "scene-p028h-03-dissociation-reflection.png",
+      "scene-p028h-35-double-exposure-portrait.png",
+      "scene-p028h-13-fragmented-reflections.png"
+    ],
+    "OBSESSION": [
+      "scene-p028h-28-open-medicine-cabinet.png",
+      "scene-p028h-30-antique-instruments.png",
+      "scene-p028h-39-closed-medicine-cabinet.png"
+    ],
+    "HALLUCINATION": [
+      "scene-p028h-14-hallucination-double-exposure.png",
+      "scene-p028h-05-corridor-wheelchair.png",
+      "scene-p028h-17-treatment-room-shadow.png"
+    ],
+    "PSYCHOSIS": [
+      "scene-p028h-07-treatment-room-straitjacket.png",
+      "scene-p028h-19-historical-treatment-nurse.png",
+      "scene-p028h-15-corridor-straitjacket.png",
+      "scene-p028h-24-historical-doctor-and-nurse.png"
+    ],
+    "DELIRIUM": [
+      "scene-p028h-16-hydrotherapy-tub.png",
+      "scene-p028h-23-historical-treatment-seated.png",
+      "scene-p028h-18-electrotherapy-console.png"
+    ],
+    "CATATONIA": [
+      "scene-p028h-06-padded-room-bed.png",
+      "scene-p028h-25-ward-hanging-straitjacket.png",
+      "scene-p028h-12-isolation-padded-room.png",
+      "scene-p028h-21-empty-electrotherapy-chair.png"
+    ],
+    "AMNESIA": [
+      "scene-p028h-29-patient-records-archive.png",
+      "scene-p028h-09-empty-ward-bed.png",
+      "scene-p028h-34-long-ward.png"
+    ]
+  },
+  "scenes": [
+    {
+      "file": "scene-p028h-01-depression-isolation.png",
+      "sha256": "143070ecf6051bb05d05cb07cd1b7e9cfe4d941d81ae0a1f9ad0e8431ae95fdc",
+      "git_blob_sha1": "9165350293757361b82cab0bc1175e126411fa1a",
+      "bytes": 925452,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/01-depression-isolation.png",
+      "source_sha256": "7c1dcaa46727b1ae06fe30a94049a33d762ee4eabef1239934a3496ac35d77ee",
+      "source": "a_moody_cinematic_desaturated_wide_shot_of_an_ol.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "DEPRESSION",
+      "crop_box": [
+        563,
+        25,
+        1536,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-02-panic-medical-room.png",
+      "sha256": "24750e0bddf97dd57b3b8e2dc52a6a638de12e0c4daa43c7ac2a6f0ff3ba16ef",
+      "git_blob_sha1": "ec9a09e1c6c32cedb2046d440d569c8265e285bd",
+      "bytes": 800179,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/02-panic-medical-room.png",
+      "source_sha256": "f2d431921a0a154121d04a958c60532ecb7add1dbc259fcab26d853d99cf9656",
+      "source": "a_cinematic_gritty_slightly_blurred_tilted_scene.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "PANIC",
+      "crop_box": [
+        563,
+        25,
+        1536,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-03-dissociation-reflection.png",
+      "sha256": "d827fc26bdec761e170160791d58073f0c5ce9ffb19ad8a0a3966ef8ce098982",
+      "git_blob_sha1": "2c686060edfff3561f825b03a193abd3a3b5bff2",
+      "bytes": 735251,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/03-dissociation-reflection.png",
+      "source_sha256": "8b4dd479ff085d95092db52022af488d5af8f04bffc6a570c8cbe5ca2002ea8a",
+      "source": "a_cinematic_moody_desaturated_scene_of_a_sparse.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "DISSOCIATION",
+      "crop_box": [
+        125,
+        27,
+        1157,
+        1059
+      ]
+    },
+    {
+      "file": "scene-p028h-04-mania-scribbled-walls.png",
+      "sha256": "f83be5c61a25d539afa19c3225fab05d1709e73b0c4b991cb2906c22dcda0f44",
+      "git_blob_sha1": "e1816f6090a0c3f07da30316ff46c4e979624a05",
+      "bytes": 1028178,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/04-mania-scribbled-walls.png",
+      "source_sha256": "078c83b5c0be89e13c1db40636e9e5e7e2324e9194d669e73e09187e6b902e5d",
+      "source": "a_gritty_cinematic_slightly_fisheye_tilted_wide.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "MANIA",
+      "crop_box": [
+        113,
+        25,
+        1086,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-05-corridor-wheelchair.png",
+      "sha256": "3c8a7df44946afb78f0449da18324971b5baca41073776fdfaa048135cb3767a",
+      "git_blob_sha1": "234aceffc9374db2d69729e40dbbd621d9535e91",
+      "bytes": 1043442,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/05-corridor-wheelchair.png",
+      "source_sha256": "fc16ccd8a420c6c87c8a01af84b4daa27fcc4b44df6a03af807f0beb32ab0f96",
+      "source": "a_cinematic_sepia_toned_vintage_black_and_white_p.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "HALLUCINATION",
+      "crop_box": [
+        90,
+        25,
+        1063,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-06-padded-room-bed.png",
+      "sha256": "86df3bdd06522933cdae1caf5644600014faf49f33f76cad0d2e35c306b4bba3",
+      "git_blob_sha1": "f7509d729e3ad38a29cf54d425c8520ef53a66dc",
+      "bytes": 909138,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/06-padded-room-bed.png",
+      "source_sha256": "c9c34969061566faaf0be992d522698e688cf3ddde1775badc86325ece3505e6",
+      "source": "a_cinematic_gritty_vintage_style_interior_scene.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "CATATONIA",
+      "crop_box": [
+        293,
+        25,
+        1266,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-07-treatment-room-straitjacket.png",
+      "sha256": "99af45a4811acc3a06673d892001469572910fe35382149a0930f5415ceaa741",
+      "git_blob_sha1": "51a1c67e247bc2b2b1b76f016caa9bdbf914f5cd",
+      "bytes": 1098488,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/07-treatment-room-straitjacket.png",
+      "source_sha256": "b8f09ba39384ce55376d44c8b46db770a0b434d543d582696b1afc703dbd4473",
+      "source": "a_highly_detailed_atmospheric_vintage_psychiatric.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "PSYCHOSIS",
+      "crop_box": [
+        248,
+        25,
+        1221,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-08-eeg-mannequin.png",
+      "sha256": "ef6a15918007fc548a22ea4d3f5e6ba104947ce871cab920c2daa77ee7230ae4",
+      "git_blob_sha1": "b23a8a14adb1e22a210eae500eb6dbaf3ec36c51",
+      "bytes": 1033208,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/08-eeg-mannequin.png",
+      "source_sha256": "cba082a1cf7990865e0ce680f4aa934b374593697a719013b873d9a6c54b6bd5",
+      "source": "a_highly_detailed_cinematic_vintage_psychiatric.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "SCHIZOPHRENIA",
+      "crop_box": [
+        214,
+        25,
+        1187,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-09-empty-ward-bed.png",
+      "sha256": "7a69506181b0b22802c2bc8f6bd45febd7343b46f6f03ed1cc5337f555766e4c",
+      "git_blob_sha1": "4fb2ee0a8428616429726eb542058fd100a5a63c",
+      "bytes": 943504,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/09-empty-ward-bed.png",
+      "source_sha256": "b5d55845cac9c4e18372f1d3681023786be7aedf122dc51792940c16ade8b604",
+      "source": "a_cinematic_vintage_sepia_toned_desaturated_gra.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "AMNESIA",
+      "crop_box": [
+        394,
+        25,
+        1367,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-10-mania-motion-blur.png",
+      "sha256": "35856d9c4a933d1d938421abf94cdc52fb3fada4cb501a8d229b2cf0d5c9721f",
+      "git_blob_sha1": "c02464aa4ba0c3f456b74c31f58e7f6c6486c112",
+      "bytes": 957010,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/10-mania-motion-blur.png",
+      "source_sha256": "050ff5ac6479b6d3fa0ac4e8f94ef70910cacfa0ceb038e3cc13113b8eafdc66",
+      "source": "a_sepia_toned_aged_scratched_vintage_photograph.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "MANIA",
+      "crop_box": [
+        507,
+        25,
+        1480,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-11-paranoia-observer.png",
+      "sha256": "18540daae5e16e625c2ff53218a27382d40d42b878ee651645c630f951820951",
+      "git_blob_sha1": "56cfd0ba5ad43f4f32c90bac7ff22c222dec3198",
+      "bytes": 1033705,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/11-paranoia-observer.png",
+      "source_sha256": "f3a581d5815faacfacd51c9c7e5251c51b866a66d8f8227ab573f9b3bbbe2db4",
+      "source": "a_cinematic_sepia_toned_vintage_photograph_aged.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "PARANOIA",
+      "crop_box": [
+        23,
+        25,
+        996,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-12-isolation-padded-room.png",
+      "sha256": "a1fe320079207d21ee92ea0921bc7a4d38a008e736764cf86cbe8cc094b8d89d",
+      "git_blob_sha1": "5fd35739edf497081f918b448d005ae3435998f0",
+      "bytes": 1082043,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/12-isolation-padded-room.png",
+      "source_sha256": "977d2d3d92ef929007fcd275df692e0842eb45b9b1211cf02f4d78431f8a0fd5",
+      "source": "a_highly_detailed_cinematic_vintage_archival_phot.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "CATATONIA",
+      "crop_box": [
+        197,
+        25,
+        1170,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-13-fragmented-reflections.png",
+      "sha256": "8c08fd8ced45de2bed2f89861095ef55c54d98c811d82178abbc7d500b6e0e7f",
+      "git_blob_sha1": "142c2cfd9c9c47dfaf6ba5ebbf09f11bec1b64c1",
+      "bytes": 956231,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/13-fragmented-reflections.png",
+      "source_sha256": "6682d3be7deee253da1f9529fc96aac457e8dcec386266eb9132220759faf77a",
+      "source": "a_gritty_vintage_sepia_black_and_white_photograph.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "DISSOCIATION",
+      "crop_box": [
+        253,
+        25,
+        1226,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-14-hallucination-double-exposure.png",
+      "sha256": "6f07602adefc89b203cfdcd02ab9bccc6e2a4ace648c8496866def96cd2d1b74",
+      "git_blob_sha1": "38a25e31858c58c0844b1e7c59d62e9fb796c827",
+      "bytes": 898581,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/14-hallucination-double-exposure.png",
+      "source_sha256": "ce88c5d3c618f8744282978cb8a9a3e7b6a8d8eb86c6add2e88ce95a57993298",
+      "source": "a_vintage_sepia_toned_black_and_white_distresse.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "HALLUCINATION",
+      "crop_box": [
+        310,
+        25,
+        1283,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-15-corridor-straitjacket.png",
+      "sha256": "2a91f3a69b3796661ea6c69322b6279500a37bd5fea9002c3e2cd298b3345ffc",
+      "git_blob_sha1": "b463d68eb94a3f11fb3a2c7f943a094536588ab7",
+      "bytes": 942982,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/15-corridor-straitjacket.png",
+      "source_sha256": "0377244719e5d2484842aea93d4bb673e5711545f43c43a30209fd936d4e16fe",
+      "source": "a_cinematic_film_grain_vintage_sepia_black_and_w.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "PSYCHOSIS",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-16-hydrotherapy-tub.png",
+      "sha256": "7696cfa4a2dbf56b54593fd11e009ab6ca62c1543a7e62142a5e5ee74f18687f",
+      "git_blob_sha1": "56a12ca9444006e530588fba5a8ab707be54f438",
+      "bytes": 1074050,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/16-hydrotherapy-tub.png",
+      "source_sha256": "f34ffa6da27eaaeec23dac99a3d369970ecdb49703c5bbf2365f10add5fcb581",
+      "source": "a_detailed_atmospheric_vintage_abandoned_psychia.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "DELIRIUM",
+      "crop_box": [
+        152,
+        25,
+        1125,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-17-treatment-room-shadow.png",
+      "sha256": "b7d2bcf8d1205e5b29104317ae81d6ccb35580223f784f775543dcddbfa44abc",
+      "git_blob_sha1": "340c772480a1ab24f61189967d69616f52209b80",
+      "bytes": 1082121,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/17-treatment-room-shadow.png",
+      "source_sha256": "ffe07c18f8d916dbd358eabc6d4d11f5f2e25b6a9732cd4fa9e8a5da59f1b841",
+      "source": "a_highly_detailed_cinematic_vintage_horror_medica.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "HALLUCINATION",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-18-electrotherapy-console.png",
+      "sha256": "fea5a4383f96479191b49c319bd7bc66f36abc0ec0564c2c2b1f64ae9cded3e3",
+      "git_blob_sha1": "cede45f5814f379622e60a81353ada2a848123d0",
+      "bytes": 928987,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/18-electrotherapy-console.png",
+      "source_sha256": "6c4a7dceb3ca2fba1294341dd99c12f5f4f4137f32f679385d15124e630198fd",
+      "source": "a_cinematic_vintage_sepia_toned_black_and_white.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "DELIRIUM",
+      "crop_box": [
+        225,
+        25,
+        1198,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-19-historical-treatment-nurse.png",
+      "sha256": "351c8141837db0420c86d87d84b97557883753f7ef0b79a5cb8899046934f574",
+      "git_blob_sha1": "8f77bc452f1efe03a7a078f630dd90453d8f4f15",
+      "bytes": 937675,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/19-historical-treatment-nurse.png",
+      "source_sha256": "55c608e355881ec6c3145e8078f229a376335b0f57996588c05840678d77043a",
+      "source": "a_vintage_sepia_toned_grainy_vintage_photograph.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "PSYCHOSIS",
+      "crop_box": [
+        366,
+        25,
+        1339,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-20-historical-restraint-chair.png",
+      "sha256": "9431b7b162c73ea544deac27861ca80b73c10a9c87c2634cf809803edc63815a",
+      "git_blob_sha1": "e8fbb221ad279eeab619c7d03bb0d4515460717d",
+      "bytes": 917085,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/20-historical-restraint-chair.png",
+      "source_sha256": "f7d9dce653bd108b188ebfcc131032446ad959b05882e16055da16791137d9db",
+      "source": "a_vintage_sepia_toned_worn_and_scratched_photogr.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "PANIC",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-21-empty-electrotherapy-chair.png",
+      "sha256": "45e841851a19e1452712e1c9d456e7bc3d8d29b2afd44ef5b55798b395f87069",
+      "git_blob_sha1": "e78ec2183296cb535428ac2c6f27d1888fc390b5",
+      "bytes": 977659,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/21-empty-electrotherapy-chair.png",
+      "source_sha256": "807b5e6d1295c80fbfbb4317768babe742e6adb2985b8ea2efc8d023bf0f1de1",
+      "source": "a_vintage_sepia_black_and_white_toned_distressed.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "CATATONIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-22-historical-electrode-portrait.png",
+      "sha256": "3361336a986944484a30578736fd7624d42cbe9c85d31436bcb3618015815363",
+      "git_blob_sha1": "b69553d26f6f0454428c802e0938325e9d6531bf",
+      "bytes": 877226,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/22-historical-electrode-portrait.png",
+      "source_sha256": "c89b384685326dad4d02598f9d0bed26596b0f2bb496fdbcfd54876092b19cbd",
+      "source": "a_moody_vintage_sepia_toned_aged_photograph_with.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "SCHIZOPHRENIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-23-historical-treatment-seated.png",
+      "sha256": "caa31deccbe198745765ddff061b464c670c65d2afdf9b36a5a720df8f11fbcc",
+      "git_blob_sha1": "044d8eaf6eed572c8853bbaa1dcbd953653eca72",
+      "bytes": 981884,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/23-historical-treatment-seated.png",
+      "source_sha256": "a7f7534cccc0a506f724cce229faf816cded38931458f35b90a6985a8908bd89",
+      "source": "a_vintage_sepia_toned_grainy_scratched_and_worn.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "DELIRIUM",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-24-historical-doctor-and-nurse.png",
+      "sha256": "831b156520d628e80692ac6e9c92c6d9b50d20e5c1c5573a6f3140956dd04ed1",
+      "git_blob_sha1": "d6a44f8ebc612b98fcb0b01ac52e0ace73067eaf",
+      "bytes": 968853,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/24-historical-doctor-and-nurse.png",
+      "source_sha256": "91f0be5e6bdfffa1d673ddaca468e7e852243b162f086d8c3dda2e72f374bd0f",
+      "source": "a_vintage_sepia_toned_grainy_scratched_aged_ph.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "PSYCHOSIS",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-25-ward-hanging-straitjacket.png",
+      "sha256": "d6350f3d3688523f69ac36261d8a3614a06aef253fb9107a1650a0efc62fa8af",
+      "git_blob_sha1": "f4e479c3ef2322c2855098db633dcabf228320b4",
+      "bytes": 1063184,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/25-ward-hanging-straitjacket.png",
+      "source_sha256": "1bb536541e2249e8dace3768a50139a5c9d2df887ac82bead4d98fa10bb9caf7",
+      "source": "a_moody_high_detail_cinematic_photo_illustration.png",
+      "origin": "AI-generated fictional scene, current conversation",
+      "effect_world": "CATATONIA",
+      "crop_box": [
+        197,
+        25,
+        1170,
+        998
+      ]
+    },
+    {
+      "file": "scene-p028h-26-patient-portrait-young.png",
+      "sha256": "b6fb075f6999b8c9ed9f96eb04f2257656bfdbcf7d051ae6c3fa4ff380081872",
+      "git_blob_sha1": "3d73542d36f493212e2803363d6f5dc2ba08ab94",
+      "bytes": 876227,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/26-patient-portrait-young.png",
+      "source_sha256": "82d9fe6f09ccc4b8f469735f1a2543d88e3d98c676ec832906ffa814fd3af1ee",
+      "source": "verblasstes_porträt_aus_der_anstalt.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "DEPRESSION",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-27-matron-with-keys.png",
+      "sha256": "1c303c7c86fb6cfd2fc64a1723942ff09ee0950ccaa3826bba3e0b451e91a6a1",
+      "git_blob_sha1": "847bb01d43c5cfebd0466dfdbc1b13f753e90f3a",
+      "bytes": 866784,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/27-matron-with-keys.png",
+      "source_sha256": "c8750ed6ee1015f01ac7dfa4ccb26360d9d7298914a1ebb319447e9d63cb7dae",
+      "source": "strenge_matrone_im_asylkorridor.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "PARANOIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-28-open-medicine-cabinet.png",
+      "sha256": "49feffe42b2e54ecafb277280ef53de388af7de9971664417490d70866163330",
+      "git_blob_sha1": "6263947cf051a0ebb160c70338faf62452d80e56",
+      "bytes": 944704,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/28-open-medicine-cabinet.png",
+      "source_sha256": "d9748a68659212365b0c5c25ccdaf5f49f8d45d73fa2e7370bad47d15c0e8a73",
+      "source": "antiker_apothekerschrank_im_irrenhaus.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "OBSESSION",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-29-patient-records-archive.png",
+      "sha256": "f9ed518b558894a9c61c0692c425edc476dc649a9b7905a1898cb3522fece4db",
+      "git_blob_sha1": "80753f9709914dca2c1d6df93a06269fe6315e12",
+      "bytes": 986280,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/29-patient-records-archive.png",
+      "source_sha256": "99a5c0f36c8edca51b6c196e71975dae6aec7c5b1267adb8c5a9e3d224ee6a10",
+      "source": "verstaubtes_archiv_im_alten_krankenhaus.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "AMNESIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-30-antique-instruments.png",
+      "sha256": "50916adc7f49017648bdf91aff19fd5d600998e43d4a9b9677be6eb8732cebc7",
+      "git_blob_sha1": "515e95109447d6342b10a7dbf696c776e7cd36b0",
+      "bytes": 1002333,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/30-antique-instruments.png",
+      "source_sha256": "74b3fdeda7dc13046122e9673e1af5511c43c298aa6b3710c11f772acb09486f",
+      "source": "antike_medizinische_instrumente_auf_metalltablett.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "OBSESSION",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-31-abandoned-common-room.png",
+      "sha256": "56d8abce1902bfb641ae5f3fe7da3018b9b00c14d1821009e3b2206a8628a322",
+      "git_blob_sha1": "f4a59b30feede8094a91a089919f4aa8198916ef",
+      "bytes": 1004741,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/31-abandoned-common-room.png",
+      "source_sha256": "64dfcbd68956d6e802a68cc610bc70fb4bb08b0b63379ce7924ff5b3d196e6a3",
+      "source": "verlassener_salon_im_sanatorium.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "DEPRESSION",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-32-institution-staircase.png",
+      "sha256": "89a5a23efe19dfdbf176dfa73bf278ceeed9dc210183928e7ce84120d138b35e",
+      "git_blob_sha1": "f0feba480130905b7980d5f55eaae553aac0e7b2",
+      "bytes": 881761,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/32-institution-staircase.png",
+      "source_sha256": "0c2bdc7f88b5d2e3d12d0a293f488180c2c3a444c416b48ef12b35dda728b7b9",
+      "source": "verfallene_anstaltstreppe_im_sepiaton.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "SCHIZOPHRENIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-33-basement-corridor.png",
+      "sha256": "99eab111bc249610fd99107de130dec7ca1149e0076730daa8a0fdd49552d3d9",
+      "git_blob_sha1": "54c7224447856c22c4a3752f1eaeb62ddbc27a19",
+      "bytes": 990254,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/33-basement-corridor.png",
+      "source_sha256": "d77220a488d6dcc6b18e9ca6f251b5e0321612c5e68b0ab8175fc3ac75d03d5d",
+      "source": "verlassener_klinikflur_mit_rollstuhl.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "PARANOIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-34-long-ward.png",
+      "sha256": "4c423feebd30dd5578f03b93864d83f9f206bff88b8075313b9470453c36fa77",
+      "git_blob_sha1": "cfbac149dc7b1129d8607a73fbf328d7818c27f1",
+      "bytes": 906405,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/34-long-ward.png",
+      "source_sha256": "06f666356c1c24fd1845cd217d10abb05558a7cf517f6f223df04cbaeeef1b2b",
+      "source": "verfallene_anstaltsstation_im_sepiaton.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "AMNESIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-35-double-exposure-portrait.png",
+      "sha256": "5bbd8ca917aec94ffd2753c52b29bc4eea9e04fd5bff7242663a39fff4047fb1",
+      "git_blob_sha1": "8dc2c18232fd267ccac90f9ece9e6ca254826b7b",
+      "bytes": 888756,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/35-double-exposure-portrait.png",
+      "source_sha256": "000535b351393e0f28e966356ccceab61ac73eb8b92b471586e25f88d8589875",
+      "source": "melancholischer_patient_im_geisterkorridor.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "DISSOCIATION",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-36-elderly-patient-portrait.png",
+      "sha256": "4b30831542ed8c2187ecff2b854ebef2a9abe65822553c8ed3b7af22d463bbca",
+      "git_blob_sha1": "bf0858e5c3400ac805b9e4f49c29991173e47ee1",
+      "bytes": 1032896,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/36-elderly-patient-portrait.png",
+      "source_sha256": "48f55fe040c6f59337c2ceadf2b34df02c016771f4ce3f33e667a7287f40ccef",
+      "source": "a_vintage_grainy_black_and_white_or_sepia_tinged.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "DEPRESSION",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-37-nurse-portrait.png",
+      "sha256": "b9ee2ac6443a80aa32b84419aac7fe602e2a98ea787cab3318c58aaeebb1e715",
+      "git_blob_sha1": "0cbd88793dedeaa34222cb4c73ed06ed1f903bec",
+      "bytes": 896665,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/37-nurse-portrait.png",
+      "source_sha256": "50cd1f0c7c17323b9c2546b273dcb35489cf3f719305d06030cac64748b37e04",
+      "source": "a_vintage_sepia_black_and_white_aged_photograph_wi.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "PARANOIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-38-neurological-instruments.png",
+      "sha256": "c0cfb7968f0c82df0cb4bc6d35bf025ec9e17b956434fbeeb8ba583b8e13ac71",
+      "git_blob_sha1": "26b9b08f3033a49f8017606e0937eb8d7ce8ab14",
+      "bytes": 907451,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/38-neurological-instruments.png",
+      "source_sha256": "606ea23cfc0a2f4a5af1f779a141478000fa0de77fb569694b876a719f5c786b",
+      "source": "a_gritty_high_contrast_black_and_white_vintage_ph.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "PANIC",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-39-closed-medicine-cabinet.png",
+      "sha256": "e03dd40bd83ea2ef03cfcc3f77dd02b85d6b3c1fbdf14819741c7f6178c7cf02",
+      "git_blob_sha1": "eca9aa36da99c3a081133ad1f6d57dd7209ff837",
+      "bytes": 880674,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/39-closed-medicine-cabinet.png",
+      "source_sha256": "3b4b75d4a5d3332031a35f3db5f7b5c5789dca5e4285bbdb88e9304e3f49afb3",
+      "source": "a_moody_black_and_white_vintage_photograph_of_an_o.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "OBSESSION",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    },
+    {
+      "file": "scene-p028h-40-disordered-common-room.png",
+      "sha256": "900e17315b3045a70fc858faaf56c9561bb5a780ea73027e2fdc6b565ece83ec",
+      "git_blob_sha1": "772b5a35e5b9477de0b252ab75df93a478c5bb31",
+      "bytes": 981817,
+      "width": 768,
+      "height": 768,
+      "source_file": "originals/40-disordered-common-room.png",
+      "source_sha256": "61973dfbf60bff5c37821f1aad4f7a368a4dfd5d0e755a199212f2f31d55d502",
+      "source": "a_cinematic_moody_desaturated_sepia_tinged_vinta.png",
+      "origin": "AI-generated fictional scene, P028h",
+      "effect_world": "MANIA",
+      "crop_box": [
+        32,
+        31,
+        1223,
+        1222
+      ]
+    }
+  ]
+}

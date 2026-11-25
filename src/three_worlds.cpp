@@ -50,9 +50,10 @@ void Mania::reset() noexcept {
     smoothed_=amount_;mixDelay_.reset(smoothed_);
 }
 void Mania::setAmount(float a) noexcept {amount_=norm(a);}
-void Mania::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
+void Mania::process(float* const* audio,unsigned channels,std::size_t frames,const float* curve) noexcept {
     if(!valid(audio,channels)||!retrigger_.ready())return;
     for(std::size_t i=0;i<frames;++i) {
+        if(curve)amount_=curve[i];
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         const float mix=mixDelay_.process(m);
@@ -103,7 +104,7 @@ void Panic::reset() noexcept {
     smoothed_=amount_;mixDelay_.reset(smoothed_*(1.5f-.5f*smoothed_));
 }
 void Panic::setAmount(float a) noexcept {amount_=norm(a);}
-void Panic::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
+void Panic::process(float* const* audio,unsigned channels,std::size_t frames,const float* curve) noexcept {
     if(!valid(audio,channels)||state_[0].history.empty())return;
     const float fa=pole(85.,rate_),sa=pole(5.,rate_);
     const float bpLow=pole(220.,rate_),bpHigh=pole(2400.,rate_);
@@ -116,6 +117,7 @@ void Panic::process(float* const* audio,unsigned channels,std::size_t frames) no
         return std::max(1u,static_cast<unsigned>(seconds*rate_));
     };
     for(std::size_t i=0;i<frames;++i) {
+        if(curve)amount_=curve[i];
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_*(1.5f-.5f*smoothed_);
         const float mix=mixDelay_.process(m);
@@ -167,12 +169,13 @@ void Psychosis::reset() noexcept {
     state_={};smoothed_=amount_;mixDelay_.reset(smoothed_);
 }
 void Psychosis::setAmount(float a) noexcept {amount_=norm(a);}
-void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames) noexcept {
+void Psychosis::process(float* const* audio,unsigned channels,std::size_t frames,const float* curve) noexcept {
     if(!valid(audio,channels))return;
     const float lowPole=pole(145.,rate_),midPole=pole(1750.,rate_);
     const float focusPole=pole(620.,rate_),envPole=pole(12.,rate_);
     const float dcPole=pole(5.,rate_);
     for(std::size_t i=0;i<frames;++i) {
+        if(curve)amount_=curve[i];
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_,mix=mixDelay_.process(m);
         for(unsigned ch=0;ch<channels;++ch) {

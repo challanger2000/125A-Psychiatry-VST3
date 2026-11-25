@@ -17,7 +17,7 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount) noexcept;
-    void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
+    void process(float* const* audio,unsigned channels,std::size_t frames, const float* curve=nullptr) noexcept;
     std::uint64_t retriggers() const noexcept {return retrigger_.events();}
 private:
     struct Channel {
@@ -37,7 +37,7 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount) noexcept;
-    void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
+    void process(float* const* audio,unsigned channels,std::size_t frames, const float* curve=nullptr) noexcept;
     std::uint64_t impulses() const noexcept {return impulseCount_;}
 private:
     struct Channel {
@@ -62,7 +62,7 @@ public:
     void prepare(double sampleRate) noexcept;
     void reset() noexcept;
     void setAmount(float amount) noexcept;
-    void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
+    void process(float* const* audio,unsigned channels,std::size_t frames, const float* curve=nullptr) noexcept;
 private:
     struct Channel {
         float low=0.f,lowMid=0.f,lowMidFiltered=0.f,driveEnvelope=0.f,dc=0.f,focus=0.f;

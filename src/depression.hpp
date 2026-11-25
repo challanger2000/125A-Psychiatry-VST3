@@ -12,7 +12,7 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float normalized) noexcept;
-    void process(float* const* channels, unsigned channelCount, std::size_t frames) noexcept;
+    void process(float* const* channels, unsigned channelCount, std::size_t frames, const float* curve=nullptr) noexcept;
 
 private:
     static constexpr std::size_t kDelayCount=4;

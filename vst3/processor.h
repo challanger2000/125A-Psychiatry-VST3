@@ -76,26 +76,32 @@ private:
     std::uint64_t appliedGeneration_=0;
     StateFrame captureState() const noexcept;
     void publishState() noexcept;
-    void consumeRecall() noexcept;
+    void consumeRecall(bool live=false) noexcept;
     float therapyDSP_=0.f;
     bool prepared_=false;
     Steinberg::uint32 tailSamples_=30*48000+kLatency;
     std::array<std::vector<float>,2> original_{};
     std::array<psychiatry::detail::FixedDelay<kLatency>,2> dryDelay_{};
-    struct Pending { std::uint64_t due=0; float value=0.f; };
-    struct PendingLane {
-        std::array<Pending,kLatency+1> items{};
-        std::size_t head=0,count=0;
+    struct Point {Steinberg::int32 offset=0;double value=0.;};
+    struct Lane {
+        std::vector<Point> points;
+        std::vector<float> curve;
+        std::array<float,kLatency> delay{};
+        unsigned cursor=0;
+        std::size_t count=0,index=0;
+        Steinberg::int32 previousOffset=-1;
+        double previousValue=0.;
+        float input=0.f;
     };
-    std::array<PendingLane,14> pending_{};
-    std::uint64_t clock_=0;
-    void dispatchPending() noexcept;
-    std::uint64_t nextDue() const noexcept;
+    std::array<Lane,14> lanes_{};
+    void resetControls() noexcept;
+    void renderCurves(Steinberg::int32 start,Steinberg::int32 frames) noexcept;
+    void storeInput(unsigned lane,float v) noexcept;
     void applyDSP(unsigned lane,float value) noexcept;
     void resetTimeline() noexcept;
 
-    void apply(Steinberg::Vst::ParamID id, Steinberg::Vst::ParamValue value) noexcept;
-    bool processSpan(Steinberg::Vst::ProcessData& data,
+    bool validateBuffers(const Steinberg::Vst::ProcessData& data) noexcept;
+    void processSpan(Steinberg::Vst::ProcessData& data,
                      Steinberg::int32 offset, Steinberg::int32 frames,
                      Steinberg::uint64& silent) noexcept;
 };

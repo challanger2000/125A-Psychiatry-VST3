@@ -13,7 +13,7 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount) noexcept;
-    void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
+    void process(float* const* audio,unsigned channels,std::size_t frames, const float* curve=nullptr) noexcept;
 private:
     struct Voice {
         float phase=0.f,low=0.f,high=0.f;
@@ -33,7 +33,7 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount) noexcept;
-    void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
+    void process(float* const* audio,unsigned channels,std::size_t frames, const float* curve=nullptr) noexcept;
 private:
     detail::DissociationGrains grains_{};
     double rate_=48000.;
@@ -45,7 +45,7 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount) noexcept;
-    void process(float* const* audio,unsigned channels,std::size_t frames) noexcept;
+    void process(float* const* audio,unsigned channels,std::size_t frames, const float* curve=nullptr) noexcept;
 private:
     struct Channel {
         std::array<float,17> analytic{};

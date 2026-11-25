@@ -38,7 +38,7 @@ public:
     void setSeed(std::uint64_t seed) noexcept;
     // In-place; 1 or 2 planar float channels; arbitrary number of frames.
     void process(float* const* channels, unsigned channelCount,
-                 std::size_t frames) noexcept;
+                 std::size_t frames, const float* curve=nullptr) noexcept;
     Stats stats() const noexcept { auto s=stats_;s.acousticEvents=acoustic_.events();return s; }
     unsigned latencySamples() const noexcept { return 0; } // reverses past audio, not future audio
 

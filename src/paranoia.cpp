@@ -99,7 +99,7 @@ void Paranoia::triggerReverse(float intensity) noexcept {
 }
 
 void Paranoia::process(float* const* channels, unsigned channelCount,
-                       std::size_t frames) noexcept {
+                       std::size_t frames,const float* curve) noexcept {
     if (lookback_.empty() || !channels || !channels[0] ||
         (channelCount != 1 && channelCount != 2) ||
         (channelCount == 2 && !channels[1])) return;
@@ -107,6 +107,7 @@ void Paranoia::process(float* const* channels, unsigned channelCount,
     const float coefficient = static_cast<float>(1.0 - std::exp(-1.0 / (0.015 * sampleRate_)));
     const float envCoef = static_cast<float>(1.0 - std::exp(-1.0 / (0.004 * sampleRate_)));
     for (std::size_t i = 0; i < frames; ++i) {
+        if(curve)settings_.amount=curve[i];
         const float inL = safeSample(channels[0][i]);
         const float inR = channelCount == 2 ? safeSample(channels[1][i]) : inL;
         smoothedAmount_ = detail::smoothToward(smoothedAmount_, settings_.amount, coefficient);

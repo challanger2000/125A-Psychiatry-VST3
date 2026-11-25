@@ -48,7 +48,7 @@ void Depression::reset() noexcept {
 }
 void Depression::setAmount(float a) noexcept { target_=normal(a); }
 
-void Depression::process(float* const* channels, unsigned count, std::size_t frames) noexcept {
+void Depression::process(float* const* channels, unsigned count, std::size_t frames,const float* curve) noexcept {
     if(!channels||!channels[0]||(count!=1&&count!=2)||
         (count==2&&!channels[1])||state_[0].delay[0].empty()) return;
     const auto pole=[this](double seconds) noexcept {
@@ -58,6 +58,7 @@ void Depression::process(float* const* channels, unsigned count, std::size_t fra
     const float presencePole=static_cast<float>(1.-std::exp(-6.283185307179586*3200./rate_));
     const float driftStep=static_cast<float>(1./(.42*rate_));
     for(std::size_t n=0;n<frames;++n) {
+        if(curve)target_=curve[n];
         smoothed_=detail::smoothToward(smoothed_,target_,step_);
         // P006 measured 20%-macro effect below the onset threshold on
         // clean bass/atmosphere. A smooth concave curve makes the first

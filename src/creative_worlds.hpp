@@ -44,9 +44,10 @@ public:
         write_=fade_=segment_=segmentLength_=0;lag_=nextLag_=.12*sr_;
         speedFrom_=speedTo_=1.;rng_=0x125A91E3u;m_=amount_;
     }
-    void process(float* const* p,unsigned channels,std::size_t n) noexcept {
+    void process(float* const* p,unsigned channels,std::size_t n,const float* curve=nullptr) noexcept {
         if(!creative::valid(p,channels)||history_[0].empty())return;
         for(std::size_t i=0;i<n;++i) {
+            if(curve)amount_=curve[i];
             m_=detail::smoothToward(m_,amount_,step_);
             if(segment_>=segmentLength_) {
                 speedFrom_=speedTo_;
@@ -95,8 +96,19 @@ public:
         size_=256;while(size_<4096&&double(size_)<.021*sr_)size_*=2;
         hop_=size_/4;
         window_.resize(size_);twiddle_.resize(size_/2);
+        bitReverse_.resize(size_);decay_.resize(size_/2+1);fallbackRotation_.resize(size_/2+1);
         for(std::size_t k=0;k<size_;++k)window_[k]=float(.5-.5*std::cos(2.*creative::pi*double(k)/double(size_)));
         for(std::size_t k=0;k<twiddle_.size();++k)twiddle_[k]=std::polar(1.f,float(-2.*creative::pi*double(k)/double(size_)));
+        bitReverse_[0]=0;
+        for(std::size_t i=1,j=0;i<size_;++i){
+            std::size_t bit=size_>>1;for(;j&bit;bit>>=1)j^=bit;
+            j^=bit;bitReverse_[i]=j;
+        }
+        for(std::size_t k=0;k<decay_.size();++k){
+            const double f=2.*double(k)/double(size_);
+            decay_[k]=float(std::exp(-double(hop_)*(1.+3.*f*f)/(sr_*1.6)));
+            fallbackRotation_[k]=std::polar(1.f,float(2.*creative::pi*double(k*hop_)/double(size_)));
+        }
         for(auto& c:state_) {
             c.history.assign(size_,0.f);c.ola.assign(size_,0.f);
             c.work.assign(size_,C{});c.previous.assign(size_/2+1,C{});
@@ -113,9 +125,10 @@ public:
             c.age=0;c.captureEnergy=0.;c.active=false;c.previousValid=false;
         }
     }
-    void process(float* const* p,unsigned channels,std::size_t n) noexcept {
+    void process(float* const* p,unsigned channels,std::size_t n,const float* curve=nullptr) noexcept {
         if(!creative::valid(p,channels)||window_.empty())return;
         for(std::size_t i=0;i<n;++i) {
+            if(curve)amount_=curve[i];
             m_=detail::smoothToward(m_,amount_,step_);
             for(unsigned ch=0;ch<channels;++ch) {
                 auto& c=state_[ch];const float raw=p[ch][i],wet=c.ola[write_];
@@ -143,11 +156,7 @@ private:
         bool active=false,previousValid=false;
     };
     void fft(std::vector<C>& a,bool inverse) noexcept {
-        for(std::size_t i=1,j=0;i<size_;++i) {
-            std::size_t bit=size_>>1;
-            for(;j&bit;bit>>=1)j^=bit;
-            j^=bit;if(i<j)std::swap(a[i],a[j]);
-        }
+        for(std::size_t i=1;i<size_;++i)if(i<bitReverse_[i])std::swap(a[i],a[bitReverse_[i]]);
         for(std::size_t len=2;len<=size_;len*=2) {
             const auto half=len/2,stride=size_/len;
             for(std::size_t base=0;base<size_;base+=len)
@@ -181,14 +190,11 @@ private:
             if(capture) {
                 const C cross=now*std::conj(c.previous[k]);
                 const float magnitude=std::abs(cross);
-                const float expected=float(2.*creative::pi*double(k*hop_)/double(size_));
-                c.rotation[k]=c.previousValid&&magnitude>1.e-12f?cross/magnitude:std::polar(1.f,expected);
+                c.rotation[k]=c.previousValid&&magnitude>1.e-12f?cross/magnitude:fallbackRotation_[k];
                 c.held[k]=now;
             } else if(c.active) {
                 // Frequency-dependent decay: high bins narrow out first.
-                const double f=2.*double(k)/double(size_);
-                const float decay=float(std::exp(-double(hop_)*(1.+3.*f*f)/(sr_*1.6)));
-                c.held[k]*=c.rotation[k]*decay;
+                c.held[k]*=c.rotation[k]*decay_[k];
                 if(std::abs(c.held[k])<1.e-12f)c.held[k]=C{};
             }
             c.previous[k]=now;
@@ -209,7 +215,9 @@ private:
     }
     std::array<Channel,2> state_{};
     std::vector<float> window_;
-    std::vector<C> twiddle_;
+    std::vector<C> twiddle_,fallbackRotation_;
+    std::vector<float> decay_;
+    std::vector<std::size_t> bitReverse_;
     std::size_t size_=0,hop_=0,write_=0,ticks_=0,filled_=0;
     double sr_=48000.;
     float amount_=0.f,m_=0.f,step_=.001f;
@@ -232,9 +240,10 @@ public:
         write_=left_=age_=length_=0;rng_=0x125A92E1u;target_=gain_={1.f,1.f,1.f,1.f};
         fragment_=false;lag_=0.;m_=amount_;
     }
-    void process(float* const* p,unsigned channels,std::size_t n) noexcept {
+    void process(float* const* p,unsigned channels,std::size_t n,const float* curve=nullptr) noexcept {
         if(!creative::valid(p,channels)||state_[0].history.empty())return;
         for(std::size_t i=0;i<n;++i) {
+            if(curve)amount_=curve[i];
             m_=detail::smoothToward(m_,amount_,step_);
             if(left_==0) {
                 const float event=creative::random(rng_);

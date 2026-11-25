@@ -22,10 +22,11 @@ void Obsession::reset() noexcept {
     retriggers_=0;smoothed_=target_;colour_={};
 }
 void Obsession::setAmount(float amount) noexcept {target_=norm(amount);}
-void Obsession::process(float* const* channels,unsigned count,std::size_t frames) noexcept {
+void Obsession::process(float* const* channels,unsigned count,std::size_t frames,const float* curve) noexcept {
     if(history_.empty()||!channels||!channels[0]||(count!=1&&count!=2)||(count==2&&!channels[1]))return;
     const auto cap=history_.size();
     for(std::size_t n=0;n<frames;++n) {
+        if(curve)target_=curve[n];
         smoothed_=detail::smoothToward(smoothed_,target_,step_);
         const float m=smoothed_;
         const float rawL=channels[0][n],rawR=count==2?channels[1][n]:rawL;

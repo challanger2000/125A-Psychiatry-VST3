@@ -1,6 +1,6 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current audited candidate: P028j / v0.9.26 — **NO-GO** after independent Codex audit. P028k / v0.9.27 all four CI workflows PASS on 50222758; independent follow-up audit pending; NO-GO for Studio Pro. **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current audited candidate: P028j / v0.9.26 — **NO-GO** after independent Codex audit. P028k / v0.9.27 all four CI workflows PASS on 50222758; independent follow-up audit NO-GO; R01–R07 open (P028l). **Only `main`**; no final or musical approval.
 
 ## Current task — independent P028k follow-up audit
 
@@ -435,3 +435,6 @@ A01: kohärente Audio-Snapshots und separate Recall-Mailbox, Veröffentlichung p
 
 ### P028k / v0.9.27 — consolidated verification candidate
 A01–A09 initial source repair in 8170b90870f57e26fbc89dac0e1dfe018856393c. Follow-up adds exact-duration bypass ramp, deterministic reentrant save test, concurrent coherent saves, active recall, full-count stream error injection, sparse/dense/partitioned THERAPY PCM and bypass oracle, inactive bus/nonfinite PCM tests, mathematical scene alpha test, A10 PE/notice/moduleinfo checks, actual staging ZIP byte comparison. Native rejection of zoom, concurrent recall/automation ordering beyond the chosen callback-boundary policy, every original Codex counterprobe, Windows compile/test and deadline tests remain gates; **NO-GO until independent verification**. Five-ms bypass ramp is intentional engineering correction; no creative DSP topology or artwork changes. Packaging now provides the verified inner ZIP in the GitHub artifact. No original Codex evidence ZIP available.
+
+## P028l — follow-up audit correction in progress
+Independent P028k follow-up audit confirms A01/A03/A04/A05/A06 locally, A02/A07/A08/A09 partial failures, A10 static test gaps. Four-instance 96k/64 deadline failures in Linux/KVM; no Windows/ASIO equivalence claimed. R01/R02/R03 candidate: prevalidate and cache every known queue point before any side effect; delayed per-lane curves and blockwise stage processing instead of whole-chain single-sample spans; FFT bit-reversal, decay and fallback rotation precomputed at prepare; active recall uses existing bypass ramp. Creative math and assets unchanged. Requires baseline PCM comparison, dense/invalid queue tests, active recall ramp, profiling; not yet compiled. R04–R07 and packaging/GUI tests remain open. NO-GO. No CI yet.

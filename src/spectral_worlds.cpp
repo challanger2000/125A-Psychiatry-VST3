@@ -59,7 +59,7 @@ void Schizophrenia::reset() noexcept {
     smoothed_=amount_;
 }
 void Schizophrenia::setAmount(float v) noexcept {amount_=norm(v);}
-void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frames) noexcept {
+void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frames,const float* curve) noexcept {
     if(!valid(io,channels)||state_[0].ring.empty())return;
     std::array<float,3> grain{},phaseStep{},lowPole{},highPole{};
     for(std::size_t k=0;k<grain.size();++k) {
@@ -70,6 +70,7 @@ void Schizophrenia::process(float* const* io,unsigned channels,std::size_t frame
     }
     const float baseLag=std::max(1.f,static_cast<float>(rate_*.002));
     for(std::size_t i=0;i<frames;++i) {
+        if(curve)amount_=curve[i];
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         std::array<float,3> ratio{};
@@ -124,9 +125,10 @@ void Dissociation::reset() noexcept {
     grains_.reset();smoothed_=amount_;
 }
 void Dissociation::setAmount(float v) noexcept {amount_=norm(v);}
-void Dissociation::process(float* const* io,unsigned channels,std::size_t frames) noexcept {
+void Dissociation::process(float* const* io,unsigned channels,std::size_t frames,const float* curve) noexcept {
     if(!valid(io,channels)||!grains_.ready())return;
     for(std::size_t i=0;i<frames;++i) {
+        if(curve)amount_=curve[i];
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         grains_.beginFrame(m,channels);
@@ -166,11 +168,12 @@ void Hallucination::reset() noexcept {
     smoothed_=amount_;
 }
 void Hallucination::setAmount(float v) noexcept {amount_=norm(v);}
-void Hallucination::process(float* const* io,unsigned channels,std::size_t frames) noexcept {
+void Hallucination::process(float* const* io,unsigned channels,std::size_t frames,const float* curve) noexcept {
     if(!valid(io,channels)||state_[0].echo.empty())return;
     const float a=coeff(550.,rate_),b=coeff(1600.,rate_);
     const float invRate=static_cast<float>(1./rate_);
     for(std::size_t i=0;i<frames;++i) {
+        if(curve)amount_=curve[i];
         smoothed_=detail::smoothToward(smoothed_,amount_,step_);
         const float m=smoothed_;
         reverse_.beginFrame(m,channels);

@@ -12,7 +12,7 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount) noexcept;
-    void process(float* const* channels,unsigned channelCount,std::size_t frames) noexcept;
+    void process(float* const* channels,unsigned channelCount,std::size_t frames, const float* curve=nullptr) noexcept;
     std::uint64_t retriggers() const noexcept { return retriggers_; }
 private:
     struct Sample {float l=0.f,r=0.f;};

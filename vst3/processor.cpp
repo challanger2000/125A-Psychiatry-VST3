@@ -18,31 +18,11 @@ namespace {
 double normalized(double v) noexcept {
     return std::isfinite(v) ? std::clamp(v, 0.0, 1.0) : 0.0;
 }
-struct Lane {
-    Vst::IParamValueQueue* queue=nullptr;
-    int32 index=0;
-    int32 count=0;
-    int32 nextOffset=0;
-    Vst::ParamValue nextValue=0;
-    int32 previousOffset=-1;
-    double previousValue=0.;
-    bool discrete=false;
-};
-bool advance(Lane& lane, int32 blockFrames) noexcept {
-    if(!lane.queue || lane.index>=lane.count) return false;
-    int32 offset=0;
-    Vst::ParamValue value=0;
-    if(lane.queue->getPoint(lane.index,offset,value)!=kResultTrue) {
-        lane.index=lane.count;
-        return false;
-    }
-    if(offset<0||offset>std::max(0,blockFrames-1)||offset<=lane.previousOffset){
-        lane.index=lane.count;return false;
-    }
-    lane.nextOffset=offset;
-    lane.nextValue=normalized(value);
-    return true;
-}
+constexpr std::array<Vst::ParamID,14> kLaneIds{
+    kDepression,kParanoia,kSchizophrenia,kMania,kPanic,kDissociation,kObsession,
+    kHallucination,kPsychosis,kTherapy,kBypass,kDelirium,kCatatonia,kAmnesia};
+constexpr unsigned D=psychiatry::detail::kLinearPhaseLatency;
+constexpr std::array<unsigned,14> kOffsets{0,3*D,D,D,2*D,3*D,3*D,3*D,3*D,4*D,4*D,4*D,4*D,4*D};
 } // namespace
 
 Processor::Processor() {
@@ -107,6 +87,10 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
         delirium_.setAmount(deliriumAmount_);catatonia_.setAmount(catatoniaAmount_);amnesia_.setAmount(amnesiaAmount_);
         for(auto& channel:original_)
             channel.assign(static_cast<std::size_t>(setup.maxSamplesPerBlock),0.f);
+        for(auto& lane:lanes_){
+            lane.points.resize(static_cast<std::size_t>(setup.maxSamplesPerBlock));
+            lane.curve.resize(static_cast<std::size_t>(setup.maxSamplesPerBlock));
+        }
         wetStep_=static_cast<float>(1.-std::exp(-1./(0.012*setup.sampleRate)));
         resetTimeline();
         wetSmoothed_=1.f-therapyAmount_;
@@ -147,7 +131,7 @@ tresult PLUGIN_API Processor::canProcessSampleSize(int32 symbolic) {
 // A host event at sample t enters each stage when that stage receives
 // sample t; the four stage mix envelopes have their own 24-sample delay.
 void Processor::resetTimeline() noexcept {
-    clock_=0;pending_={};
+    resetControls();
     for(auto& d:dryDelay_)d.reset();
     applyDSP(0,depressionAmount_);applyDSP(1,paranoiaSettings_.amount);
     applyDSP(2,schizophreniaAmount_);applyDSP(3,maniaAmount_);
@@ -175,84 +159,78 @@ void Processor::applyDSP(unsigned lane,float v) noexcept {
         case 13: amnesia_.setAmount(v);break;
     }
 }
-void Processor::apply(Vst::ParamID id,Vst::ParamValue value) noexcept {
-    const float v=static_cast<float>(normalized(value));
-    unsigned lane=0;
-    switch(id) {
-        case kDepression: depressionAmount_=v;lane=0;break;
-        case kParanoia: paranoiaSettings_.amount=v;lane=1;break;
-        case kSchizophrenia: schizophreniaAmount_=v;lane=2;break;
-        case kMania: maniaAmount_=v;lane=3;break;
-        case kPanic: panicAmount_=v;lane=4;break;
-        case kDissociation: dissociationAmount_=v;lane=5;break;
-        case kObsession: obsessionAmount_=v;lane=6;break;
-        case kHallucination: hallucinationAmount_=v;lane=7;break;
-        case kPsychosis: psychosisAmount_=v;lane=8;break;
-        case kTherapy: therapyAmount_=v;lane=9;break;
-        case kBypass: bypass_=v>=0.5f;lane=10;break;
-        case kDelirium: deliriumAmount_=v;lane=11;break;
-        case kCatatonia: catatoniaAmount_=v;lane=12;break;
-        case kAmnesia: amnesiaAmount_=v;lane=13;break;
-        default: return;
+void Processor::storeInput(unsigned lane,float v) noexcept {
+    switch(lane){
+        case 0:depressionAmount_=v;break;case 1:paranoiaSettings_.amount=v;break;
+        case 2:schizophreniaAmount_=v;break;case 3:maniaAmount_=v;break;
+        case 4:panicAmount_=v;break;case 5:dissociationAmount_=v;break;
+        case 6:obsessionAmount_=v;break;case 7:hallucinationAmount_=v;break;
+        case 8:psychosisAmount_=v;break;case 9:therapyAmount_=v;break;
+        case 10:bypass_=v>=.5f;break;case 11:deliriumAmount_=v;break;
+        case 12:catatoniaAmount_=v;break;case 13:amnesiaAmount_=v;break;
     }
-    constexpr std::uint64_t D=psychiatry::detail::kLinearPhaseLatency;
-    constexpr std::array<std::uint64_t,14> offsets{0,3*D,D,D,2*D,3*D,3*D,3*D,3*D,4*D,4*D,4*D,4*D,4*D};
-    auto& q=pending_[lane];
-    const auto due=clock_+offsets[lane];
-    if(q.count && q.items[(q.head+q.count-1)%q.items.size()].due==due) {
-        q.items[(q.head+q.count-1)%q.items.size()].value=v;
-    } else {
-        // At most one change per sample per lane, within kLatency samples.
-        // Capacity kLatency+1 includes the event due at the current sample.
-        if(q.count<q.items.size()) {
-            q.items[(q.head+q.count)%q.items.size()]={due,v};
-            ++q.count;
+}
+void Processor::resetControls() noexcept {
+    const auto values=captureState().values;
+    for(unsigned i=0;i<lanes_.size();++i){
+        auto& lane=lanes_[i];lane.input=values[i];lane.delay.fill(values[i]);lane.cursor=0;
+    }
+}
+void Processor::renderCurves(int32 start,int32 frames) noexcept {
+    // Delays are independent per lane. This preserves each stage's exact
+    // input-time automation with a single block traversal per DSP stage.
+    for(unsigned i=0;i<lanes_.size();++i){
+        auto& lane=lanes_[i];const auto delay=kOffsets[i];
+        for(int32 n=0;n<frames;++n){
+            const int32 at=start+n;
+            if(lane.index<lane.count){
+                const auto& point=lane.points[lane.index];
+                if(at==point.offset){
+                    lane.input=static_cast<float>(point.value);
+                    lane.previousOffset=point.offset;lane.previousValue=point.value;++lane.index;
+                }else if(i!=10&&lane.previousValue!=point.value){
+                    const double t=double(at-lane.previousOffset)/double(point.offset-lane.previousOffset);
+                    lane.input=static_cast<float>(lane.previousValue+t*(point.value-lane.previousValue));
+                }
+            }
+            if(delay){
+                lane.curve[n]=lane.delay[lane.cursor];
+                lane.delay[lane.cursor]=lane.input;
+                if(++lane.cursor==delay)lane.cursor=0;
+            }else lane.curve[n]=lane.input;
         }
+        storeInput(i,lane.input);
     }
 }
-void Processor::dispatchPending() noexcept {
-    for(unsigned lane=0;lane<pending_.size();++lane) {
-        auto& q=pending_[lane];
-        while(q.count && q.items[q.head].due<=clock_) {
-            applyDSP(lane,q.items[q.head].value);
-            q.head=(q.head+1)%q.items.size();--q.count;
-        }
-    }
-}
-std::uint64_t Processor::nextDue() const noexcept {
-    auto due=std::numeric_limits<std::uint64_t>::max();
-    for(const auto& q:pending_)if(q.count)due=std::min(due,q.items[q.head].due);
-    return due;
-}
-
-bool Processor::processSpan(Vst::ProcessData& data,
-                            int32 offset,int32 frames,uint64& silent) noexcept {
-    if(frames<=0) return true;
-    const auto* outputBus=getAudioOutput(0);
-    const auto* inputBus=getAudioInput(0);
-    if(!outputBus||!inputBus)return false;
-    if(!outputBus->isActive())return true; // never touch inactive host buffers/flags
+bool Processor::validateBuffers(const Vst::ProcessData& data) noexcept {
+    if(!data.numSamples)return true;
+    const auto* out=getAudioOutput(0);const auto* in=getAudioInput(0);
+    if(!out||!in||!prepared_)return false;
+    if(!out->isActive())return true;
     if(data.numOutputs<1||!data.outputs)return false;
-    auto& output=data.outputs[0];
-    const bool inputActive=inputBus->isActive();
+    const auto& output=data.outputs[0];
     if(!output.channelBuffers32||(output.numChannels!=1&&output.numChannels!=2))return false;
-    if(inputActive && (data.numInputs<1||!data.inputs||
-        !data.inputs[0].channelBuffers32||data.inputs[0].numChannels!=output.numChannels))return false;
-
+    if(in->isActive()&&(data.numInputs<1||!data.inputs||!data.inputs[0].channelBuffers32||
+        data.inputs[0].numChannels!=output.numChannels))return false;
+    for(int32 ch=0;ch<output.numChannels;++ch)
+        if(!output.channelBuffers32[ch]||(in->isActive()&&!data.inputs[0].channelBuffers32[ch]))return false;
+    return true;
+}
+void Processor::processSpan(Vst::ProcessData& data,
+                            int32 offset,int32 frames,uint64& silent) noexcept {
+    if(!getAudioOutput(0)->isActive())return;
+    auto& output=data.outputs[0];
+    const bool inputActive=getAudioInput(0)->isActive();
     std::array<float*,2> src{},dst{};
-    for(int32 ch=0;ch<output.numChannels;++ch) {
-        if(inputActive)src[static_cast<std::size_t>(ch)]=data.inputs[0].channelBuffers32[ch];
-        dst[static_cast<std::size_t>(ch)]=output.channelBuffers32[ch];
-        if((inputActive&&!src[static_cast<std::size_t>(ch)])||!dst[static_cast<std::size_t>(ch)])
-            return false;
+    for(int32 ch=0;ch<output.numChannels;++ch){
+        if(inputActive)src[ch]=data.inputs[0].channelBuffers32[ch];
+        dst[ch]=output.channelBuffers32[ch];
     }
-    if(original_[0].empty()) return false;
-
     // Chunk in setupProcessing-sized slices. All scratch storage is reserved
     // before audio starts; processSpan and DSP effects never resize or lock.
-    for(int32 pos=0;pos<frames;) {
-        const auto size=static_cast<int32>(std::min<std::size_t>(
-            static_cast<std::size_t>(frames-pos),original_[0].size()));
+    {
+        constexpr int32 pos=0;
+        const auto size=frames;
         std::array<float*,2> ptrs{};
         for(int32 ch=0;ch<output.numChannels;++ch) {
             const auto c=static_cast<std::size_t>(ch);
@@ -270,27 +248,29 @@ bool Processor::processSpan(Vst::ProcessData& data,
             // Fixed order yields designed interaction; individual macro
             // processors each return exact dry at zero amount.
             depression_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                                static_cast<std::size_t>(size));
+                                static_cast<std::size_t>(size),lanes_[0].curve.data());
             schizophrenia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                                    static_cast<std::size_t>(size));
+                                    static_cast<std::size_t>(size),lanes_[2].curve.data());
             mania_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                           static_cast<std::size_t>(size));
+                           static_cast<std::size_t>(size),lanes_[3].curve.data());
             panic_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                           static_cast<std::size_t>(size));
+                           static_cast<std::size_t>(size),lanes_[4].curve.data());
             paranoia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                              static_cast<std::size_t>(size));
+                              static_cast<std::size_t>(size),lanes_[1].curve.data());
             dissociation_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                                  static_cast<std::size_t>(size));
+                                  static_cast<std::size_t>(size),lanes_[5].curve.data());
             obsession_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                               static_cast<std::size_t>(size));
+                               static_cast<std::size_t>(size),lanes_[6].curve.data());
             hallucination_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                                   static_cast<std::size_t>(size));
+                                   static_cast<std::size_t>(size),lanes_[7].curve.data());
             psychosis_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),
-                               static_cast<std::size_t>(size));
-            delirium_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size));
-            catatonia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size));
-            amnesia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size));
+                               static_cast<std::size_t>(size),lanes_[8].curve.data());
+            delirium_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size),lanes_[11].curve.data());
+            catatonia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size),lanes_[12].curve.data());
+            amnesia_.process(ptrs.data(),static_cast<unsigned>(output.numChannels),static_cast<std::size_t>(size),lanes_[13].curve.data());
             for(int32 i=0;i<size;++i) {
+                therapyDSP_=lanes_[9].curve[i];
+                applyDSP(10,lanes_[10].curve[i]);
                 wetSmoothed_=psychiatry::detail::smoothToward(wetSmoothed_,1.f-therapyDSP_,wetStep_);
                 const float target=bypassDSP_?1.f:0.f;
                 if(bypassRemaining_){
@@ -310,87 +290,65 @@ bool Processor::processSpan(Vst::ProcessData& data,
                 }
             }
         }
-        pos+=size;
     }
-    return true;
 }
 
 tresult PLUGIN_API Processor::process(Vst::ProcessData& data) {
-    if(data.numSamples<0 || data.symbolicSampleSize!=Vst::kSample32) return kResultFalse;
-    consumeRecall();
-    std::array<Lane,32> lanes{};
-    int32 count=0;
-    if(data.inputParameterChanges) {
+    if(data.numSamples<0||data.symbolicSampleSize!=Vst::kSample32||!validateBuffers(data))return kResultFalse;
+    // Copy and validate every point before touching recall, DSP, clock or host buffers.
+    // All scratch storage is prepared off audio. No queue is consulted twice.
+    for(auto& lane:lanes_)lane.count=lane.index=0;
+    if(data.inputParameterChanges){
         const int32 total=data.inputParameterChanges->getParameterCount();
-        if(total<0||total>static_cast<int32>(lanes.size())) return kResultFalse;
-        for(int32 k=0;k<total;++k) {
-            auto* q=data.inputParameterChanges->getParameterData(k);
+        if(total<0||total>32)return kResultFalse;
+        std::array<bool,14> seen{};
+        for(int32 j=0;j<total;++j){
+            auto* q=data.inputParameterChanges->getParameterData(j);
             if(!q)continue;
-            const auto points=q->getPointCount();
-            if(points<0||points>std::max(1,data.numSamples))return kResultFalse;
-            if(!points)continue;
             const auto id=q->getParameterId();
-            const auto values=captureState().values;
-            unsigned slot=14;
-            if(id>=kDepression&&id<=kPsychosis)slot=id-kDepression;
-            else if(id>=kDelirium&&id<=kAmnesia)slot=11+id-kDelirium;
-            else if(id==kTherapy)slot=9;
-            else if(id==kBypass)slot=10;
-            if(slot==14)continue;
-            for(int32 n=0;n<count;++n)if(lanes[n].queue->getParameterId()==id)return kResultFalse;
-            Lane lane;lane.queue=q;lane.count=points;lane.previousValue=values[slot];lane.discrete=id==kBypass;
-            if(!advance(lane,data.numSamples))return kResultFalse;
-            lanes[static_cast<std::size_t>(count++)]=lane;
-        }
-    }
-    uint64 silent=~uint64{0}; // accumulate across every automation-delimited span
-    int32 pos=0;
-    for(;;) {
-        bool changed=false;
-        for(int32 n=0;n<count;++n) {
-            Lane& lane=lanes[static_cast<std::size_t>(n)];
-            if(lane.index>=lane.count)continue;
-            if(pos==lane.nextOffset){
-                apply(lane.queue->getParameterId(),lane.nextValue);
-                lane.previousOffset=lane.nextOffset;lane.previousValue=lane.nextValue;
-                ++lane.index;
-                if(lane.index<lane.count&&!advance(lane,data.numSamples))return kResultFalse;
-                changed=true;
-            }else if(!lane.discrete&&pos<lane.nextOffset&&lane.previousValue!=lane.nextValue){
-                const double t=double(pos-lane.previousOffset)/double(lane.nextOffset-lane.previousOffset);
-                apply(lane.queue->getParameterId(),lane.previousValue+t*(lane.nextValue-lane.previousValue));
+            const auto it=std::find(kLaneIds.begin(),kLaneIds.end(),id);
+            if(it==kLaneIds.end())continue;
+            const auto i=static_cast<unsigned>(it-kLaneIds.begin());
+            auto& lane=lanes_[i];const auto n=q->getPointCount();
+            if(n<0||n>std::max(1,data.numSamples)||seen[i])return kResultFalse;
+            seen[i]=true;
+            if(!n)continue;
+            if(static_cast<std::size_t>(n)>lane.points.size())return kResultFalse;
+            int32 previous=-1;
+            for(int32 k=0;k<n;++k){
+                int32 at=0;double value=0.;
+                if(q->getPoint(k,at,value)!=kResultOk||at<=previous||at<0||
+                    at>std::max(0,data.numSamples-1))return kResultFalse;
+                lane.points[k]={at,normalized(value)};previous=at;
             }
+            lane.count=static_cast<std::size_t>(n);
         }
-        dispatchPending();
-        if(pos>=data.numSamples) break;
-        int32 next=data.numSamples;
-        const auto due=nextDue();
-        if(due!=std::numeric_limits<std::uint64_t>::max()&&due>clock_&&due-clock_<static_cast<std::uint64_t>(next-pos))
-            next=pos+static_cast<int32>(due-clock_);
-        for(int32 n=0;n<count;++n) {
-            const Lane& lane=lanes[static_cast<std::size_t>(n)];
-            if(lane.index<lane.count){
-                next=std::min(next,lane.nextOffset);
-                if(!lane.discrete&&lane.previousValue!=lane.nextValue)next=std::min(next,pos+1);
-            }
-        }
-        if(next<=pos) {
-            if(!changed) return kResultFalse;
-            continue;
-        }
-        if(!processSpan(data,pos,next-pos,silent)) return kResultFalse;
-        clock_+=static_cast<std::uint64_t>(next-pos);
-        pos=next;
     }
-    if(data.numSamples>0&&getAudioOutput(0)&&getAudioOutput(0)->isActive()) {
-        // processSpan already validated the active output and channel count.
-        auto& out=data.outputs[0];
-        out.silenceFlags=silent&((uint64{1}<<out.numChannels)-1);
+    consumeRecall(data.numSamples>0&&prepared_);
+    const auto values=captureState().values;
+    for(unsigned i=0;i<lanes_.size();++i){
+        auto& lane=lanes_[i];lane.input=values[i];lane.previousOffset=-1;lane.previousValue=values[i];
+        if(!data.numSamples&&lane.count){
+            lane.input=static_cast<float>(lane.points[0].value);
+            storeInput(i,lane.input);
+            // Zero-offset stage has no audio delay. Other targets enter at
+            // their own latency offset when the next audio sample arrives.
+            if(kOffsets[i]==0&&prepared_)applyDSP(i,lane.input);
+        }
     }
-    publishState();
-    return kResultOk;
+    uint64 silent=~uint64{0};
+    for(int32 pos=0;pos<data.numSamples;){
+        const auto n=static_cast<int32>(std::min<std::size_t>(
+            static_cast<std::size_t>(data.numSamples-pos),original_[0].size()));
+        renderCurves(pos,n);
+        processSpan(data,pos,n,silent);
+        pos+=n;
+    }
+    if(data.numSamples>0&&getAudioOutput(0)->isActive()){
+        auto& out=data.outputs[0];out.silenceFlags=silent&((uint64{1}<<out.numChannels)-1);
+    }
+    publishState();return kResultOk;
 }
-
 tresult PLUGIN_API Processor::setState(IBStream* state) {
     if(!state) return kResultFalse;
     StateStream s(state);
@@ -449,7 +407,7 @@ void Processor::publishState() noexcept {
         audioState_.publish(frame);lastPublished_=frame;
     }
 }
-void Processor::consumeRecall() noexcept {
+void Processor::consumeRecall(bool live) noexcept {
     StateFrame frame;
     if(!recallState_.tryRead(frame)||frame.generation<=appliedGeneration_)return;
     const auto& v=frame.values;
@@ -458,9 +416,10 @@ void Processor::consumeRecall() noexcept {
     obsessionAmount_=v[6];hallucinationAmount_=v[7];psychosisAmount_=v[8];
     therapyAmount_=v[9];bypass_=v[10]>=.5f;deliriumAmount_=v[11];catatoniaAmount_=v[12];amnesiaAmount_=v[13];
     appliedGeneration_=frame.generation;
-    pending_={};
+    resetControls();
     if(prepared_)for(unsigned i=0;i<v.size();++i)applyDSP(i,v[i]);
-    therapyDSP_=therapyAmount_;bypassDSP_=bypass_;bypassMix_=bypass_?1.f:0.f;bypassRemaining_=0;
+    therapyDSP_=therapyAmount_;
+    if(!live){bypassDSP_=bypass_;bypassMix_=bypass_?1.f:0.f;bypassRemaining_=0;}
     wetSmoothed_=1.f-therapyAmount_;
     publishState();
 }

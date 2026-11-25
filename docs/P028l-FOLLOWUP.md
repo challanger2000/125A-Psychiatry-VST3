@@ -7,3 +7,5 @@ Baseline d361df96a2ea7a2d40ef4a7c1d098f3474769555; main only. Independent Nachau
 - R06: required exports must target executable raw-backed sections; explicit 56-file allowlist (confirmed from exact previous Windows workflow log), ZIP SHA256/CRC/member hashes, verified extraction, real Windows loader dependency resolution, validator on extracted candidate, targeted non-executable-export/missing-DLL/extra-file/archive-tampering negatives added. Execution NOT RUN.
 
 R01–R03 earlier candidate uncompiled. This change is a source candidate only, no CI triggered. Local network checkout unavailable; no SDK locally. All seven findings remain unverified, NO-GO for Studio Pro.
+
+Native follow-up test source added: actual DLL factory + IEditController, real HWND/IPlugFrame accepted and rejected sizes, multi-view partial refusal, open/close state, MOTION pixel changes and interrupted-fade desktop ROI. No claim of execution yet. Higher zoom tests geometry only, not full physical desktop presentation. v0.9.28 candidate.

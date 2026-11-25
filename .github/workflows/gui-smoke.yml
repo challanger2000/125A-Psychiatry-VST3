@@ -14,6 +14,7 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/gui-smoke.yml'
       - 'tools/gui_smoke.ps1'
+      - 'tests/test_native_followup.cpp'
   workflow_dispatch:
 
 concurrency:
@@ -58,12 +59,21 @@ jobs:
       - name: Build Windows VST3 and official Steinberg GUI host
         shell: pwsh
         run: |
-          cmake --build build-vst3 --config Release --target PsychiatryPrototype editorhost --parallel 4
+          cmake --build build-vst3 --config Release --target PsychiatryPrototype editorhost test_native_followup --parallel 4
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Attempt real Win32 editor attachment
         shell: pwsh
         run: |
           & "./tools/gui_smoke.ps1"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Native DLL follow-up recall, resize refusal and interrupted fade
+        shell: pwsh
+        run: |
+          $hostExe = Get-ChildItem build-vst3 -Recurse -File -Filter test_native_followup.exe | Select-Object -First 1
+          $bundle = Get-ChildItem build-vst3 -Recurse -Directory -Filter 125A-PSYCHIATRY.vst3 | Where-Object { $_.FullName -match 'Release' } | Select-Object -First 1
+          if (-not $hostExe -or -not $bundle) { throw 'Native follow-up host or bundle missing' }
+          $module = Join-Path $bundle.FullName 'Contents/x86_64-win/125A-PSYCHIATRY.vst3'
+          & $hostExe.FullName $module
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Publish GUI smoke screenshot if captured
         if: always()

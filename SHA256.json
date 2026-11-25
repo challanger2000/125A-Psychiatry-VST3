@@ -1,0 +1,22 @@
+{
+  "README.txt": "91a4fc45de6b20b1df61fd7b7040b9414125825d93b41d78b6b156607a221183",
+  "artwork-source/faceplate.png": "449d955a6aee7045799ac4749a474099cd68954b114438baa737d8da0b0a256b",
+  "artwork-source/glass.png": "4150c51d811bc7795bd9a154ee0dffd28eab5cb7fe20da47083369de7810b9d0",
+  "artwork-source/macro.png": "a1e02c24a75a81082b417ed0ee08783b079f748a743b108bf4043a735734eaf5",
+  "artwork-source/therapy-reference.png": "6cbcc23ea45d9195c05108ca34dd86d6864c4e4a280c3d6bd2ada3358d4db696",
+  "artwork-source/therapy.png": "f3d98648a4e0cef28885d336fae95792e5db574a7ea5ed34c97c67c3c8107b53",
+  "geometry.json": "73307b0011d9409cd56eaa90e54904f3aa1d5442ddc7ce8ba191e69294356e4b",
+  "resource/artwork/faceplate.png": "e60f3de2b6f61e6b62e72a7f04ddd1a1f95a4fe0ed42e89e0a9a68adbf1f5bfd",
+  "resource/artwork/loss-pressed.png": "65573f41c430328e1bd757e0c3972336834a1af7deef65e52761943c88060b98",
+  "resource/artwork/loss-released.png": "58d5b9d593a79361f11eaef0cca8db55ca331a7fe8f32112de64b477392b3a92",
+  "resource/artwork/macro-atlas.png": "7ffc80a487f30bea436bc7a623dac96d2af0486a5c5c68ab3fac60ff791885e5",
+  "resource/artwork/macro-rotor.png": "1b89763344a345f96eac7cff550ac2db10b6b40fc42e4b56aa70145d125e3e23",
+  "resource/artwork/porthole-glass.png": "701208cf395e79bc45dd24bce40d4e2237e1d21b33951cecb85ce3af329fb3b4",
+  "resource/artwork/scene-corridor-bw.png": "41271d2933633363d135cf1be2fe46551c410d52d473d085cda57fdbe3680f32",
+  "resource/artwork/scene-corridor-color.png": "fa9ffc7b7c1e66a86b26389213f499946d8c732e53925466b88aaa42acddc458",
+  "resource/artwork/scene-fictional-horror-portrait-bw.png": "1ef161a5af3f4a93484609c467749754f9dfce534310e3428f6e68647b24635c",
+  "resource/artwork/scene-treatment-room-bw.png": "c37406dcc424c3839ad6be4309c07cfa637dc0d74006ed7a637631e1d0b2b42e",
+  "resource/artwork/scene-treatment-room-color.png": "726bc008958356970618ec7eb245fe267361a236463aa1c7f6febbfea613143c",
+  "resource/artwork/therapy-atlas.png": "2be8c2b1464fcc9e17d7322aaaf6e56555bcae56b7124a6b19dde5286f93b201",
+  "resource/artwork/therapy-rotor.png": "7d2f3853f2331dbb90054ae068426b985cf401817d840c14c48b5688f8bac831"
+}

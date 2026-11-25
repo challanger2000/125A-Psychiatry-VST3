@@ -1,0 +1,197 @@
+{
+  "canvas": [
+    1536,
+    1024
+  ],
+  "macro_controls": [
+    {
+      "label": "DEPRESSION",
+      "center": [
+        769,
+        168
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "PARANOIA",
+      "center": [
+        963,
+        197
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "SCHIZOPHRENIA",
+      "center": [
+        1096,
+        324
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "MANIA",
+      "center": [
+        1124,
+        496
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "PANIC",
+      "center": [
+        1074,
+        669
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "DISSOCIATION",
+      "center": [
+        956,
+        802
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "OBSESSION",
+      "center": [
+        768,
+        843
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "HALLUCINATION",
+      "center": [
+        584,
+        801
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "PSYCHOSIS",
+      "center": [
+        465,
+        671
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "DELIRIUM",
+      "center": [
+        421,
+        496
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "CATATONIA",
+      "center": [
+        454,
+        324
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    },
+    {
+      "label": "AMNESIA",
+      "center": [
+        578,
+        197
+      ],
+      "sprite_size": 128,
+      "atlas": [
+        8,
+        16
+      ],
+      "range_degrees": 270
+    }
+  ],
+  "therapy": {
+    "center": [
+      207,
+      848
+    ],
+    "sprite_size": 224,
+    "range_degrees": 270,
+    "zero": "wet",
+    "one": "dry",
+    "atlas": [
+      8,
+      16
+    ],
+    "frames": 128,
+    "rotor_style": "ivory lever",
+    "rotation_start_degrees_clockwise": -135,
+    "rotation_end_degrees_clockwise": 135
+  },
+  "aperture": [
+    580,
+    315,
+    956,
+    691
+  ],
+  "loss_button": [
+    1359,
+    868,
+    1469,
+    974
+  ],
+  "fan": "static",
+  "language": "English only",
+  "status": "P028c artwork candidate; no runtime integration or build yet"
+}

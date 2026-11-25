@@ -62,7 +62,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test_package_rejection.py . "plugin-package/125A-PSYCHIATRY.vst3"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python tools/verify_package_zip.py plugin-package artifacts/125A-PSYCHIATRY-P028k.zip
+          python tools/test_package_followup.py plugin-package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/verify_package_zip.py plugin-package artifacts/125A-PSYCHIATRY-P028l.zip extracted-candidate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exact = (Resolve-Path "extracted-candidate/125A-PSYCHIATRY.vst3").Path
+          python tools/verify_artwork.py . "$exact"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/verify_native_loader.py "$exact/Contents/x86_64-win/125A-PSYCHIATRY.vst3"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "build-vst3/bin/Release/validator.exe" "$exact"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Staged branded plugin:" $chosen.FullName
           Get-ChildItem plugin-package -Recurse | Select-Object FullName,Length
@@ -107,6 +116,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 125A-PSYCHIATRY-P028-RASTER-NOT-FINAL
-          path: artifacts/125A-PSYCHIATRY-P028k.zip
+          path: |
+            artifacts/125A-PSYCHIATRY-P028l.zip
+            artifacts/125A-PSYCHIATRY-P028l.zip.sha256
           if-no-files-found: error
           retention-days: 7

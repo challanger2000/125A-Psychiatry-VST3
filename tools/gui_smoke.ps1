@@ -10,6 +10,43 @@ using System.Runtime.InteropServices;
 public static class PSYGUI {
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X,Y; }
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left,Top,Right,Bottom; }
+    [StructLayout(LayoutKind.Sequential)] public struct MENUBARINFO {
+        public uint cbSize; public RECT rcBar; public IntPtr hMenu, hwndMenu; public uint flags;
+    }
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent,IntPtr after,string cls,string title);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd,out uint pid);
+    [DllImport("user32.dll")] static extern bool GetMenuBarInfo(IntPtr hwnd,int obj,int item,ref MENUBARINFO info);
+    [DllImport("user32.dll")] static extern int GetMenuItemCount(IntPtr menu);
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetMenuString(IntPtr menu,uint item,System.Text.StringBuilder text,int max,uint flags);
+    [DllImport("user32.dll")] static extern bool GetMenuItemRect(IntPtr hwnd,IntPtr menu,uint item,out RECT rect);
+    // Find only the visible native popup owned by our EditorHost process.
+    // Read actual menu labels and item rectangles; no blind keyboard selection.
+    public static bool FindMenuItem(uint expectedPid,string label,out RECT rect) {
+        rect=new RECT();
+        IntPtr popup=IntPtr.Zero;
+        while((popup=FindWindowEx(IntPtr.Zero,popup,"#32768",null))!=IntPtr.Zero) {
+            uint pid; GetWindowThreadProcessId(popup,out pid);
+            if(pid!=expectedPid || !IsWindowVisible(popup)) continue;
+            var info=new MENUBARINFO(); info.cbSize=(uint)Marshal.SizeOf(typeof(MENUBARINFO));
+            if(!GetMenuBarInfo(popup,-4,0,ref info) || info.hMenu==IntPtr.Zero) continue;
+            int count=GetMenuItemCount(info.hMenu);
+            if(count!=6) continue;
+            for(uint i=0;i<(uint)count;i++) {
+                var name=new System.Text.StringBuilder(128);
+                GetMenuString(info.hMenu,i,name,name.Capacity,0x400);
+                if(name.ToString().Replace("&","").Trim()!=label) continue;
+                if(GetMenuItemRect(IntPtr.Zero,info.hMenu,i,out rect) && rect.Right>rect.Left && rect.Bottom>rect.Top)
+                    return true;
+                var item=new MENUBARINFO(); item.cbSize=(uint)Marshal.SizeOf(typeof(MENUBARINFO));
+                if(GetMenuBarInfo(popup,-4,(int)i+1,ref item)) {
+                    rect=item.rcBar;
+                    return rect.Right>rect.Left && rect.Bottom>rect.Top;
+                }
+            }
+        }
+        return false;
+    }
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hwnd,ref RECT rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hwnd,ref POINT point);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
@@ -158,8 +195,21 @@ try {
     $rect0=[PSYGUI+RECT]::new()
     if(-not [PSYGUI]::GetClientRect($handle,[ref]$rect0)){throw 'P028h initial client geometry unavailable'}
     ClickClient $handle 450 493
-    Start-Sleep -Milliseconds 200
-    [System.Windows.Forms.SendKeys]::SendWait('{HOME}{DOWN}{ENTER}')
+    $item=[PSYGUI+RECT]::new()
+    $menuFound=$false
+    for($i=0;$i -lt 20;++$i){
+        Start-Sleep -Milliseconds 100
+        if([PSYGUI]::FindMenuItem([uint32]$proc.Id,'75%',[ref]$item)){$menuFound=$true;break}
+    }
+    $popupShot=Screenshot 'P009-Editor-Zoom-Menu.png'
+    $popupShot.Dispose()
+    if(-not $menuFound){throw 'P028i native six-entry zoom popup or its 75% item was not observed'}
+    Write-Host "P028i native 75% menu item bounds: $($item.Left),$($item.Top) -> $($item.Right),$($item.Bottom)"
+    [System.Windows.Forms.Cursor]::Position=[System.Drawing.Point]::new([int](($item.Left+$item.Right)/2),[int](($item.Top+$item.Bottom)/2))
+    Start-Sleep -Milliseconds 150
+    [PSYGUI]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 100
+    [PSYGUI]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
     $zoomOk=$false
     for($i=0;$i -lt 30;++$i){
         Start-Sleep -Milliseconds 100
@@ -170,7 +220,9 @@ try {
             if([math]::Abs($w1-1.5*$w0) -le 4 -and [math]::Abs($h1-1.5*$h0) -le 4){$zoomOk=$true;break}
         }
     }
-    if(-not $zoomOk){throw "P028h zoom 50 to 75 percent did not resize the host client: $w0 x $h0 -> $w1 x $h1"}
+    $zoomShot=Screenshot 'P009-Editor-Zoom-After.png'
+    $zoomShot.Dispose()
+    if(-not $zoomOk){throw "P028i zoom 50 to 75 percent did not resize the host client: $w0 x $h0 -> $w1 x $h1"}
     Write-Host "P028h actual zoom menu resize PASS: $w0 x $h0 -> $w1 x $h1"
     Write-Host 'P028h native faceplate, randomization, bypass/restore, 13 knobs, MOTION, timed scene change and zoom PASS'
 } finally {

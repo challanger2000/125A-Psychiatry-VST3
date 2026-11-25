@@ -358,7 +358,7 @@ public:
                 std::snprintf(label,sizeof(label),"%d%%",static_cast<int>(factor*100));
                 menu->addEntry(label);
             }
-            menu->setCurrent(parent_->zoomIndex());
+            menu->setValue(static_cast<float>(parent_->zoomIndex()));
             zoomMenu_=menu;
             return menu;
         }
@@ -367,7 +367,7 @@ public:
     void onZoomChanged(VSTGUI::VST3Editor*,double factor) override {
         for(std::size_t i=0;i<kZoomFactors.size();++i)if(factor==kZoomFactors[i]){
             parent_->setZoomIndex(static_cast<int>(i));
-            if(zoomMenu_){zoomMenu_->setCurrent(static_cast<int>(i));zoomMenu_->invalid();}
+            if(zoomMenu_){zoomMenu_->setValue(static_cast<float>(i));zoomMenu_->invalid();}
         }
     }
 protected:
@@ -394,6 +394,9 @@ protected:
         if(auto* control=dynamic_cast<VSTGUI::CControl*>(view)){
             if(control->getTag()==kMotionUiTag){
                 control->setValueNormalized(parent_->isMotionEnabled()?1.f:0.f);control->invalid();
+            }else if(control->getTag()==kZoomUiTag){
+                // The SDK XML creator may apply default values after construction.
+                control->setValue(static_cast<float>(parent_->zoomIndex()));control->invalid();
             }
         }
     }

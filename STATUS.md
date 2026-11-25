@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028h / v0.9.26 (40-scene library and expanded native probes; verification pending). Last verified GUI baseline P028g / v0.9.25. **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028i / v0.9.26 (zoom menu state/probe correction; native verification pending). Last verified GUI baseline P028g / v0.9.25. **Only `main`**; no final or musical approval.
 
-## Current task — P028h scene library integration
+## Current task — P028i zoom verification
+
+P028h Windows, DSP and recorded workflows PASS; native EditorHost reached final zoom check after all motion/scene/knob probes passed, then failed (unchanged 768x512). P028i synchronizes menu value/index and clicks the actual native 75% item with screenshots and unchanged geometry assertion. No DSP or scene changes. See [P028h/P028i](docs/P028h.md). New GUI and Windows verification pending.
+
+## Historical P028h scene library integration
 
 40 uploaded scenes mapped to twelve worlds. See [P028h](docs/P028h.md). Timed rotation, motion/static and zoom probes integrated; no DSP or approved artwork changes. New CI pending.
 

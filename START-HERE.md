@@ -1,6 +1,6 @@
 # START HERE — 125A PSYCHIATRY
 
-**Current continuation P028h / v0.9.26:** [P028h](docs/P028h.md) is the active candidate. Last verified P028g / v0.9.25 all four workflows PASS. 40 scenes uploaded, integrated with pure GUI sequencing and native motion/zoom probes. Current candidate CI pending; preserve approved P028g design and frozen DSP. See STATUS.md.
+**Current continuation P028i / v0.9.26:** [P028h/P028i](docs/P028h.md). P028h Windows/DSP/recorded PASS; native motion, scene rotation and static hold, all controls passed before zoom failure. P028i corrects native zoom menu state and selection probe; verification pending. Preserve DSP, approved art and scene library. See STATUS.md.
 
 **Current design authorities: P026 sound and P027 visuals, confirmed 2026-11-24.** Read [docs/P027-GUI-DESIGN.md](docs/P027-GUI-DESIGN.md) in full for GUI work. Read [docs/P026-SOUND-DESIGN.md](docs/P026-SOUND-DESIGN.md) in full, then [STATUS.md](STATUS.md), [docs/SPEC.md](docs/SPEC.md) (historical baseline where conflicting), and relevant DSP code before changes. Follow 125A Engineering mandatory reading and guardrails. Do not assume older green tests establish musical quality.
 

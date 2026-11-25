@@ -68,7 +68,8 @@ private:
     float wetStep_=0.001f;
     bool bypass_=false;
     bool bypassDSP_=false;
-    float bypassMix_=0.f,bypassStep_=1.f;
+    float bypassMix_=0.f;
+    std::uint32_t bypassRampFrames_=1,bypassRemaining_=0;
     StateMailbox audioState_,recallState_;
     std::mutex controlStateMutex_; // host state methods only; never process()
     StateFrame latestRecall_{},lastPublished_{};

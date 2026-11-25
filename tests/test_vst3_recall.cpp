@@ -18,6 +18,8 @@
 #include <set>
 #include <vector>
 #include <atomic>
+#include <functional>
+#include <thread>
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 
 #define CHECK(x) do {if(!(x)){std::fprintf(stderr,"P006 state FAIL %s:%d %s\n",__FILE__,__LINE__,#x);std::abort();}}while(0)
@@ -226,7 +228,113 @@ static void testRandomizerRecall(){
     std::printf("P027g UI-host-audio-recall PASS: %u active, %u zeroed, live delta %.3f, bit-exact restored stereo\n",active,zero,difference);
 }
 
+// Deterministic host-stream reentrancy and full-count error injection.
+// The old code writes the first two A fields, then reads the rest from B.
+class AuditStream : public ResizableMemoryIBStream {
+public:
+    int readFailAt=-1,writeFailAt=-1,callbackAt=-1;
+    std::function<void()> callback;
+    tresult PLUGIN_API read(void* bytes,int32 n,int32* count) override {
+        const auto at=getCursor();
+        const auto result=ResizableMemoryIBStream::read(bytes,n,count);
+        return at==static_cast<std::size_t>(readFailAt)?kResultFalse:result;
+    }
+    tresult PLUGIN_API write(void* bytes,int32 n,int32* count) override {
+        const auto at=getCursor();
+        const auto result=ResizableMemoryIBStream::write(bytes,n,count);
+        if(callback&&at==static_cast<std::size_t>(callbackAt)){
+            auto action=std::move(callback);action();
+        }
+        return at==static_cast<std::size_t>(writeFailAt)?kResultFalse:result;
+    }
+};
+static void uniformState(ResizableMemoryIBStream& memory,float value){
+    IBStreamer w(&memory,kLittleEndian);
+    CHECK(w.writeInt32(kStateMagic)&&w.writeInt32(5));
+    for(int i=0;i<10;++i)CHECK(w.writeFloat(value));
+    CHECK(w.writeInt32(0));
+    for(int i=0;i<3;++i)CHECK(w.writeFloat(value));
+    memory.rewind();
+}
+static void verifyUniform(ResizableMemoryIBStream& memory,float expected){
+    memory.rewind();IBStreamer r(&memory,kLittleEndian);
+    int32 magic=0,version=0,bypass=0;
+    CHECK(r.readInt32(magic)&&magic==kStateMagic&&r.readInt32(version)&&version==5);
+    float v=0.f;
+    for(int i=0;i<10;++i){CHECK(r.readFloat(v));equals(v,expected);}
+    CHECK(r.readInt32(bypass)&&bypass==0);
+    for(int i=0;i<3;++i){CHECK(r.readFloat(v));equals(v,expected);}
+}
+static void testAuditState(){
+    Processor p;Controller c;
+    CHECK(p.initialize(nullptr)==kResultOk&&c.initialize(nullptr)==kResultOk);
+    Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,256,48000.};
+    CHECK(p.setupProcessing(setup)==kResultOk);
+    CHECK(p.setActive(true)==kResultOk&&p.setProcessing(true)==kResultOk);
+    constexpr std::array<Vst::ParamID,13> ids{
+        kDepression,kParanoia,kSchizophrenia,kMania,kPanic,kDissociation,kObsession,
+        kHallucination,kPsychosis,kTherapy,kDelirium,kCatatonia,kAmnesia};
+    auto automate=[&](double v){
+        Vst::ParameterChanges changes(13);
+        for(auto id:ids){int32 index=0,point=0;
+            auto* q=changes.addParameterData(id,index);
+            CHECK(q&&q->addPoint(0,v,point)==kResultOk);
+        }
+        Vst::ProcessData data{};data.symbolicSampleSize=Vst::kSample32;
+        data.inputParameterChanges=&changes;
+        CHECK(p.process(data)==kResultOk);
+    };
+    automate(.2);
+    AuditStream interleaved;
+    interleaved.callbackAt=16;interleaved.callback=[&]{automate(.8);};
+    CHECK(p.getState(&interleaved)==kResultOk);verifyUniform(interleaved,.2f);
+    ResizableMemoryIBStream after;
+    CHECK(p.getState(&after)==kResultOk);verifyUniform(after,.8f);
+    // Actual concurrent audio publications; a complete saved tuple is A or B.
+    std::atomic<bool> done{false};
+    std::thread audio([&]{for(int i=0;i<4000;++i)automate(i%2?.8:.2);done.store(true);});
+    int saves=0;
+    do {
+        ResizableMemoryIBStream save;
+        CHECK(p.getState(&save)==kResultOk);save.rewind();
+        IBStreamer r(&save,kLittleEndian);int32 h=0;float value=0.f;
+        CHECK(r.readInt32(h)&&r.readInt32(h)&&r.readFloat(value));
+        CHECK(value==.2f||value==.8f);verifyUniform(save,value);++saves;
+    }while(!done.load());
+    audio.join();CHECK(saves>0);
+    // A valid newest state is visible immediately, even before audio adoption.
+    ResizableMemoryIBStream recall;uniformState(recall,.6f);
+    CHECK(p.setState(&recall)==kResultOk);
+    ResizableMemoryIBStream immediate;CHECK(p.getState(&immediate)==kResultOk);verifyUniform(immediate,.6f);
+    automate(.4);
+    ResizableMemoryIBStream adopted;CHECK(p.getState(&adopted)==kResultOk);verifyUniform(adopted,.4f);
+    // Failed host reads with full reported byte counts must fail closed.
+    for(int offset=0;offset<64;offset+=4){
+        AuditStream bad;uniformState(bad,.9f);bad.readFailAt=offset;
+        CHECK(p.setState(&bad)==kResultFalse);
+        bad.rewind();CHECK(c.setComponentState(&bad)==kResultFalse);
+        ResizableMemoryIBStream preserved;CHECK(p.getState(&preserved)==kResultOk);verifyUniform(preserved,.4f);
+        AuditStream failedWrite;failedWrite.writeFailAt=offset;
+        CHECK(p.getState(&failedWrite)==kResultFalse);
+    }
+    for(int length=1;length<4;++length){
+        AuditStream truncated;unsigned char bytes[3]{};int32 n=0;
+        CHECK(truncated.write(bytes,length,&n)==kResultOk);truncated.rewind();
+        c.setMotionEnabled(true);c.setZoomIndex(2);
+        CHECK(c.setState(&truncated)==kResultFalse&&c.isMotionEnabled()&&c.zoomIndex()==2);
+    }
+    for(int offset=0;offset<20;offset+=4){
+        AuditStream bad;CHECK(c.getState(&bad)==kResultOk);bad.rewind();bad.readFailAt=offset;
+        CHECK(c.setState(&bad)==kResultFalse);
+        AuditStream write;write.writeFailAt=offset;CHECK(c.getState(&write)==kResultFalse);
+    }
+    ResizableMemoryIBStream empty;CHECK(c.setState(&empty)==kResultOk&&!c.isMotionEnabled()&&c.zoomIndex()==0);
+    CHECK(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk);
+    CHECK(c.terminate()==kResultOk&&p.terminate()==kResultOk);
+    std::printf("P028k A01/A03/A04 state PASS: %d concurrent saves, reentrant stream, recall, full-count errors and truncated UI\n",saves);
+}
 int main(){
+    testAuditState();
     testRandomizerRecall();
     Processor component;
     Controller controller;

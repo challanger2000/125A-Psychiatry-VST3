@@ -1,10 +1,10 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current audited candidate: P028j / v0.9.26 — **NO-GO** after independent Codex audit. A01–A10 open; prior CI passes are scoped historical evidence. **Only `main`**; no final or musical approval.
+Updated: **2026-11-25**. Latest verified functional baseline: **P027g / v0.9.24**. Current audited candidate: P028j / v0.9.26 — **NO-GO** after independent Codex audit. P028k / v0.9.27 implements A01–A10 corrections; verification pending; prior CI passes are scoped historical evidence. **Only `main`**; no final or musical approval.
 
 ## Current task — P028k audit corrections
 
-Independent audit confirms nine product findings A01–A09 and package-verifier gap A10. Do not request final Studio Pro test. See [P028k correction gate](docs/P028k-AUDIT-CORRECTIONS.md). Full audit report supplied by owner; evidence ZIP download unavailable. Recreate exact counterprobes as needed. No production changes yet.
+Independent audit confirms nine product findings A01–A09 and package-verifier gap A10. Do not request final Studio Pro test. See [P028k correction gate](docs/P028k-AUDIT-CORRECTIONS.md). Full audit report supplied by owner; evidence ZIP download unavailable. Recreate exact counterprobes as needed. P028k source correction candidate committed; independent original audit counterprobes and target-host acceptance still required.
 
 ## Historical P028j verified technical candidate
 
@@ -412,3 +412,6 @@ P022 initial Windows runs 45305541109 and 45305541179 failed before plugin compi
 
 ### P028k — erste Implementierungsgruppe (nicht abgenommen)
 A01: kohärente Audio-Snapshots und separate Recall-Mailbox, Veröffentlichung pro geänderter Callback-Generation. Recall wird am nächsten Callback-Beginn übernommen; laufende alte Callback-Automation kann einen neueren Recall nicht überschreiben. A02: lineare VST3-Kurven mit vorherigem Sample als implizitem Anker, Bypass diskret. A03: expliziter Processing-Lifecycle. A04: strikter Stream-Status und Bytezahl, Wireformat unverändert. A05: Bus-Aktivität respektieren. A06: nichtfinite Samples an Eingangsgrenze zu Null. A07: 5-ms linearer Bypass-Übergang, bestehende THERAPY-Glättung unverändert. A08: mathematisch korrekte Source-over-Überblendung. A09: Zoom nur nach angewandtem Frame-Transform speichern. A10 und eigenständige gezielte Gegenproben noch offen. Alte Step-Fixtures explizit verankert, Busse in Host-Fixtures aktiviert. Noch nicht kompiliert oder abgenommen; **NO-GO**. Keine CI bis konsolidierter Kandidat mit neuen Regressionen.
+
+### P028k / v0.9.27 — consolidated verification candidate
+A01–A09 initial source repair in 8170b90870f57e26fbc89dac0e1dfe018856393c. Follow-up adds exact-duration bypass ramp, deterministic reentrant save test, concurrent coherent saves, active recall, full-count stream error injection, sparse/dense/partitioned THERAPY PCM and bypass oracle, inactive bus/nonfinite PCM tests, mathematical scene alpha test, A10 PE/notice/moduleinfo checks, actual staging ZIP byte comparison. Native rejection of zoom, concurrent recall/automation ordering beyond the chosen callback-boundary policy, every original Codex counterprobe, Windows compile/test and deadline tests remain gates; **NO-GO until independent verification**. Five-ms bypass ramp is intentional engineering correction; no creative DSP topology or artwork changes. Packaging now provides the verified inner ZIP in the GitHub artifact. No original Codex evidence ZIP available.

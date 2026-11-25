@@ -83,7 +83,7 @@ tresult PLUGIN_API Processor::setupProcessing(Vst::ProcessSetup& setup) {
     const auto result=AudioEffect::setupProcessing(setup);
     if(result==kResultOk) {
         consumeRecall();
-        bypassStep_=1.f/static_cast<float>(std::max(1.,std::ceil(.005*setup.sampleRate)));
+        bypassRampFrames_=static_cast<std::uint32_t>(std::max(1.,std::ceil(.005*setup.sampleRate)));
         tailSamples_=static_cast<uint32>(std::ceil(30.*setup.sampleRate))+kLatency;
         depression_.prepare(setup.sampleRate);
         paranoia_.prepare(setup.sampleRate);
@@ -155,7 +155,7 @@ void Processor::resetTimeline() noexcept {
     applyDSP(6,obsessionAmount_);applyDSP(7,hallucinationAmount_);
     applyDSP(8,psychosisAmount_);applyDSP(9,therapyAmount_);applyDSP(10,bypass_?1.f:0.f);
     applyDSP(11,deliriumAmount_);applyDSP(12,catatoniaAmount_);applyDSP(13,amnesiaAmount_);
-    bypassMix_=bypass_?1.f:0.f;
+    bypassMix_=bypass_?1.f:0.f;bypassRemaining_=0;
 }
 void Processor::applyDSP(unsigned lane,float v) noexcept {
     switch(lane) {
@@ -169,7 +169,7 @@ void Processor::applyDSP(unsigned lane,float v) noexcept {
         case 7: hallucination_.setAmount(v);break;
         case 8: psychosis_.setAmount(v);break;
         case 9: therapyDSP_=v;break;
-        case 10: bypassDSP_=v>=0.5f;break;
+        case 10: {const bool next=v>=.5f;if(next!=bypassDSP_){bypassDSP_=next;bypassRemaining_=bypassRampFrames_;}break;}
         case 11: delirium_.setAmount(v);break;
         case 12: catatonia_.setAmount(v);break;
         case 13: amnesia_.setAmount(v);break;
@@ -293,8 +293,11 @@ bool Processor::processSpan(Vst::ProcessData& data,
             for(int32 i=0;i<size;++i) {
                 wetSmoothed_=psychiatry::detail::smoothToward(wetSmoothed_,1.f-therapyDSP_,wetStep_);
                 const float target=bypassDSP_?1.f:0.f;
-                if(bypassMix_<target)bypassMix_=std::min(target,bypassMix_+bypassStep_);
-                else if(bypassMix_>target)bypassMix_=std::max(target,bypassMix_-bypassStep_);
+                if(bypassRemaining_){
+                    if(bypassRemaining_==1)bypassMix_=target;
+                    else bypassMix_+=(target-bypassMix_)/static_cast<float>(bypassRemaining_);
+                    --bypassRemaining_;
+                }
                 const float w=std::clamp(wetSmoothed_,0.f,1.f)*(1.f-bypassMix_);
                 for(int32 ch=0;ch<output.numChannels;++ch) {
                     const auto c=static_cast<std::size_t>(ch);
@@ -451,7 +454,7 @@ void Processor::consumeRecall() noexcept {
     appliedGeneration_=frame.generation;
     pending_={};
     if(prepared_)for(unsigned i=0;i<v.size();++i)applyDSP(i,v[i]);
-    therapyDSP_=therapyAmount_;bypassDSP_=bypass_;bypassMix_=bypass_?1.f:0.f;
+    therapyDSP_=therapyAmount_;bypassDSP_=bypass_;bypassMix_=bypass_?1.f:0.f;bypassRemaining_=0;
     wetSmoothed_=1.f-therapyAmount_;
     publishState();
 }

@@ -1185,6 +1185,98 @@ void auditRecordings(const std::string& inputDir,const std::string& outputDir) {
     std::puts("P025 RECORDED AUDIO EXPORT PASS: 240 objective rows, 96 RMS-matched A/B files; human audition not claimed");
 }
 } // namespace
+static void testAuditAudio(){
+    constexpr int total=8192,block=256,at=4096;
+    Stereo sourceAudio(total);
+    for(int n=0;n<total;++n){
+        sourceAudio.l[n]=.3f*tone(237.,double(n)/kRate);
+        sourceAudio.r[n]=.27f*tone(411.,double(n)/kRate);
+    }
+    auto run=[&](int mode){
+        Processor p;
+        check(p.initialize(nullptr)==kResultOk,"audit initialize");
+        check(p.activateBus(Vst::kAudio,Vst::kInput,0,true)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk,"audit activate buses");
+        Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,block,kRate};
+        check(p.setupProcessing(setup)==kResultOk,"audit setup");
+        ResizableMemoryIBStream state;writeState(state,8,1.f,0.f,false);
+        check(p.setState(&state)==kResultOk&&p.setActive(true)==kResultOk&&p.setProcessing(true)==kResultOk,"audit activate");
+        Stereo output(total);
+        for(int start=0;start<total;){
+            const int n=std::min(mode==2?64:block,total-start);
+            Vst::ParameterChanges changes(1);
+            if(start>=at&&start<at+block&&mode<3){
+                int32 index=0,point=0;auto* q=changes.addParameterData(kTherapy,index);
+                if(mode==1){
+                    for(int i=0;i<n;++i)check(q->addPoint(i,double(start-at+i+1)/block,point)==kResultOk,"dense linear point");
+                }else check(q->addPoint(n-1,double(start-at+n)/block,point)==kResultOk,"sparse linear endpoint");
+            }
+            if(mode==4&&start==at){
+                int32 index=0,point=0;auto* q=changes.addParameterData(kBypass,index);
+                check(q->addPoint(0,1.,point)==kResultOk,"bypass on");
+            }
+            if(mode==4&&start==at+1024){
+                int32 index=0,point=0;auto* q=changes.addParameterData(kBypass,index);
+                check(q->addPoint(0,0.,point)==kResultOk,"bypass off");
+            }
+            float* ins[]{sourceAudio.l.data()+start,sourceAudio.r.data()+start};
+            float* outs[]{output.l.data()+start,output.r.data()+start};
+            Vst::AudioBusBuffers bi{},bo{};bi.numChannels=bo.numChannels=2;
+            bi.channelBuffers32=ins;bo.channelBuffers32=outs;
+            Vst::ProcessData data{};data.symbolicSampleSize=Vst::kSample32;data.numSamples=n;
+            data.numInputs=data.numOutputs=1;data.inputs=&bi;data.outputs=&bo;data.inputParameterChanges=&changes;
+            check(p.process(data)==kResultOk,"audit render");start+=n;
+        }
+        check(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk&&p.terminate()==kResultOk,"audit terminate");
+        return output;
+    };
+    const auto sparse=run(0),dense=run(1),partition=run(2),wet=run(3),bypass=run(4);
+    double difference=0.,change=0.,fadeError=0.;
+    constexpr int ramp=240;
+    for(int n=0;n<total;++n){
+        difference=std::max({difference,std::abs(double(sparse.l[n])-dense.l[n]),
+            std::abs(double(sparse.r[n])-dense.r[n]),std::abs(double(sparse.l[n])-partition.l[n]),
+            std::abs(double(sparse.r[n])-partition.r[n])});
+        change+=std::abs(double(wet.l[n])-sparse.l[n]);
+        const float dl=n>=kLatency?sourceAudio.l[n-kLatency]:0.f;
+        const float dr=n>=kLatency?sourceAudio.r[n-kLatency]:0.f;
+        const int t=n-at-kLatency;
+        const double dryMix=t<0?0.:t<ramp?double(t+1)/ramp:t<1024?1.:t<1024+ramp?1.-double(t-1024+1)/ramp:0.;
+        fadeError=std::max({fadeError,std::abs(double(bypass.l[n])-(dl+(1.-dryMix)*(wet.l[n]-dl))),
+            std::abs(double(bypass.r[n])-(dr+(1.-dryMix)*(wet.r[n]-dr)))});
+        if(dryMix==1.)check(bypass.l[n]==dl&&bypass.r[n]==dr,"bypass exact dry plateau");
+    }
+    std::printf("P028k A02/A07 sparse-dense-partition max %.9g, active delta %.9g, bypass oracle %.9g\n",difference,change,fadeError);
+    check(difference<2.e-6&&change>1.,"equivalent VST3 linear automation must be identical within numeric precision");
+    check(fadeError<3.e-6,"sample-aligned 5ms bypass crossfade");
+    // Fresh neutral, therapy-dry and bypass modes: malformed PCM becomes zero.
+    for(int mode=0;mode<3;++mode){
+        Stereo malformed(512),clean(512);
+        for(int n=0;n<512;++n){clean.l[n]=malformed.l[n]=.125f;clean.r[n]=malformed.r[n]=-.25f;}
+        malformed.l[0]=std::numeric_limits<float>::quiet_NaN();
+        malformed.r[1]=std::numeric_limits<float>::infinity();
+        clean.l[0]=0.f;clean.r[1]=0.f;
+        auto actual=render(malformed,mode?8:-1,mode?1.f:0.f,mode==1?1.f:0.f,mode==2);
+        check(identical(actual,clean),"A06 nonfinite input escaped dry boundary");
+    }
+    Processor p;
+    check(p.initialize(nullptr)==kResultOk,"bus init");
+    Vst::ProcessSetup setup{Vst::kRealtime,Vst::kSample32,block,kRate};
+    check(p.setupProcessing(setup)==kResultOk,"bus setup");
+    check(p.activateBus(Vst::kAudio,Vst::kInput,0,false)==kResultOk&&p.activateBus(Vst::kAudio,Vst::kOutput,0,false)==kResultOk,"deactivate buses");
+    check(p.setActive(true)==kResultOk&&p.setProcessing(true)==kResultOk,"bus start");
+    std::array<float,block> l{},r{},outL{},outR{};l.fill(.75f);r.fill(-.75f);outL.fill(.123f);outR.fill(-.321f);
+    float* ins[]{l.data(),r.data()},*outs[]{outL.data(),outR.data()};
+    Vst::AudioBusBuffers bi{},bo{};bi.numChannels=bo.numChannels=2;bi.channelBuffers32=ins;bo.channelBuffers32=outs;bo.silenceFlags=3;
+    Vst::ProcessData d{};d.symbolicSampleSize=Vst::kSample32;d.numSamples=block;d.numInputs=d.numOutputs=1;d.inputs=&bi;d.outputs=&bo;
+    check(p.process(d)==kResultOk&&bo.silenceFlags==3,"inactive output flags");
+    for(int n=0;n<block;++n)check(outL[n]==.123f&&outR[n]==-.321f,"inactive output overwritten");
+    check(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk,"stop before bus activation");
+    check(p.activateBus(Vst::kAudio,Vst::kOutput,0,true)==kResultOk&&p.setActive(true)==kResultOk&&p.setProcessing(true)==kResultOk,"activate output only");
+    check(p.process(d)==kResultOk,"inactive input nonnull");
+    for(int n=0;n<block;++n)check(outL[n]==0.f&&outR[n]==0.f,"inactive input sentinel read");
+    check(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk&&p.terminate()==kResultOk,"bus terminate");
+    std::puts("P028k A05/A06 inactive buses and malformed PCM PASS");
+}
 int main(int argc,char** argv){
     if(argc==4&&std::string(argv[1])=="--recordings"){
         auditRecordings(argv[2],argv[3]);return 0;
@@ -1197,6 +1289,7 @@ int main(int argc,char** argv){
         check(csv.good(),"create CSV");
         csv<<"source,macro,amount,therapy,dry_rms,output_rms,gain_db,peak_dbfs,raw_null_ratio,gain_matched_residual,band_shape_distance\n";
     }
+    testAuditAudio();
     testAutomation();
     testHighBandAliasing(exportWav?std::string(argv[1]):std::string{});
     testMultirateIntermod(exportWav?std::string(argv[1]):std::string{});

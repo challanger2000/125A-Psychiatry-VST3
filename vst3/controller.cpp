@@ -2,6 +2,7 @@
 #include "ids.h"
 #include "monitor_model.h"
 #include "scene_sequence.h"
+#include "scene_blend.h"
 #include <chrono>
 #include "loss_of_control.h"
 
@@ -270,10 +271,9 @@ public:
         const int current=currentScene_;
         if(motion_&&fade_<1.&&previousScene_!=current){
             // Source-over weights: old*(1-f)*level + new*f*level.
-            const float a=level*static_cast<float>(fade_);
-            const float b=a<1.f?level*(1.f-static_cast<float>(fade_))/(1.f-a):0.f;
-            paint(scenes_[previousScene_],std::clamp(b,0.f,1.f),scale,dx,dy);
-            paint(scenes_[current],a,scale,dx,dy);
+            const auto alpha=sceneAlpha(level,static_cast<float>(fade_));
+            paint(scenes_[previousScene_],alpha.previous,scale,dx,dy);
+            paint(scenes_[current],alpha.current,scale,dx,dy);
         }else paint(scenes_[current],level,scale,dx,dy);
         const int secondary=model_.secondary();
         if(secondary>=0&&model_.peak>0.f) {

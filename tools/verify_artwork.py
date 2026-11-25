@@ -99,7 +99,28 @@ if len(sys.argv) > 2:
     for name, digest in scene_hashes.items():
         assert hashlib.sha256(unique_file(name).read_bytes()).hexdigest() == digest, name
     assert unique_file("scenes-p028h.json").read_bytes() == library_path.read_bytes()
-    for name in ("LICENSE-VST3-SDK.txt", "LICENSE-VSTGUI.txt", "LICENSE-ACOUSTIC-SOURCES.txt"):
-        assert unique_file(name).stat().st_size > 0, name
-    assert (bundle / "Contents/x86_64-win/125A-PSYCHIATRY.vst3").is_file(), "Branded x64 binary missing"
-    print("P028g packaged GUI: verified source XML, 13 animated controls/readouts, single English template, 4 utility controls, 47 exact PNG hashes, 3 notices and x64 binary PASS")
+    notices = {
+        "LICENSE-VST3-SDK.txt": root / "external/vst3sdk/LICENSE.txt",
+        "LICENSE-VSTGUI.txt": root / "external/vst3sdk/vstgui4/LICENSE",
+        "LICENSE-ACOUSTIC-SOURCES.txt": root / "resource/LICENSE-ACOUSTIC-SOURCES.txt",
+    }
+    for name, source in notices.items():
+        assert source.is_file() and source.stat().st_size > 0, source
+        assert unique_file(name).read_bytes() == source.read_bytes(), f"Notice differs from exact source: {name}"
+    from verify_windows_pe import inspect_pe
+    module = bundle / "Contents/x86_64-win/125A-PSYCHIATRY.vst3"
+    assert module.is_file(), "Branded x64 binary missing"
+    binary = module.read_bytes()
+    exports, imports = inspect_pe(binary)
+    expected_version = re.search(r'project\(PsychiatryAudioPrototype VERSION ([0-9.]+)', (root/"CMakeLists.txt").read_text()).group(1)
+    info = json.loads(re.sub(r',(?=\s*[}\]])', '', unique_file("moduleinfo.json").read_text(encoding="utf-8")))
+    assert info["Name"] == "125A-PSYCHIATRY" and info["Version"] == expected_version
+    assert {c["CID"] for c in info["Classes"]} == {"125A20D2A3D04F919B1074B70119CA26", "125A20D3A3D04F919B1074B70119CA26"}
+    assert all(c["Version"] == expected_version for c in info["Classes"])
+    # Counterexamples must be rejected by the same executable parser.
+    for bad in (b"pretend plugin", binary[:64], binary[:0x3c]+b"\xff\xff\xff\x7f"+binary[0x40:]):
+        try: inspect_pe(bad)
+        except (ValueError, struct.error): pass
+        else: raise AssertionError("malformed PE accepted")
+    print("P028k packaged GUI: 47 exact PNG hashes, 3 exact notices, PE32+ AMD64 DLL exports and moduleinfo PASS")
+    print("PE import DLLs:", ", ".join(imports))

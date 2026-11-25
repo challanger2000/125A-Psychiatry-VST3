@@ -58,6 +58,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force -Path "plugin-package" | Out-Null
           Copy-Item -LiteralPath $chosen.FullName -Destination "plugin-package" -Recurse -Force
+          python tools/verify_artwork.py . "plugin-package/125A-PSYCHIATRY.vst3"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/verify_package_zip.py plugin-package artifacts/125A-PSYCHIATRY-P028k.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Staged branded plugin:" $chosen.FullName
           Get-ChildItem plugin-package -Recurse | Select-Object FullName,Length
       - name: Export real VST3 per-macro audio comparisons and metrology CSV
@@ -101,6 +105,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 125A-PSYCHIATRY-P028-RASTER-NOT-FINAL
-          path: plugin-package/
+          path: artifacts/125A-PSYCHIATRY-P028k.zip
           if-no-files-found: error
           retention-days: 7

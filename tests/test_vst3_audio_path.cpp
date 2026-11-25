@@ -1436,6 +1436,9 @@ static int testFourInstanceDeadlines(const std::string& file){
         Vst::ParameterChanges changes(14);
         std::vector<double> elapsed;elapsed.reserve(groups);
         int missed=0;
+        std::array<int,8> phaseMiss{};
+        std::array<std::vector<unsigned long long>,8> phaseCycles;
+        for(auto& c:phaseCycles)c.reserve(groups/8);
         auto deadline=Clock::now();
         for(int g=-warmup;g<groups;++g){
             for(int i=0;i<n;++i){
@@ -1473,12 +1476,16 @@ static int testFourInstanceDeadlines(const std::string& file){
             check(ok,"R01 process");
             for(int i=0;i<instances;++i)for(int j=0;j<n;++j)
                 check(std::isfinite(ol[i][j])&&std::isfinite(orr[i][j]),"R01 finite");
-            if(g>=0){elapsed.push_back(us);missed+=us>budget;out<<mode<<','<<repeat<<','<<g<<','<<us<<','<<budget<<','<<(us>budget)<<','<<(cycleEnd-cycleBegin)<<'\n';}
+            if(g>=0){elapsed.push_back(us);missed+=us>budget;phaseMiss[g%8]+=us>budget;phaseCycles[g%8].push_back(cycleEnd-cycleBegin);out<<mode<<','<<repeat<<','<<g<<','<<us<<','<<budget<<','<<(us>budget)<<','<<(cycleEnd-cycleBegin)<<'\n';}
             if(g<0||deadline<end)deadline=end;
         }
         std::sort(elapsed.begin(),elapsed.end());
         std::printf("R01 96k/64 4 instances mode=%s repeat=%d p50=%.3f p95=%.3f p99=%.3f max=%.3f us misses=%d/%d budget=%.3f us\n",
             mode?"dense":"steady",repeat,elapsed[groups/2],elapsed[groups*95/100],elapsed[groups*99/100],elapsed.back(),missed,groups,budget);
+        for(int phase=0;phase<8;++phase){
+            auto& cycles=phaseCycles[phase];std::sort(cycles.begin(),cycles.end());
+            std::printf("R01 mode=%d repeat=%d callback phase=%d misses=%d/%zu median thread cycles=%llu\n",mode,repeat,phase,phaseMiss[phase],cycles.size(),cycles[cycles.size()/2]);
+        }
         failures+=missed;
         for(auto& p:processors)check(p->setProcessing(false)==kResultOk&&p->setActive(false)==kResultOk&&p->terminate()==kResultOk,"R01 terminate");
     }

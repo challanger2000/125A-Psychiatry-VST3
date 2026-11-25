@@ -89,7 +89,7 @@ private:
 // STFT freeze. Capture a complex spectrum, estimate phase advance from
 // consecutive real input frames, propagate that phase independently of input.
 // Four-way overlap/add uses Hann analysis and Hann synthesis windows.
-template<bool Distributed=true> class CatatoniaImpl final {
+template<bool Distributed=true,bool PackedInverse=Distributed> class CatatoniaImpl final {
     using C=std::complex<float>;
 public:
     void prepare(double sr) {
@@ -165,11 +165,15 @@ private:
         bool active=false,previousValid=false,pending=false;
         std::size_t half=1,base=0,k=0;
     };
-    void fft(std::vector<C>& a,bool inverse) noexcept {
-        for(std::size_t i=1;i<size_;++i)if(i<bitReverse_[i])std::swap(a[i],a[bitReverse_[i]]);
-        for(std::size_t len=2;len<=size_;len*=2) {
+    void fft(std::vector<C>& a,bool inverse,std::size_t n=0) noexcept {
+        if(!n)n=size_;
+        for(std::size_t i=1;i<n;++i){
+            const auto j=n==size_?bitReverse_[i]:bitReverse_[i]>>1;
+            if(i<j)std::swap(a[i],a[j]);
+        }
+        for(std::size_t len=2;len<=n;len*=2) {
             const auto half=len/2,stride=size_/len;
-            for(std::size_t base=0;base<size_;base+=len)
+            for(std::size_t base=0;base<n;base+=len)
                 for(std::size_t k=0;k<half;++k) {
                     const C tw=inverse?std::conj(twiddle_[k*stride]):twiddle_[k*stride];
                     const C u=a[base+k],x=a[base+k+half];
@@ -180,7 +184,7 @@ private:
                     a[base+k+half]=C(u.real()-vr,u.imag()-vi);
                 }
         }
-        if(inverse){const float gain=1.f/float(size_);for(auto& x:a)x=C(x.real()*gain,x.imag()*gain);}
+        if(inverse){const float gain=1.f/float(n);for(std::size_t k=0;k<n;++k)a[k]=C(a[k].real()*gain,a[k].imag()*gain);}
     }
     // Previous analysis is only consumed when a new frame is captured.
     // Keep the exact radix-2 order and twiddles, distributing the transform
@@ -262,15 +266,40 @@ private:
         if(capture){c.active=true;c.age=0;c.captureEnergy=energy;}
         else if(c.age<1000000u)++c.age;
         if(!c.active)return;
-        c.work[0]=C(c.held[0].real(),0.f);
-        c.work[size_/2]=C(c.held[size_/2].real(),0.f);
-        for(std::size_t k=1;k<size_/2;++k) {
-            c.work[k]=c.held[k];c.work[size_-k]=std::conj(c.held[k]);
+        if constexpr(PackedInverse){
+            // Real IFFT via an N/2 complex IFFT. The held spectrum is
+            // Hermitian; even/odd time samples share a single transform.
+            // E=(X[k]+X[k+N/2])/2, O=exp(+j2pi*k/N)*(X[k]-X[k+N/2])/2.
+            // The packed spectrum E+jO reconstructs even/odd samples.
+            // The original N-point analysis, phase rotations, window,
+            // overlap and exact output sample indices are unchanged.
+            const auto half=size_/2;
+            for(std::size_t k=0;k<half;++k){
+                const C a=k?c.held[k]:C(c.held[0].real(),0.f);
+                const C b=k?std::conj(c.held[half-k]):C(c.held[half].real(),0.f);
+                const C ev=(a+b)*.5f,od=(a-b)*.5f;
+                const C tw=std::conj(twiddle_[k]);
+                const float r=od.real()*tw.real()-od.imag()*tw.imag();
+                const float i=od.real()*tw.imag()+od.imag()*tw.real();
+                c.work[k]=C(ev.real()-i,ev.imag()+r);
+            }
+            fft(c.work,true,half);
+            for(std::size_t k=0;k<half;++k){
+                const auto even=2*k,odd=even+1;
+                c.ola[(write_+even)&(size_-1)]+=c.work[k].real()*window_[even]*(2.f/3.f);
+                c.ola[(write_+odd)&(size_-1)]+=c.work[k].imag()*window_[odd]*(2.f/3.f);
+            }
+        }else{
+            c.work[0]=C(c.held[0].real(),0.f);
+            c.work[size_/2]=C(c.held[size_/2].real(),0.f);
+            for(std::size_t k=1;k<size_/2;++k) {
+                c.work[k]=c.held[k];c.work[size_-k]=std::conj(c.held[k]);
+            }
+            fft(c.work,true);
+            // Periodic Hann squared sums to 1.5 at N/4 hops.
+            for(std::size_t k=0;k<size_;++k)
+                c.ola[(write_+k)&(size_-1)]+=c.work[k].real()*window_[k]*(2.f/3.f);
         }
-        fft(c.work,true);
-        // Periodic Hann squared sums to 1.5 at N/4 hops.
-        for(std::size_t k=0;k<size_;++k)
-            c.ola[(write_+k)&(size_-1)]+=c.work[k].real()*window_[k]*(2.f/3.f);
     }
     std::array<Channel,2> state_{};
     std::vector<float> window_;

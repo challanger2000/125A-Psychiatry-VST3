@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include <chrono>
 #define CHECK(x) do{if(!(x)){std::fprintf(stderr,"P026k FAIL line %d: %s\n",__LINE__,#x);std::abort();}}while(0)
 using Audio=std::vector<float>;
 template<class FX> Audio render(const Audio& in,int sr,float amount,int block){
@@ -29,8 +30,8 @@ template<class FX> void common(int sr,const Audio& input){
 }
 // Compare actual scalar and optimized spectral processors on irregular stereo
 // automation, captures, hold decay and reacquisition at all supported test rates.
-static void pairedCatatonia(int sr){
-    psychiatry::CatatoniaImpl<false> reference;psychiatry::Catatonia candidate;
+template<class Reference> static void pairedCatatonia(int sr,const char* label){
+    Reference reference;psychiatry::Catatonia candidate;
     reference.prepare(sr);candidate.prepare(sr);
     constexpr int block=127;
     std::array<float,block> l{},r{},a{},b{},curve{};
@@ -50,12 +51,41 @@ static void pairedCatatonia(int sr){
             CHECK(std::isfinite(q[ch][i]));peak=std::max(peak,std::abs(delta));square+=delta*delta;++count;
         }
     }
-    std::printf("R01 scalar/distributed paired Catatonia %d Hz peak %.9g RMS %.9g (%zu samples)\n",sr,peak,std::sqrt(square/count),count);
+    std::printf("R01 %s / packed inverse paired Catatonia %d Hz peak %.9g RMS %.9g (%zu samples)\n",label,sr,peak,std::sqrt(square/count),count);
     std::fflush(stdout);
     CHECK(peak<2.e-6&&std::sqrt(square/count)<2.e-7);
 }
+// Matched-host isolated four-instance comparison, alternating order.
+// Not a substitute for the actual processor's deadline gate.
+template<class FX> double hopMedian(){
+    using Clock=std::chrono::steady_clock;
+    std::array<FX,4> fx;
+    for(auto& f:fx){f.prepare(96000);f.setAmount(.85f);f.reset();}
+    std::array<std::array<float,64>,4> left{},right{};
+    std::vector<double> hop;hop.reserve(256);
+    for(int g=0;g<2304;++g){
+        for(int i=0;i<64;++i)for(int k=0;k<4;++k){
+            left[k][i]=float(.22*std::sin((64*g+i)*.029));
+            right[k][i]=float(.17*std::sin((64*g+i)*.041));
+        }
+        auto begin=Clock::now();
+        for(int k=0;k<4;++k){float* p[]{left[k].data(),right[k].data()};fx[k].process(p,2,64);}
+        auto end=Clock::now();
+        if(g>=256&&g%8==7)hop.push_back(std::chrono::duration<double,std::micro>(end-begin).count());
+    }
+    std::sort(hop.begin(),hop.end());return hop[hop.size()/2];
+}
 int main(){
-    for(int sr:{44100,48000,96000})pairedCatatonia(sr);
+    for(int sr:{44100,48000,96000}){
+        pairedCatatonia<psychiatry::CatatoniaImpl<false,false>>(sr,"immediate full FFT");
+        pairedCatatonia<psychiatry::CatatoniaImpl<true,false>>(sr,"distributed full inverse");
+    }
+    for(int round=0;round<4;++round){
+        double old=0.,now=0.;
+        if(round%2==0){old=hopMedian<psychiatry::CatatoniaImpl<true,false>>();now=hopMedian<psychiatry::Catatonia>();}
+        else{now=hopMedian<psychiatry::Catatonia>();old=hopMedian<psychiatry::CatatoniaImpl<true,false>>();}
+        std::printf("R01 matched isolated 4x Catatonia hop median round=%d full %.3f us packed %.3f us ratio %.4f\n",round,old,now,now/old);
+    }
     for(int sr:{44100,48000,96000}){
         Audio input(4*sr);
         for(int n=0;n<4*sr;++n)input[n]=.22f*std::sin(2.*psychiatry::creative::pi*700.*n/sr);

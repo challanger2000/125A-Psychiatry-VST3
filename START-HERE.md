@@ -1,5 +1,7 @@
 # START HERE — 125A PSYCHIATRY
 
+**Current continuation P028d / v0.9.25:** [P028d](docs/P028d.md) supersedes P028a geometry and older GUI artwork/layout decisions where conflicting. Owner approved the new labeled raster faceplate, static fan, English-only, lever controls, smaller ivory THERAPY. P028c assets verified on main. Current candidate has not yet passed native Windows verification. Preserve frozen P027g DSP and stable IDs. No DAW test request until technical gates pass.
+
 **Current design authorities: P026 sound and P027 visuals, confirmed 2026-11-24.** Read [docs/P027-GUI-DESIGN.md](docs/P027-GUI-DESIGN.md) in full for GUI work. Read [docs/P026-SOUND-DESIGN.md](docs/P026-SOUND-DESIGN.md) in full, then [STATUS.md](STATUS.md), [docs/SPEC.md](docs/SPEC.md) (historical baseline where conflicting), and relevant DSP code before changes. Follow 125A Engineering mandatory reading and guardrails. Do not assume older green tests establish musical quality.
 
 User audition of v0.9.12: some macros convincing above 50% (acceptable), PANIC bird chirps and PSYCHOSIS too weak. DEPRESSION mostly reverb, SCHIZOPHRENIA mostly delay on initial impression. Original placeholder art and minimal MOTION not accepted. No global curve change. Preserve successful parts.

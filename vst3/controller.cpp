@@ -11,6 +11,8 @@
 #include "vstgui/lib/cresourcedescription.h"
 #include "vstgui/lib/cdrawcontext.h"
 #include "vstgui/lib/cfont.h"
+#include "vstgui/lib/controls/cbuttons.h"
+#include "vstgui/lib/controls/coptionmenu.h"
 #include <cstring>
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 
@@ -23,10 +25,11 @@ namespace psychiatry::vst3 {
 using namespace Steinberg;
 namespace {
 constexpr Steinberg::int32 kLossOfControlUiTag=9000;
-constexpr Steinberg::int32 kLanguageUiTag=9001;
+constexpr Steinberg::int32 kZoomUiTag=9003;
+constexpr std::array<double,6> kZoomFactors{.5,.75,1.,1.25,1.5,2.};
 constexpr Steinberg::int32 kMotionUiTag=9002;
 constexpr Steinberg::int32 kLanguageStateMagic=0x50535955; // 'PSYU'
-constexpr Steinberg::int32 kLanguageStateVersion=2;
+constexpr Steinberg::int32 kLanguageStateVersion=3;
 // Exactly the twelve sound-macro IDs; no global or UI-only controls.
 constexpr std::array<Steinberg::Vst::ParamID,12> kMacroIds{
     kDepression,kParanoia,kSchizophrenia,kMania,kPanic,
@@ -111,25 +114,30 @@ tresult PLUGIN_API Controller::getState(IBStream* state) {
     if(!stream.writeInt32(kLanguageStateMagic)||
        !stream.writeInt32(kLanguageStateVersion)||
        !stream.writeInt32(germanUi_?1:0)||
-       !stream.writeInt32(motionEnabled_?1:0))return kResultFalse;
+       !stream.writeInt32(motionEnabled_?1:0)||
+       !stream.writeInt32(zoomIndex_))return kResultFalse;
     return kResultOk;
 }
 tresult PLUGIN_API Controller::setState(IBStream* state) {
     if(!state)return kResultFalse;
     IBStreamer stream(state,kLittleEndian);
-    int32 magic=0,version=0,lang=0,motion=0;
+    int32 magic=0,version=0,lang=0,motion=0,zoom=0;
     if(!stream.readInt32(magic)) {
         germanUi_=false;
-        motionEnabled_=false; // no legacy UI state => safely static CRT
+        motionEnabled_=false;
+        zoomIndex_=0; // legacy sessions open at the safe 50% zoom
         return kResultOk;
     }
     if(magic!=kLanguageStateMagic||
-       !stream.readInt32(version)||(version!=1&&version!=2)||
+       !stream.readInt32(version)||(version<1||version>kLanguageStateVersion)||
        !stream.readInt32(lang)||(lang!=0&&lang!=1))return kResultFalse;
-    if(version==2 && (!stream.readInt32(motion)||(motion!=0&&motion!=1)))
+    if(version>=2 && (!stream.readInt32(motion)||(motion!=0&&motion!=1)))
         return kResultFalse;
-    germanUi_=(lang==1);
+    if(version>=3 && (!stream.readInt32(zoom)||zoom<0||zoom>=static_cast<int32>(kZoomFactors.size())))
+        return kResultFalse;
+    germanUi_=(lang==1); // preserve historical controller-state bytes, English-only editor
     motionEnabled_=(motion!=0);
+    zoomIndex_=zoom;
     return kResultOk;
 }
 
@@ -166,330 +174,221 @@ void Controller::triggerLossOfControl() {
     finishGroupEdit();
 }
 
-// P009 provisional audiovisual diagnostic monitor.
-// Entirely original vector graphics: no patient photography, no borrowed
-// imagery, no disk I/O, no DSP/audio callback, and no external textures.
-// Rendered on the UI thread, max ~30 Hz via VSTGUI CView::onIdle.
-class DiagnosticMonitor final : public VSTGUI::CView {
+// P028d: owner-approved raster faceplate. The standard native CAnimKnob
+// handles the multi-frame atlases and host gestures; only the observation
+// window and the two-state momentary button have custom drawing.
+class ObservationWindow final : public VSTGUI::CView {
 public:
-    explicit DiagnosticMonitor(Controller* controller)
-        : VSTGUI::CView(VSTGUI::CRect(0,0,288,325)), controller_(controller) {
-        static constexpr const char* names[]{"scene-1.png","scene-2.png","scene-3.png",
-            "scene-4.png","scene-5.png","scene-6.png","scene-7.png","scene-8.png","scene-9.png"};
+    explicit ObservationWindow(Controller* controller)
+        : VSTGUI::CView(VSTGUI::CRect(0,0,376,376)), controller_(controller) {
+        using namespace VSTGUI;
+        static constexpr const char* names[]{
+            "scene-corridor-bw.png","scene-fictional-horror-portrait-bw.png",
+            "scene-treatment-room-bw.png","scene-corridor-color.png",
+            "scene-treatment-room-color.png"};
         for(std::size_t i=0;i<scenes_.size();++i)
-            scenes_[i]=VSTGUI::owned(new VSTGUI::CBitmap(VSTGUI::CResourceDescription(names[i])));
+            scenes_[i]=owned(new CBitmap(CResourceDescription(names[i])));
+        glass_=owned(new CBitmap(CResourceDescription("porthole-glass.png")));
+        // Copy only the outside of the fixed aperture from the exact faceplate.
+        // This masks the moving photograph, NOT the fixed glass or metal ring.
+        auto plate=owned(new CBitmap(CResourceDescription("faceplate.png")));
+        edge_=owned(new CBitmap(376,376));
+        bool maskOk=false;
+        {
+            auto source=owned(CBitmapPixelAccess::create(plate,false));
+            auto target=owned(CBitmapPixelAccess::create(edge_,false));
+            if(source&&target&&plate->getWidth()==1536&&plate->getHeight()==1024) {
+                for(uint32_t y=0;y<376;++y)for(uint32_t x=0;x<376;++x){
+                    CColor color{0,0,0,0};
+                    source->setPosition(x+580,y+315);
+                    source->getColor(color);
+                    const double radius=std::hypot(double(x)-187.5,double(y)-187.5);
+                    color.alpha=static_cast<uint8_t>(std::lround(
+                        255.*std::clamp(radius-187.,0.,1.)));
+                    target->setPosition(x,y);target->setColor(color);
+                }
+                maskOk=true;
+            }
+        }
+        if(!maskOk)edge_=nullptr;
         model_=readModel();
+        previousScene_=scene(model_);
         motion_=controller_->isMotionEnabled();
-        german_=controller_->isGermanUi();
         setWantsIdle(true);
     }
     void onIdle() override {
         const auto next=readModel();
-        const bool motion=controller_->isMotionEnabled(),german=controller_->isGermanUi();
-        const bool changed=!(next==model_)||motion!=motion_||german!=german_;
-        model_=next;motion_=motion;german_=german;
-        // In reduced-motion mode the frame is truly static, including after
-        // switching off motion or reopening the editor with saved settings.
+        const bool motion=controller_->isMotionEnabled();
+        const bool changed=!(next==model_)||motion!=motion_;
+        if(scene(next)!=scene(model_)){
+            previousScene_=scene(model_);
+            fade_=0;
+        }
+        model_=next;motion_=motion;
         if(motion_&&model_.peak>0.f) {
             tick_=(tick_+1)%1200u;
+            fade_=std::min(18u,fade_+1);
             if(changed||tick_%3==0)invalid();
         } else {
-            const bool reset=tick_!=0;
-            tick_=0;
+            const bool reset=tick_!=0||fade_!=18;
+            tick_=0;fade_=18;
             if(changed||reset)invalid();
         }
     }
     void draw(VSTGUI::CDrawContext* dc) override {
         using namespace VSTGUI;
         const auto r=getViewSize();
-        const auto w=r.getWidth(),h=r.getHeight();
-        auto x=[&](double n){return r.left+n*w;};
-        auto y=[&](double n){return r.top+n*h;};
-        // True monochrome CRT; the controls outside remain orange-lit.
-        const CColor black{8,8,8,255}, dark{21,21,21,255};
-        const CColor green{183,183,183,255}, faint{75,75,75,255};
-        const CColor bright{224,224,224,255}, dim{36,36,36,255};
-        auto fill=[&](double l,double t,double rr,double bb,const CColor& color){
-            dc->setFillColor(color);dc->drawRect(CRect(x(l),y(t),x(rr),y(bb)),kDrawFilled);
+        ConcatClip clip(*dc,r);
+        if(clip.isEmpty()){setDirty(false);return;}
+        dc->setFillColor(CColor{0,0,0,255});
+        dc->drawRect(r,kDrawFilled);
+        const double phase=static_cast<double>(tick_)*.023;
+        const bool move=motion_&&model_.peak>0.f&&edge_;
+        const double scale=move?1.035+.015*std::sin(phase):1.;
+        const double dx=move?2.2*std::sin(phase*.73):0.;
+        const double dy=move?1.7*std::sin(phase*.91):0.;
+        auto paint=[&](CBitmap* bmp,float opacity,double z,double ox,double oy){
+            if(!bmp||!bmp->isLoaded())return;
+            const double w=r.getWidth()*z,h=r.getHeight()*z;
+            CGraphicsTransform tr;
+            tr.scale(w/bmp->getWidth(),h/bmp->getHeight())
+              .translate(r.left+(r.getWidth()-w)*.5+ox,r.top+(r.getHeight()-h)*.5+oy);
+            CDrawContext::Transform transform(*dc,tr);
+            bmp->draw(dc,CRect(0,0,bmp->getWidth(),bmp->getHeight()),CPoint(0,0),opacity);
         };
-        auto stroke=[&](double x1,double y1,double x2,double y2,const CColor& color,double thickness=1.){
-            dc->setFrameColor(color);dc->setLineWidth(thickness);
-            dc->drawLine(CPoint(x(x1),y(y1)),CPoint(x(x2),y(y2)));
-        };
-        fill(0,0,1,1,black);
-        fill(.035,.035,.965,.962,dark);
-        fill(.055,.066,.945,.928,black);
-        // Scene selection shares the same twelve real macro control values
-        // as the FX processor; when several are active, the strongest is
-        // the dominant image, other effects contribute contamination.
-        const int chosen=model_.dominant;
-        const float top=model_.peak,total=model_.total;
-        const float intensity=top;
-        const double phase=static_cast<double>(tick_)*0.04;
-        // Film gate corners and registration marks.
-        for(double sy:{.095,.905}){
-            stroke(.08,sy,.16,sy,green);
-            stroke(.84,sy,.92,sy,green);
+        const float level=model_.peak>0.f?.50f+.50f*model_.peak:.30f;
+        const int current=scene(model_);
+        if(motion_&&fade_<18&&previousScene_!=current){
+            paint(scenes_[previousScene_],level,scale,dx,dy);
+            paint(scenes_[current],level*float(fade_)/18.f,scale,dx,dy);
+        }else paint(scenes_[current],level,scale,dx,dy);
+        const int secondary=model_.secondary();
+        if(secondary>=0&&model_.peak>0.f) {
+            const int other=worldScene(secondary);
+            if(other!=current)paint(scenes_[other],.18f*model_.levels[secondary],scale,dx,dy);
         }
-        stroke(.5,.074,.5,.098,faint);
-        stroke(.5,.902,.5,.925,faint);
-        // The existing nine diagnostic bitmaps remain temporary. Reuse
-        // three of them for new worlds until the owner-approved art pass.
-        // Logical world index and physical bitmap index are independent.
-        constexpr std::array<std::size_t,MonitorModel::worldCount> previewScene{
-            0,1,2,3,4,5,6,7,8,2,5,8};
-        const auto sceneIndex=previewScene[static_cast<std::size_t>(chosen)];
-        const CRect imageRect(x(.5)-112,y(.14),x(.5)+112,y(.14)+196);
-        auto* scene=scenes_[sceneIndex].get();
-        if(scene&&scene->isLoaded()){
-            // Original grayscale perspective-rendered rooms/equipment. All
-            // decoding is editor-side, no external files or audio-thread work.
-            scene->draw(dc,imageRect);
-            if(intensity>0.f){
-                // Bounded visual cross-exposure from the second strongest
-                // macro, with independent scene geometry rather than RNG.
-                const int secondWorld=model_.secondary();
-                if(secondWorld>=0){
-                    const auto index=static_cast<std::size_t>(secondWorld);
-                    const auto second=previewScene[index];
-                    if(second!=sceneIndex&&scenes_[second]&&scenes_[second]->isLoaded())
-                        scenes_[second]->draw(dc,imageRect,CPoint(0,0),.23f*model_.levels[index]);
-                }
-                // Subtle local analog horizontal displacement; do not flash
-                // the full picture. Still mode uses a fixed phase.
-                const int strips=chosen==8?5:chosen==6?3:chosen==1?2:1;
-                for(int j=0;j<strips;++j){
-                    const double row=18.+std::fmod(j*47.+phase*1.1,150.);
-                    const double shift=std::round(10.*intensity*std::sin(j*2.4+phase*.17+.8));
-                    const double left=std::max(0.,shift),right=224.+std::min(0.,shift);
-                    if(right>left)scene->draw(dc,CRect(imageRect.left+left,imageRect.top+row,
-                        imageRect.left+right,imageRect.top+row+5.),CPoint(left-shift,row),.55f);
-                }
-            }
-        }else if(chosen==0 || top<.08f){ // vector fallback if resource loading fails
-            fill(.11,.14,.89,.84,dim);
-            for(int i=0;i<6;++i) {
-                const double d=static_cast<double>(i)/6.;
-                const double ll=.10+.33*d,rr=.90-.33*d;
-                stroke(ll,.15+.30*d,ll,.84-.18*d,faint);
-                stroke(rr,.15+.30*d,rr,.84-.18*d,faint);
-                stroke(.10,.15+.30*d,.90,.15+.30*d,faint);
-                stroke(.10,.84-.18*d,.90,.84-.18*d,faint);
-            }
-            fill(.455,.44,.545,.73,black);
-            stroke(.455,.44,.545,.44,green);
-            if(intensity>.18f)fill(.469,.465,.485,.55,bright);
-        }else if(chosen==1){ // surveillance plate: tracking gaze
-            for(int i=0;i<7;++i){
-                const double t=.16+i*.094;
-                stroke(.11,t,.89,t,faint);
-            }
-            const double shift=.07*intensity*std::sin(phase*.24);
-            stroke(.25+shift,.34,.75+shift,.34,green,2);
-            stroke(.25+shift,.68,.75+shift,.68,green,2);
-            stroke(.25+shift,.34,.25+shift,.68,green);
-            stroke(.75+shift,.34,.75+shift,.68,green);
-            fill(.47+shift,.49,.53+shift,.54,bright);
-        }else if(chosen==2){ // double exposed diagnostic radiograph
-            for(int copy=0;copy<2;++copy){
-                const double ofs=copy==0?-.075*intensity:.075*intensity;
-                const auto col=copy==0?faint:green;
-                for(int i=0;i<6;++i){
-                    const double py=.21+i*.103;
-                    stroke(.29+ofs,py,.71+ofs,py,col);
-                    stroke(.29+ofs,py,.42+ofs,py+.058,col);
-                    stroke(.71+ofs,py,.58+ofs,py+.058,col);
-                }
-                stroke(.50+ofs,.14,.50+ofs,.83,col,2);
-            }
-        }else if(chosen==3){ // manic accelerating analog meter
-            for(int i=0;i<28;++i){
-                const double xx=.11+i*.028;
-                const double hh=.13+.22*std::abs(std::sin(i*.91+phase*.33));
-                stroke(xx,.70,xx,.70-hh,i%3==0?bright:faint);
-            }
-            const double v=.14+.7*(.5+.5*std::sin(phase*.2));
-            stroke(v,.18,v,.84,green,2);
-        }else if(chosen==4){ // electrical examination / EEG pulse
-            double px=.10,py=.55;
-            for(int i=1;i<=70;++i){
-                const double xx=.10+(.80*i)/70.;
-                const double pulse=(i%18==8?-.30*intensity:i%18==10?.24*intensity:0.);
-                const double yy=.55+pulse+.035*std::sin(i*.42+phase*.15);
-                stroke(px,py,xx,yy,i%9==0?bright:green);
-                px=xx;py=yy;
-            }
-            stroke(.18,.75,.82,.75,faint);
-        }else if(chosen==5){ // isolation / empty observation room
-            fill(.18,.19,.82,.82,dim);
-            for(int i=0;i<5;++i){
-                const double z=i*.043;
-                stroke(.18+z,.19+z,.82-z,.19+z,faint);
-                stroke(.18+z,.19+z,.18+z,.82-z,faint);
-                stroke(.82-z,.19+z,.82-z,.82-z,faint);
-            }
-            stroke(.48,.33,.52,.33,bright,2);
-            stroke(.50,.33,.50,.69,green);
-        }else if(chosen==6){ // repeated institutional record cycles
-            for(int j=0;j<7;++j){
-                const double cy=.15+j*.102;
-                stroke(.13,cy,.86,cy,faint);
-                for(int i=0;i<12;++i){
-                    const double xx=.16+i*.055;
-                    const double hv=.013+.065*std::abs(std::sin(phase*.18+i*.6+j*.45));
-                    stroke(xx,cy,xx,cy+hv,i%3==0?green:faint);
-                }
-            }
-        }else if(chosen==7){ // shadow echo in empty ward
-            for(int k=0;k<3;++k){
-                const double offset=(k-1)*.065*intensity;
-                const auto color=k==1?green:faint;
-                stroke(.5+offset,.23,.40+offset,.40,color,2);
-                stroke(.5+offset,.23,.60+offset,.40,color,2);
-                stroke(.40+offset,.40,.36+offset,.72,color);
-                stroke(.60+offset,.40,.64+offset,.72,color);
-                stroke(.36+offset,.72,.64+offset,.72,color);
-            }
-        }else{ // fragmented signal/clinical chart
-            for(int i=0;i<13;++i){
-                const double t=.12+i*.055;
-                const double displacement=.09*intensity*std::sin(i*3.1+phase*.11);
-                stroke(.12+displacement,t,.78-displacement,t+.14,green);
-                if(i%3==0)stroke(.22,t+.14,.84,t+.03,bright);
-            }
+        paint(glass_,1.f,1.,0.,0.);
+        if(edge_)edge_->draw(dc,r);
+        // A missing critical texture must not silently resemble a normal standby.
+        if(!scenes_[current]->isLoaded()||!glass_->isLoaded()){
+            dc->setFont(kNormalFont);dc->setFontColor(CColor{255,190,150,255});
+            dc->drawString("ARTWORK MISSING",r,kCenterText,true);
         }
-        // Continuous CRT signal strength strip. It MUST visibly respond
-        // even when DEPRESSION remains the dominant scene both before and
-        // after a randomization (a previous GUI smoke test exposed this).
-        // 0% is an empty black strip; any active macro fills by intensity.
-        fill(.12,.758,.88,.830,black);
-        fill(.14,.769,.14+.72*static_cast<double>(intensity),.817,green);
-        stroke(.12,.758,.88,.758,faint);
-        stroke(.12,.830,.88,.830,faint);
-
-        // Cross-macro interference: extra non-dominant worlds affect density.
-        const float contamination=std::clamp(total-top,0.f,4.f);
-        const int bands=static_cast<int>(std::min(15.f,contamination*3.f));
-        for(int i=0;i<bands;++i){
-            const double yy=.12+std::fmod((i*0.173+tick_*.0007),.75);
-            stroke(.09,yy,.92,yy,i%3==0?green:faint);
-        }
-        // Restrained scanlines over the photographic-style artwork.
-        for(int i=0;i<84;++i){
-            const double yy=.104+i*.0095;
-            stroke(.062,yy,.938,yy,i%5==0?CColor{12,12,12,72}:CColor{0,0,0,30});
-        }
-        fill(.075,.848,.925,.887,black);
-        for(std::size_t i=0;i<model_.levels.size();++i){
-            const double xx=.12+i*.064;
-            fill(xx,.860,xx+.042,.878,dim);
-            const float level=model_.levels[i];
-            if(level>0.f)fill(xx,.860,xx+.042*level,.878,green);
-        }
-        static constexpr const char* sceneEnglish[]{
-            "WARD / CORRIDOR","OBSERVATION","DOUBLE EXPOSURE",
-            "ACTIVITY METER","ELECTRICAL TRACE","ISOLATION ROOM",
-            "REPEATED RECORD","SHADOW ECHO","SIGNAL FRACTURE",
-            "DELIRIUM","CATATONIA","AMNESIA"
-        };
-        static constexpr const char* sceneGerman[]{
-            "LEERER FLUR","BEOBACHTUNG","DOPPELBELICHTUNG",
-            "AKTIVITAET","ELEKTRISCHE KURVE","ISOLATIONSRAUM",
-            "WIEDERHOLUNG","SCHATTEN-ECHO","SIGNALBRUCH",
-            "DELIRIUM","KATATONIE","AMNESIE"
-        };
-        const bool german=controller_->isGermanUi();
-        char display[96]{};
-        if(model_.bypass)
-            std::snprintf(display,sizeof(display),"BYPASS  /  %s",german?"ORIGINAL":"DRY");
-        else if(model_.wet==0.f)
-            std::snprintf(display,sizeof(display),"%s  /  %s",german?"THERAPIE":"THERAPY",german?"ORIGINAL":"DRY");
-        else if(top==0.f)
-            std::snprintf(display,sizeof(display),"%s",german?"BEREIT  /  0%":"STANDBY  /  0%");
-        else
-            std::snprintf(display,sizeof(display),"%s %02d  %s  %02d%%",
-                          german?"KAN":"CH",chosen+1,
-                          german?sceneGerman[chosen]:sceneEnglish[chosen],
-                          static_cast<int>(std::lround(intensity*100.f)));
-        dc->setFont(VSTGUI::kNormalFontSmall);
-        dc->setFontColor(bright);
-        dc->drawString(display,CRect(x(.075),y(.085),x(.925),y(.125)),
-                       VSTGUI::kCenterText,true);
-        dc->setFrameColor(green);
-        dc->setLineWidth(1.);
-        dc->drawRect(CRect(x(.036),y(.036),x(.964),y(.963)),kDrawStroked);
         setDirty(false);
     }
 private:
-    Controller* controller_;
+    // Five owner-reviewed candidate photographs: provisional reuse for twelve
+    // worlds, not the final distinct image library.
+    static int worldScene(int world) noexcept {
+        constexpr std::array<int,12> map{0,1,2,3,4,0,2,1,4,3,2,0};
+        return map[static_cast<std::size_t>(std::clamp(world,0,11))];
+    }
+    static int scene(const MonitorModel& m) noexcept {return m.peak>0.f?worldScene(m.dominant):0;}
     MonitorModel readModel() const {
-        static_assert(kMacroIds.size()==MonitorModel::worldCount);
         std::array<double,MonitorModel::worldCount> macros{};
         for(std::size_t i=0;i<macros.size();++i)
             macros[i]=controller_->getParamNormalized(kMacroIds[i]);
         return MonitorModel::make(macros,controller_->getParamNormalized(kTherapy),
-                                 controller_->getParamNormalized(kBypass));
+                                  controller_->getParamNormalized(kBypass));
     }
-    std::array<VSTGUI::SharedPointer<VSTGUI::CBitmap>,9> scenes_{};
+    Controller* controller_;
+    std::array<VSTGUI::SharedPointer<VSTGUI::CBitmap>,5> scenes_{};
+    VSTGUI::SharedPointer<VSTGUI::CBitmap> glass_,edge_;
     MonitorModel model_{};
-    bool motion_=false,german_=false;
-    unsigned tick_=0;
+    int previousScene_=0;
+    bool motion_=false;
+    unsigned tick_=0,fade_=18;
 };
 
-// This is a host-embedded editor, not a stand-alone UI.
-// Its private UI-only tag (9000) does not enter the VST3 parameter list.
+class RasterLossButton final : public VSTGUI::CTextButton {
+public:
+    RasterLossButton():CTextButton(VSTGUI::CRect(0,0,110,106),nullptr,-1,nullptr,kKickStyle) {
+        using namespace VSTGUI;
+        released_=owned(new CBitmap(CResourceDescription("loss-released.png")));
+        pressed_=owned(new CBitmap(CResourceDescription("loss-pressed.png")));
+    }
+    void draw(VSTGUI::CDrawContext* dc) override {
+        auto image=getValueNormalized()>.5f?pressed_:released_;
+        if(image&&image->isLoaded())image->draw(dc,getViewSize());
+        else CTextButton::draw(dc);
+        setDirty(false);
+    }
+private:
+    VSTGUI::SharedPointer<VSTGUI::CBitmap> released_,pressed_;
+};
+
 class PsychiatryEditor final : public VSTGUI::VST3Editor, public VSTGUI::VST3EditorDelegate {
 public:
     explicit PsychiatryEditor(Controller* parent)
-        : VSTGUI::VST3Editor(parent,parent->isGermanUi()?"view_de":"view","psychiatry.uidesc"), parent_(parent) {
+        : VSTGUI::VST3Editor(parent,"view","psychiatry.uidesc"), parent_(parent) {
         setDelegate(this);
+        setAllowedZoomFactors(std::vector<double>(kZoomFactors.begin(),kZoomFactors.end()));
+        setZoomFactor(kZoomFactors[static_cast<std::size_t>(parent_->zoomIndex())]);
     }
     VSTGUI::CView* createCustomView(VSTGUI::UTF8StringPtr name,
             const VSTGUI::UIAttributes&,
             const VSTGUI::IUIDescription*,
             VSTGUI::VST3Editor*) override {
-        if(name && std::strcmp(name,"PSYCHIATRY_DIAGNOSTIC")==0)
-            return new DiagnosticMonitor(parent_);
+        if(!name)return nullptr;
+        if(std::strcmp(name,"PSYCHIATRY_OBSERVATION")==0)return new ObservationWindow(parent_);
+        if(std::strcmp(name,"PSYCHIATRY_LOSS")==0)return new RasterLossButton;
+        if(std::strcmp(name,"PSYCHIATRY_ZOOM")==0){
+            auto* menu=new VSTGUI::COptionMenu(VSTGUI::CRect(0,0,124,36),nullptr,-1);
+            for(double factor:kZoomFactors){
+                char label[16]{};
+                std::snprintf(label,sizeof(label),"%d%%",static_cast<int>(factor*100));
+                menu->addEntry(label);
+            }
+            menu->setCurrent(parent_->zoomIndex());
+            zoomMenu_=menu;
+            return menu;
+        }
         return nullptr;
+    }
+    void onZoomChanged(VSTGUI::VST3Editor*,double factor) override {
+        for(std::size_t i=0;i<kZoomFactors.size();++i)if(factor==kZoomFactors[i]){
+            parent_->setZoomIndex(static_cast<int>(i));
+            if(zoomMenu_){zoomMenu_->setCurrent(static_cast<int>(i));zoomMenu_->invalid();}
+        }
     }
 protected:
     void valueChanged(VSTGUI::CControl* control) override {
-        if(control && control->getTag()==kMotionUiTag) {
-            parent_->setMotionEnabled(control->getValueNormalized()>0.5f);
-            return;
+        if(control&&control->getTag()==kMotionUiTag){
+            parent_->setMotionEnabled(control->getValueNormalized()>.5f);return;
         }
-        if(control && control->getTag()==kLanguageUiTag) {
-            if(control->getValueNormalized()>0.5f) {
-                const bool german=!parent_->isGermanUi();
-                if(exchangeView(german?"view_de":"view"))
-                    parent_->setGermanUi(german);
+        if(control&&control->getTag()==kZoomUiTag){
+            if(auto* menu=dynamic_cast<VSTGUI::COptionMenu*>(control)){
+                const int index=menu->getCurrentIndex();
+                if(index>=0&&index<static_cast<int>(kZoomFactors.size()))
+                    setZoomFactor(kZoomFactors[static_cast<std::size_t>(index)]);
             }
             return;
         }
-        if(control && control->getTag()==kLossOfControlUiTag) {
-            // VSTGUI CTextButton with kick-style sends pressed and released
-            // values. Trigger once on press only, not twice per click.
-            if(control->getValueNormalized()>0.5f)
-                parent_->triggerLossOfControl();
+        if(control&&control->getTag()==kLossOfControlUiTag){
+            if(control->getValueNormalized()>.5f)parent_->triggerLossOfControl();
             return;
         }
         VSTGUI::VST3Editor::valueChanged(control);
     }
     void onViewAdded(VSTGUI::CFrame* frame,VSTGUI::CView* view) override {
         VSTGUI::VST3Editor::onViewAdded(frame,view);
-        if(auto* control=dynamic_cast<VSTGUI::CControl*>(view)) {
+        if(auto* control=dynamic_cast<VSTGUI::CControl*>(view)){
             if(control->getTag()==kMotionUiTag){
-                control->setValueNormalized(parent_->isMotionEnabled()?1.f:0.f);
-                control->invalid();
+                control->setValueNormalized(parent_->isMotionEnabled()?1.f:0.f);control->invalid();
             }
         }
     }
+    void onViewRemoved(VSTGUI::CFrame* frame,VSTGUI::CView* view) override {
+        if(view==zoomMenu_)zoomMenu_=nullptr;
+        VSTGUI::VST3Editor::onViewRemoved(frame,view);
+    }
 private:
     Controller* parent_;
+    VSTGUI::COptionMenu* zoomMenu_=nullptr;
 };
 
 IPlugView* PLUGIN_API Controller::createView(FIDString name) {
-    // Minimal 125A front panel for the FIRST DAW acceptance test.
+    // P028d raster editor candidate; preserve the existing VST3 host adapter.
     // VSTGUI's VST3Editor performs normal beginEdit/performEdit/endEdit
     // and host-to-control parameter synchronization automatically.
     // No image decoding/GUI rendering is done in the audio callback.

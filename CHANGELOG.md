@@ -2,6 +2,10 @@
 
 Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
+## 0.9.25 — P028d raster editor candidate
+
+- Approved P028c artwork, thirteen native animated controls, momentary LOSS, circular photographic observation, English-only, motion, bypass, zoom and value displays. Native verification pending; DSP unchanged.
+
 ## P027g — integrated functionality gate (factory v0.9.24 unchanged)
 
 - Actual controller edits via SDK parameter queues into real processor; live audio change and new-instance recall with bit-exact restarted audio.

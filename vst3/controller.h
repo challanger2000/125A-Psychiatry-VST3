@@ -19,6 +19,8 @@ public:
     void setGermanUi(bool german) noexcept {germanUi_=german;}
     bool isMotionEnabled() const noexcept {return motionEnabled_;}
     void setMotionEnabled(bool value) noexcept {motionEnabled_=value;}
+    int zoomIndex() const noexcept {return zoomIndex_;}
+    void setZoomIndex(int index) noexcept {if(index>=0&&index<6)zoomIndex_=index;}
     Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override;
     Steinberg::tresult PLUGIN_API setState(Steinberg::IBStream* state) override;
     Steinberg::tresult PLUGIN_API getParamStringByValue(
@@ -28,6 +30,7 @@ public:
 private:
     bool germanUi_=false;
     bool motionEnabled_=false; // reduced-motion mode is the default
+    int zoomIndex_=0; // 50% initial size fits smaller host displays
     std::mt19937 random_{std::random_device{}()};
 };
 } // namespace psychiatry::vst3

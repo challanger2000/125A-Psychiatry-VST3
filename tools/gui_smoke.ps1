@@ -73,82 +73,69 @@ try {
         throw 'P009 GUI test: cannot locate editor client origin'
     }
     $before=Screenshot 'P009-Editor-Before.png'
-
-    # P024: sample the actual CRT scene, excluding labels and strip. A
-    # loaded shaded image has many grayscale levels; the vector fallback does not.
+    # P028d default zoom 50% -> 768x512 logical faceplate. Measure exact
+    # on-screen regions, not the old rectangular CRT/language coordinates.
+    function Delta($a,$b,[int]$x,[int]$y,[int]$w,[int]$h) {
+        $count=0
+        for($yy=$y;$yy -lt $y+$h;$yy+=2){
+            for($xx=$x;$xx -lt $x+$w;$xx+=2){
+                $px=$origin.X+$xx;$py=$origin.Y+$yy
+                if($px -lt 0 -or $py -lt 0 -or $px -ge $bounds.Width -or $py -ge $bounds.Height){throw 'P028d image outside desktop'}
+                $p=$a.GetPixel($px,$py);$q=$b.GetPixel($px,$py)
+                if(([math]::Abs([int]$p.R-[int]$q.R)+[math]::Abs([int]$p.G-[int]$q.G)+[math]::Abs([int]$p.B-[int]$q.B)) -gt 24){$count++}
+            }
+        }
+        return $count
+    }
     $shades=[System.Collections.Generic.HashSet[int]]::new()
-    for($yy=54;$yy -lt 232;$yy+=3){
-        for($xx=37;$xx -lt 251;$xx+=3){
-            $p=$before.GetPixel($origin.X+685+$xx,$origin.Y+116+$yy)
-            [void]$shades.Add([int]$p.R)
-        }
-    }
-    Write-Host "P024 loaded CRT scene unique red levels=$($shades.Count)"
-    if($shades.Count -lt 45){throw 'P024 raster artwork not visible in actual editor'}
-    # Actual press of the LOSS OF CONTROL GUI button.
-    ClickClient $handle 510 534
+    for($y=40;$y -lt 140;$y+=3){for($x=40;$x -lt 150;$x+=3){
+        [void]$shades.Add([int]$before.GetPixel($origin.X+$x,$origin.Y+$y).R)
+    }}
+    if($shades.Count -lt 45){throw 'P028d faceplate raster not visible'}
+    ClickClient $handle 707 460
     Start-Sleep -Milliseconds 650
-    $proc.Refresh()
-    if($proc.HasExited) {throw 'P009 GUI test: host exited after randomization click'}
     $after=Screenshot 'P009-Editor-Randomized.png'
-
-    # Only the CRT panel is compared. Animated-frame jitter with all macros
-    # at zero is intentionally limited; a real click must cause a large scene
-    # change because the nine macro parameters actually changed.
-    $changed=0;$sumDiff=0
-    for($y=20;$y -lt 302;$y+=8){
-        for($x=20;$x -lt 267;$x+=8){
-            $px=$origin.X+685+$x
-            $py=$origin.Y+116+$y
-            if($px -ge $bounds.Width -or $py -ge $bounds.Height){continue}
-            $a=$before.GetPixel($px,$py)
-            $b=$after.GetPixel($px,$py)
-            $dist=[math]::Abs([int]$a.R-[int]$b.R)+
-                  [math]::Abs([int]$a.G-[int]$b.G)+
-                  [math]::Abs([int]$a.B-[int]$b.B)
-            if($dist -gt 15){$changed++}
-            $sumDiff+=$dist
-        }
-    }
-    Write-Host "P009 CRT reaction check: changed pixels=$changed, RGB delta=$sumDiff"
-    if($changed -lt 18 -or $sumDiff -lt 1600) {
-        throw "P009 GUI test: LOSS OF CONTROL did not produce a visible CRT scene change"
-    }
-    # Static control-driven monitor: toggle actual VST3 bypass and check
-    # the filled intensity bar becomes dark, then returns to its old state.
-    ClickClient $handle 435 505
+    if((Delta $before $after 313 180 140 140) -lt 80){throw 'P028d randomization does not change observation window'}
+    ClickClient $handle 210 493
     Start-Sleep -Milliseconds 500
     $bypassed=Screenshot 'P009-Editor-Bypassed.png'
-    ClickClient $handle 435 505
+    ClickClient $handle 210 493
     Start-Sleep -Milliseconds 500
     $restored=Screenshot 'P009-Editor-Restored.png'
-    $activeSum=0;$bypassSum=0;$restoredSum=0
-    for($y=252;$y -le 258;$y+=2){
-        for($x=47;$x -le 53;$x+=2){
-            $px=$origin.X+685+$x;$py=$origin.Y+116+$y
-            $activeSum+=[int]$after.GetPixel($px,$py).R
-            $bypassSum+=[int]$bypassed.GetPixel($px,$py).R
-            $restoredSum+=[int]$restored.GetPixel($px,$py).R
+    if((Delta $after $bypassed 313 180 140 140) -lt 80){throw 'P028d bypass does not change effective observation'}
+    if((Delta $after $restored 313 180 140 140) -gt 4){throw 'P028d restored static observation differs'}
+    function DragClient([IntPtr]$hwnd,[int]$x,[int]$y) {
+        $point=[PSYGUI+POINT]::new();$point.X=$x;$point.Y=$y
+        if(-not [PSYGUI]::ClientToScreen($hwnd,[ref]$point)){throw 'ClientToScreen failed'}
+        [System.Windows.Forms.Cursor]::Position=[System.Drawing.Point]::new($point.X,$point.Y)
+        Start-Sleep -Milliseconds 100
+        [PSYGUI]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
+        for($i=1;$i -le 8;$i++){
+            [System.Windows.Forms.Cursor]::Position=[System.Drawing.Point]::new($point.X,$point.Y-3*$i)
+            Start-Sleep -Milliseconds 45
         }
+        [PSYGUI]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
+        Start-Sleep -Milliseconds 220
     }
-    Write-Host "P022 CRT active=$activeSum bypass=$bypassSum restored=$restoredSum"
-    if($activeSum-$bypassSum -lt 400 -or [math]::Abs($restoredSum-$activeSum) -gt 40){
-        throw 'P022 CRT intensity does not follow actual bypass or restore'
+    $centers=@(@(385,84),@(482,99),@(548,162),@(562,248),@(537,335),@(478,401),@(384,422),@(292,401),@(233,336),@(211,248),@(227,162),@(289,99),@(104,424))
+    for($i=0;$i -lt $centers.Count;$i++){
+        $x=$centers[$i][0];$y=$centers[$i][1]
+        $old=Screenshot ("P009-Editor-Control-"+$i+"-Before.png")
+        try{
+            DragClient $handle $x $y
+            $new=Screenshot ("P009-Editor-Control-"+$i+"-After.png")
+            try{
+                if((Delta $old $new ($x-26) ($y-26) 52 52) -lt 8){throw "P028d control $i did not visibly rotate"}
+            }finally{$new.Dispose()}
+        }finally{$old.Dispose()}
     }
-    # Click EN -> DE. The editor must survive and repaint both templates.
-    ClickClient $handle 600 471
-    Start-Sleep -Milliseconds 500
     $proc.Refresh()
-    if($proc.HasExited) {throw 'P009 GUI test: host exited after language click'}
-    $german=Screenshot 'P009-Editor-German.png'
-    Write-Host 'P009 GUI interaction PASS: randomizer changes CRT; language switch survives'
+    if($proc.HasExited){throw 'P028d EditorHost terminated during interaction'}
+    Write-Host 'P028d native faceplate, randomization, static bypass/restore and 13 knob drag probes PASS'
 } finally {
     if($before){$before.Dispose()}
     if($after){$after.Dispose()}
-    if($german){$german.Dispose()}
     if($bypassed){$bypassed.Dispose()}
     if($restored){$restored.Dispose()}
-    if($proc -and -not $proc.HasExited){
-        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    }
+    if($proc -and -not $proc.HasExited){Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue}
 }

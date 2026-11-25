@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(PsychiatryAudioPrototype VERSION 0.9.24 LANGUAGES CXX)
+project(PsychiatryAudioPrototype VERSION 0.9.25 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -127,11 +127,19 @@ if(PSYCHIATRY_BUILD_VST3)
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VST3-SDK.txt" COPYONLY)
   configure_file("${PSYCHIATRY_VST3_SDK_DIR}/vstgui4/LICENSE"
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VSTGUI.txt" COPYONLY)
+  execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/verify_artwork.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}" RESULT_VARIABLE ARTWORK_CHECK)
+  if(NOT ARTWORK_CHECK EQUAL 0)
+    message(FATAL_ERROR "P028c artwork verification failed")
+  endif()
   smtg_target_add_plugin_resources(PsychiatryPrototype
       RESOURCES resource/psychiatry.uidesc resource/LICENSE-ACOUSTIC-SOURCES.txt
-      resource/scene-1.png resource/scene-2.png resource/scene-3.png
-      resource/scene-4.png resource/scene-5.png resource/scene-6.png
-      resource/scene-7.png resource/scene-8.png resource/scene-9.png
+      resource/artwork/faceplate.png resource/artwork/macro-atlas.png
+      resource/artwork/therapy-atlas.png resource/artwork/porthole-glass.png
+      resource/artwork/loss-released.png resource/artwork/loss-pressed.png
+      resource/artwork/scene-corridor-bw.png resource/artwork/scene-corridor-color.png
+      resource/artwork/scene-treatment-room-bw.png resource/artwork/scene-treatment-room-color.png
+      resource/artwork/scene-fictional-horror-portrait-bw.png
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VST3-SDK.txt"
       "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-VSTGUI.txt")
   smtg_target_configure_version_file(PsychiatryPrototype)

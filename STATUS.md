@@ -1,8 +1,12 @@
 # 125A PSYCHIATRY — Verified Project Status
 
-Updated: **2026-11-24**. Latest verified functional baseline: **P027g / v0.9.24**. Current GUI design draft: P028a (not integrated). **Only `main`**; no final or musical approval.
+Updated: **2026-11-24**. Latest verified functional baseline: **P027g / v0.9.24**. Current source candidate: P028d / v0.9.25 (native raster editor, verification pending). **Only `main`**; no final or musical approval.
 
-## Current task — P028a layout review
+## Current task — P028d native raster editor candidate
+
+See [P028d](docs/P028d.md). Artwork fully transferred and hash-verified; P027g DSP baseline retained. Native build/host evidence not yet available. Five provisional scenes; no final acceptance.
+
+## Historical P028a layout review
 
 See [geometry draft](docs/gui-layout/README.md). P027g passed all four workflows; functional baseline frozen. No production changes. Owner review of exact geometry before art.
 

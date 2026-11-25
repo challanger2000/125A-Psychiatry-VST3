@@ -412,13 +412,17 @@ int main(){
         CHECK(!controller.isMotionEnabled());
         controller.setGermanUi(true);
         controller.setMotionEnabled(true);
+        controller.setZoomIndex(3);
         CHECK(controller.getState(&saved)==kResultOk);
         controller.setGermanUi(false);
         controller.setMotionEnabled(false);
+        controller.setZoomIndex(0);
         saved.rewind();
         CHECK(controller.setState(&saved)==kResultOk);
         CHECK(controller.isGermanUi());
         CHECK(controller.isMotionEnabled());
+        CHECK(controller.zoomIndex()==3);
+        controller.setZoomIndex(0);
         controller.setGermanUi(false);
         controller.setMotionEnabled(false);
         ResizableMemoryIBStream savedEn;

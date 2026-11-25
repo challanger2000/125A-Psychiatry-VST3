@@ -46,6 +46,7 @@ struct Frame final:IPlugFrame{
     int requests=0;
     int detachOnResize=0;
     bool detached=false;
+    bool equalSizeShortcut=false;
     tresult PLUGIN_API queryInterface(const TUID iid,void** out) override{
         if(!out)return kInvalidArgument;
         *out=nullptr;
@@ -64,6 +65,10 @@ struct Frame final:IPlugFrame{
             return kResultFalse;
         }
         if(!accept||!size||size->getWidth()<=0||size->getHeight()<=0)return kResultFalse;
+        if(equalSizeShortcut){
+            ViewRect current;REQUIRE(view->getSize(&current)==kResultOk);
+            if(current==*size)return kResultTrue; // official EditorHost semantics
+        }
         RECT r{0,0,size->getWidth(),size->getHeight()};
         if(!AdjustWindowRectEx(&r,WS_OVERLAPPEDWINDOW,FALSE,0))return kResultFalse;
         if(!SetWindowPos(window,nullptr,0,0,r.right-r.left,r.bottom-r.top,SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE))return kResultFalse;
@@ -185,6 +190,12 @@ int wmain(int argc,wchar_t** argv){
     REQUIRE(c->initialize(nullptr)==kResultOk);
     std::puts("P028l native controller initialized");
     recall(c,1,0);saved(c,1,0);
+    // A normal host starts with the advertised getSize() and may skip a
+    // resize when it equals the requested size. Never publish the requested
+    // geometry before asking the host to apply it.
+    {View official;official.frame.equalSizeShortcut=true;official.open(c,15,15);
+     official.size(0);recall(c,1,1);pump(60);official.size(1);official.close();}
+    recall(c,1,0);
     std::puts("P028l native opening first editor");
     View a;a.open(c,15,15);a.size(0);saved(c,1,0);
     std::puts("P028l native first editor attached; checking MOTION");

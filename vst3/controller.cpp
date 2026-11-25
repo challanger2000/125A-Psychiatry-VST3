@@ -508,12 +508,20 @@ protected:
         // here. The SDK construction stack has already unwound. Retain the
         // host and editor across the single external resize request.
         IPtr<IPlugFrame> host=plugFrame;
+        // EditorHost (and other hosts) compares getSize() with the request
+        // and returns success without resizing if they already match.
+        // Publish the *previous* host rectangle until it accepts the request;
+        // the internal native frame already has the desired geometry.
+        setRect(oldRect);
+        const auto requested=wanted;
         const auto accepted=host->resizeView(this,&wanted);
         if(accepted!=kResultTrue||!open_||!getFrame()||!plugFrame||
-           getRect().getWidth()!=wanted.getWidth()||getRect().getHeight()!=wanted.getHeight()){
+           wanted.getWidth()!=requested.getWidth()||wanted.getHeight()!=requested.getHeight()||
+           getFrame()->getWidth()!=requested.getWidth()||getFrame()->getHeight()!=requested.getHeight()){
             if(open_||getFrame())Steinberg::Vst::VSTGUIEditor::removed();
             setRect(oldRect);return kResultFalse;
         }
+        setRect(requested);
         parent_->editorOpened(this);syncMotion();syncZoomMenu();
         return kResultOk;
     }

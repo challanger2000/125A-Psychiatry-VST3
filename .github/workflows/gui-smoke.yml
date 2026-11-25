@@ -67,6 +67,7 @@ jobs:
           & "./tools/gui_smoke.ps1"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Native DLL follow-up recall, resize refusal and interrupted fade
+        if: ${{ !cancelled() }}
         shell: pwsh
         run: |
           $hostExe = Get-ChildItem build-vst3 -Recurse -File -Filter test_native_followup.exe | Select-Object -First 1

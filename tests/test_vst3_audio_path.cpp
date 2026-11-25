@@ -1227,6 +1227,15 @@ static void testAuditAudio(){
                     check(p.process(flush)==kResultOk,"R03 active zero-frame recall");
                 }
             }
+            if(mode>=7&&(start==at||start==at+1024)){
+                ResizableMemoryIBStream recall;
+                writeState(recall,8,1.f,start==at?1.f:0.f,(mode>=9)&&start==at);
+                check(p.setState(&recall)==kResultOk,"N01 active therapy/combined recall");
+                if(mode==8||mode==10){
+                    Vst::ProcessData flush{};flush.symbolicSampleSize=Vst::kSample32;
+                    check(p.process(flush)==kResultOk,"N01 zero-frame recall");
+                }
+            }
             if(mode==4&&start==at){
                 int32 index=0,point=0;auto* q=changes.addParameterData(kBypass,index);
                 check(q->addPoint(0,1.,point)==kResultOk,"bypass on");
@@ -1276,6 +1285,29 @@ static void testAuditAudio(){
     check(fadeError<3.e-6,"sample-aligned 5ms bypass crossfade");
     std::printf("P028l R03 active recall/zero-frame recall oracle %.9g\n",recallError);
     check(recallError<3.e-6,"R03 recall must ramp from current mix, including zero-frame recall");
+    // Independently derived exponential THERAPY law, multiplied by the
+    // 5ms linear bypass ramp when both are recalled in the same state.
+    // Verify every sample in both directions, including zero-frame flush.
+    const auto therapyRecall=run(7),therapyFlush=run(8),combined=run(9),combinedFlush=run(10);
+    double therapyError=0.;
+    const double tau=.012*kRate,atReturn=std::exp(-1024./tau);
+    for(int n=0;n<total;++n){
+        const int rt=n-at;
+        const double w=rt<0?1.:rt<1024?std::exp(-double(rt+1)/tau):
+            1.-(1.-atReturn)*std::exp(-double(rt-1024+1)/tau);
+        const double bm=rt<0?0.:rt<ramp?double(rt+1)/ramp:rt<1024?1.:
+            rt<1024+ramp?1.-double(rt-1024+1)/ramp:0.;
+        const float dl=n>=kLatency?sourceAudio.l[n-kLatency]:0.f;
+        const float dr=n>=kLatency?sourceAudio.r[n-kLatency]:0.f;
+        for(const auto* x:{&therapyRecall,&therapyFlush,&combined,&combinedFlush}){
+            const double mix=w*((x==&combined||x==&combinedFlush)?1.-bm:1.);
+            therapyError=std::max({therapyError,
+                std::abs(double(x->l[n])-(dl+mix*(wet.l[n]-dl))),
+                std::abs(double(x->r[n])-(dr+mix*(wet.r[n]-dr)))});
+        }
+    }
+    std::printf("N01 active THERAPY/combined recall PCM oracle max %.9g\n",therapyError);
+    check(therapyError<4.e-6,"N01 THERAPY recall must preserve ongoing mix and ramp both ways");
     // Fresh neutral, therapy-dry and bypass modes: malformed PCM becomes zero.
     for(int mode=0;mode<3;++mode){
         Stereo malformed(512),clean(512);

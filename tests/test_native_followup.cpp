@@ -44,6 +44,8 @@ struct Frame final:IPlugFrame{
     HWND window=nullptr;
     bool accept=true;
     int requests=0;
+    int detachOnResize=0;
+    bool detached=false;
     tresult PLUGIN_API queryInterface(const TUID iid,void** out) override{
         if(!out)return kInvalidArgument;
         *out=nullptr;
@@ -54,6 +56,13 @@ struct Frame final:IPlugFrame{
     uint32 PLUGIN_API release() override{return --refs;}
     tresult PLUGIN_API resizeView(IPlugView* view,ViewRect* size) override{
         ++requests;
+        if(detachOnResize){
+            const int order=detachOnResize;detachOnResize=0;
+            if(order==1){REQUIRE(view->setFrame(nullptr)==kResultOk);REQUIRE(view->removed()==kResultOk);}
+            else{REQUIRE(view->removed()==kResultOk);REQUIRE(view->setFrame(nullptr)==kResultOk);}
+            detached=true;
+            return kResultFalse;
+        }
         if(!accept||!size||size->getWidth()<=0||size->getHeight()<=0)return kResultFalse;
         RECT r{0,0,size->getWidth(),size->getHeight()};
         if(!AdjustWindowRectEx(&r,WS_OVERLAPPEDWINDOW,FALSE,0))return kResultFalse;
@@ -78,7 +87,8 @@ struct View{
     Frame frame;
     IPlugView* view=nullptr;
     void open(Vst::IEditController* c,int x,int y){
-        view=c->createView(Vst::ViewType::kEditor);REQUIRE(view);
+        if(!view)view=c->createView(Vst::ViewType::kEditor);REQUIRE(view);
+        frame.detached=false;
         ViewRect initial;REQUIRE(view->getSize(&initial)==kResultOk);
         RECT rect{0,0,initial.getWidth(),initial.getHeight()};
         REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
@@ -98,8 +108,7 @@ struct View{
         REQUIRE(v.getWidth()==widths[index]&&v.getHeight()==heights[index]&&r.right==widths[index]&&r.bottom==heights[index]);
     }
     void close(){
-        REQUIRE(view->removed()==kResultOk);
-        REQUIRE(view->setFrame(nullptr)==kResultOk);
+        if(!frame.detached){REQUIRE(view->removed()==kResultOk);REQUIRE(view->setFrame(nullptr)==kResultOk);}
         view->release();view=nullptr;DestroyWindow(frame.window);frame.window=nullptr;pump(20);
     }
 };
@@ -192,6 +201,25 @@ int wmain(int argc,wchar_t** argv){
     recall(c,0,1);pump(100);a.size(1);b.size(1);saved(c,0,1);
     b.frame.accept=false;recall(c,1,0);pump(100);a.size(0);b.size(1);saved(c,1,0);
     b.close();a.close();saved(c,1,0);
+    std::puts("N03 create before recall, attach after recall");
+    {View pending;pending.view=c->createView(Vst::ViewType::kEditor);REQUIRE(pending.view);
+     recall(c,1,2);pending.open(c,15,15);pending.size(2);saved(c,1,2);pending.close();}
+    for(int order=1;order<=2;++order){
+        recall(c,1,0);
+        View closing,survivor;closing.open(c,15,15);survivor.open(c,810,20);
+        closing.size(0);survivor.size(0);
+        closing.frame.detachOnResize=order;
+        recall(c,1,2);pump(100);
+        REQUIRE(closing.frame.detached);survivor.size(2);saved(c,1,2);
+        closing.close();survivor.close();
+        View reopened;reopened.open(c,15,15);reopened.size(2);reopened.close();
+        std::printf("N02 native synchronous detach order %d with survivor/reopen PASS\n",order);
+    }
+    // If the only view closes, do not save an unaccepted size.
+    recall(c,1,0);
+    {View closing;closing.open(c,15,15);closing.frame.detachOnResize=1;
+     recall(c,1,2);REQUIRE(closing.frame.detached);saved(c,1,0);closing.close();}
+    recall(c,1,0);
     a.open(c,15,15);a.size(0);saved(c,1,0);
     SetForegroundWindow(a.frame.window);
     std::puts("P028l native testing interrupted fade");

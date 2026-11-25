@@ -421,8 +421,12 @@ void Processor::consumeRecall(bool live) noexcept {
     resetControls();
     if(prepared_)for(unsigned i=0;i<v.size();++i)applyDSP(i,v[i]);
     therapyDSP_=therapyAmount_;
-    if(!live){bypassDSP_=bypass_;bypassMix_=bypass_?1.f:0.f;bypassRemaining_=0;}
-    wetSmoothed_=1.f-therapyAmount_;
+    if(!live){
+        bypassDSP_=bypass_;bypassMix_=bypass_?1.f:0.f;bypassRemaining_=0;
+        wetSmoothed_=1.f-therapyAmount_;
+    }
+    // Active state recall must start from the current audible mix, just
+    // like parameter automation. Keep the existing 12ms THERAPY smoother.
     publishState();
 }
 tresult PLUGIN_API Processor::getState(IBStream* state) {

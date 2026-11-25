@@ -419,6 +419,9 @@ public:
     }
     bool applyZoom(int index) {
         if(!open_)return false;
+        // VSTGUI::setZoom continues using CFrame after the synchronous host
+        // resize callback. Retain the *frame*, not just this editor.
+        VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
         applyingZoom_=true;
         setZoomFactor(kZoomFactors[static_cast<std::size_t>(index)]);
         applyingZoom_=false;
@@ -445,6 +448,39 @@ public:
         }
     }
 protected:
+    bool PLUGIN_API open(void* parent,const VSTGUI::PlatformType& type) override {
+        // A controller recall may happen between createView and attached.
+        // No frame is attached yet: initialize geometry using current state.
+        acceptedZoom_=parent_->zoomIndex();
+        setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
+        return VSTGUI::VST3Editor::open(parent,type);
+    }
+    void PLUGIN_API close() override {
+        if(!getFrame())return;
+        VSTGUI::VST3Editor::close();
+        // The pinned VSTGUI close() only clears its frame pointer when
+        // refcount==1. If a resize or native event retains the frame,
+        // it releases the editor's ownership but leaves a stale pointer.
+        // Clear it now; the retained frame is destroyed by its last owner.
+        frame=nullptr;
+    }
+    tresult PLUGIN_API onSize(ViewRect* rect) override {
+        VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
+        VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
+        return VSTGUI::VST3Editor::onSize(rect);
+    }
+#ifdef VST3_CONTENT_SCALE_SUPPORT
+    tresult PLUGIN_API setContentScaleFactor(ScaleFactor factor) override {
+        VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
+        VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
+        return VSTGUI::VST3Editor::setContentScaleFactor(factor);
+    }
+#endif
+    bool onCommandMenuItemSelected(VSTGUI::CCommandMenuItem* item) override {
+        VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
+        VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
+        return VSTGUI::VST3Editor::onCommandMenuItemSelected(item);
+    }
     void valueChanged(VSTGUI::CControl* control) override {
         if(control&&control->getTag()==kMotionUiTag){
             if(open_&&control->isEditing())parent_->setMotionEnabled(control->getValueNormalized()>.5f);

@@ -543,7 +543,8 @@ int main(){
         // Current UI state has exactly four words and no zoom field.
         ResizableMemoryIBStream current;
         CHECK(controller.getState(&current)==kResultOk);
-        CHECK(current.getSize()==16);
+        int64 bytes=0;
+        CHECK(current.seek(0,IBStream::kIBSeekEnd,&bytes)==kResultOk&&bytes==16);
         current.rewind();
         IBStreamer reader(&current,kLittleEndian);
         int32 magic=0,version=0,lang=0,motion=0;

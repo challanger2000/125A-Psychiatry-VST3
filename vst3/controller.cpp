@@ -436,6 +436,11 @@ protected:
     }
     tresult PLUGIN_API getSize(ViewRect* size) override {
         if(!size)return kInvalidArgument;
+        // The canonical detached rectangle depends only on the fixed
+        // logical size and current per-view DPI. Do not rely on SDK caches.
+        if(!getFrame()&&!building_&&!dpiBusy_&&!attaching_){
+            *size=pixelRect();setRect(*size);return kResultOk;
+        }
         // Keep the last advertised size during an outstanding host resize.
         return Steinberg::Vst::VSTGUIEditor::getSize(size);
     }
@@ -592,9 +597,8 @@ private:
         return a.getWidth()==b.getWidth()&&a.getHeight()==b.getHeight();
     }
     ViewRect pixelRect() const {
-        const auto scale=getAbsScaleFactor();
-        return ViewRect(0,0,static_cast<int32>(std::floor(minSize.x*scale)),
-                            static_cast<int32>(std::floor(minSize.y*scale)));
+        return ViewRect(0,0,static_cast<int32>(std::floor(960.*contentScaleFactor)),
+                            static_cast<int32>(std::floor(640.*contentScaleFactor)));
     }
     bool frameMatches(const ViewRect& wanted) {
         if(!getFrame())return false;

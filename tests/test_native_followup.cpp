@@ -238,7 +238,9 @@ int wmain(int argc,wchar_t** argv){
         REQUIRE(dpi->setContentScaleFactor(factor)==kResultOk);
         ViewRect expected{},constrained(0,0,1,1);
         REQUIRE(initial.view->getSize(&expected)==kResultOk);
-        REQUIRE(expected.getWidth()==static_cast<int>(std::floor(width*double(factor)))&&expected.getHeight()==static_cast<int>(std::floor(height*double(factor))));
+        const int wantedW=static_cast<int>(std::floor(width*double(factor))),wantedH=static_cast<int>(std::floor(height*double(factor)));
+        std::printf("P030 detached DPI %.9g expected %d x %d actual %d x %d\n",double(factor),wantedW,wantedH,expected.getWidth(),expected.getHeight());
+        REQUIRE(expected.getWidth()==wantedW&&expected.getHeight()==wantedH);
         REQUIRE(initial.view->checkSizeConstraint(&constrained)==kResultTrue);
         REQUIRE(expected.getWidth()==constrained.getWidth()&&expected.getHeight()==constrained.getHeight());
         REQUIRE(dpi->setContentScaleFactor(0.f)!=kResultOk);
@@ -249,6 +251,7 @@ int wmain(int argc,wchar_t** argv){
         recall(c,1);initial.open(c,15,15);initial.size(factor);
         initial.frame.accept=true;
         for(float live:{1.25f,1.33f,1.f,factor}){
+            std::printf("P030 live DPI %.9g\n",double(live));
             REQUIRE(dpi->setContentScaleFactor(live)==kResultOk);initial.size(live);
         }
         dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);

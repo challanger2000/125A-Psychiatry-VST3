@@ -490,3 +490,5 @@ P029c: P029b independent audit confirms previous fixes; new pre-frame DPI/getSiz
 P029c tested product 66809e97: native GUI all PASS including 30 pre-frame DPI/zoom cases + same-view reattach, frame-before-attach accept/refuse, 24 last-view cycles. DSP/state/audio/package/validator 47/47 PASS. Strict timing 21/24, 5/32308 practical at 64 samples, 3154/9600 extreme FAIL; all 128/256 PASS. Frozen pending independent review; NO-GO. X11 issue open, DSP unchanged.
 
 P029d: independent P029c review confirms prior fixes; detached recall stale preferred size and nested preattach DPI return mismatch remain. Candidate separates requested detached size from last host rectangle and verifies effective nested attachment DPI; 12+3 native cases added. CI pending, X11 issue open, DSP unchanged, NO-GO.
+
+P029e: P029d product compiled and functional DSP/Windows/package/validator PASS, GUI harness C3487 prevented native execution. Explicit callback tresult types, test/docs only. Practical timing 22/24, 4/32308, extreme 3425/9600 FAIL. Native tests pending, NO-GO.

@@ -283,7 +283,7 @@ int wmain(int argc,wchar_t** argv){
         View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
         recall(c,1,2);
         bool nested=false;
-        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect*){
+        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect*) -> tresult {
             if(order==1){REQUIRE(view->setFrame(nullptr)==kResultOk);REQUIRE(view->removed()==kResultOk);}
             else{REQUIRE(view->removed()==kResultOk);REQUIRE(view->setFrame(nullptr)==kResultOk);}
             REQUIRE(GetWindow(initial.frame.window,GW_CHILD)==nullptr);
@@ -304,7 +304,7 @@ int wmain(int argc,wchar_t** argv){
     for(int multiple=0;multiple<=1;++multiple){
         recall(c,1,0);
         View survivor;if(multiple)survivor.open(c,810,20);
-        View initial;initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+        View initial;initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
             recall(c,1,1);
             return initial.frame.resizeView(view,size);
         };
@@ -317,7 +317,7 @@ int wmain(int argc,wchar_t** argv){
     // A later negotiation can itself be refused; abort without a ghost
     // window, retain the recalled preference, and allow same-view retry.
     recall(c,1,0);
-    {View initial;initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+    {View initial;initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
         recall(c,1,1);
         const auto result=initial.frame.resizeView(view,size);
         initial.frame.accept=false;return result;
@@ -333,14 +333,14 @@ int wmain(int argc,wchar_t** argv){
     for(int multiple=0;multiple<=1;++multiple)for(int mode=0;mode<3;++mode){
         recall(c,1,0);
         View first,second;first.open(c,15,15);if(multiple)second.open(c,810,20);
-        first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+        first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
             recall(c,1,3);recall(c,1,mode==1?2:1);
             const auto result=first.frame.resizeView(view,size);
             if(mode==2)first.frame.accept=false;
             return result;
         };
         if(mode==2&&multiple){
-            second.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+            second.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
                 const auto result=second.frame.resizeView(view,size);
                 second.frame.accept=false;return result;
             };
@@ -362,13 +362,13 @@ int wmain(int argc,wchar_t** argv){
         View first;first.open(c,15,15);
         FUnknownPtr<IPlugViewContentScaleSupport> dpi(first.view);REQUIRE(dpi);
         if(mode==0){
-            first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+            first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
                 recall(c,1,1);return first.frame.resizeView(view,size);
             };
             REQUIRE(dpi->setContentScaleFactor(2.f)==kResultOk);
             first.size(1,2);saved(c,1,1);
         }else if(mode==1){
-            first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+            first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
                 REQUIRE(dpi->setContentScaleFactor(2.f)==kResultOk);
                 return first.frame.resizeView(view,size);
             };
@@ -390,7 +390,7 @@ int wmain(int argc,wchar_t** argv){
         recall(c,1,0);
         View first,second;first.open(c,15,15);
         if(reuse)second.open(c,810,20);
-        first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+        first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
             if(reuse)second.detach();
             second.open(c,810,20);
             return acceptOld?first.frame.resizeView(view,size):kResultFalse;
@@ -489,7 +489,7 @@ int wmain(int argc,wchar_t** argv){
         REQUIRE(initial.frame.window);
         initial.frame.equalSizeShortcut=true;
         REQUIRE(initial.view->setFrame(&initial.frame)==kResultOk);
-        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
             if(mode==0){
                 recall(c,1,1);
                 return initial.frame.resizeView(view,size);

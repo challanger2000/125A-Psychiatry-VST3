@@ -1,5 +1,7 @@
 # 125A PSYCHIATRY
 
+> **Current checkpoint (2026-11-26):** P030d / v0.9.28 — independent technical GO for controlled Studio Pro audition only, at 48 kHz, 256 samples and unchanged Windows DPI. Exact product commit `4828981be7013e8dcba711dce29d97cd7673ad72`. No final release approval. See [STATUS.md](STATUS.md). The earlier P025 description below is historical.
+
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 
 > **Current verified engineering checkpoint: P025 recorded-source QA / factory v0.9.12**, Windows x64 VST3. Nine real FX macros, inverted THERAPY, Bypass, LOSS OF CONTROL, EN/DE interface and a **functional nine-scene monochrome clinical CRT** controlled by the same nine macro parameter values as the audio engines. The official **Steinberg EditorHost opened the Windows editor and actual mouse-click tests verified that the randomized knobs change the CRT**. Current Windows build: **47/47 Steinberg tests PASS**; independent actual-VST3 audio gate confirms 0% dry, 100% matched wet and THERAPY inversion. **Original fictional grayscale CRT scenes verified; not archival photographs. Studio Pro acceptance remains open.**

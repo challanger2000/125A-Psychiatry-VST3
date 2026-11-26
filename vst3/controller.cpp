@@ -26,6 +26,12 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 namespace psychiatry::vst3 {
 using namespace Steinberg;
@@ -468,6 +474,10 @@ public:
             zoomFactor=oldZoom;contentScaleFactor=oldScale;
             setRect(oldRect);syncZoomMenu();return false;
         }
+        // CFrame owns the unrounded logical geometry; the host owns
+        // integer pixel dimensions. onSize acknowledges, never truncates
+        // the logical frame (which would accumulate scale error).
+        setRect(preferredRect());
         acceptedZoom_=index;syncZoomMenu();
         return open_;
     }
@@ -531,9 +541,9 @@ protected:
         // IPlugView again before returning. The older transaction has no
         // authority over the new frame, rectangle or controller registry.
         if(generation!=attachmentGeneration_)return kResultFalse;
-        if(accepted!=kResultTrue||!open_||!getFrame()||plugFrame.get()!=host.get()||
-           wanted.getWidth()!=requested.getWidth()||wanted.getHeight()!=requested.getHeight()||
-           getFrame()->getWidth()!=requested.getWidth()||getFrame()->getHeight()!=requested.getHeight()){
+        const bool unchangedParent=equalDimensions(oldRect,requested)&&parentMatches(parent,requested);
+        if((accepted!=kResultTrue&&!unchangedParent)||!open_||!getFrame()||plugFrame.get()!=host.get()||
+           !equalDimensions(wanted,requested)||!frameMatches(requested)){
             if(open_||getFrame())Steinberg::Vst::VSTGUIEditor::removed();
             setRect(oldRect);return kResultFalse;
         }
@@ -596,6 +606,20 @@ protected:
         VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
         VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
         if(!rect)return kInvalidArgument;
+        if(getFrame()){
+            // The editor is fixed-aspect and has one canonical size for
+            // the current zoom/DPI transaction. A host confirmation is
+            // not a new resize command. In particular, an older callback
+            // may resume after a newer attachment has committed.
+            if(!equalDimensions(*rect,preferredRect())){
+                if(preAttachResize_){staleEarlySize_=*rect;hasStaleEarlySize_=true;}
+                return kResultFalse;
+            }
+            // CFrame::setZoom/setSize completes its own fractional
+            // geometry after the host callback. Do not feed integer
+            // host pixels back into that calculation.
+            setRect(*rect);return kResultOk;
+        }
         const auto result=VSTGUI::VST3Editor::onSize(rect);
         if(!getFrame()&&plugFrame&&result==kResultTrue)preAttachHostRect_=*rect;
         return result;
@@ -626,18 +650,37 @@ protected:
             if(!host){setRect(requested);return kResultOk;}
             const auto generation=attachmentGeneration_;
             setRect(oldRect);
-            preAttachResize_=true;
+            preAttachResize_=true;hasStaleEarlySize_=false;
             const auto result=host->resizeView(this,&wanted);
             preAttachResize_=false;
             // A nested attachment owns the final geometry. Report success
             // if that attachment actually adopted the requested DPI, even
             // when the older resize callback returns a refusal.
             if(generation!=attachmentGeneration_||getFrame()){
-                return open_&&getFrame()&&negotiatingGeneration_==0&&
-                    std::abs(contentScaleFactor-factor)<1.e-6&&
-                    std::abs(getFrame()->getTransform().m11-getAbsScaleFactor())<1.e-6&&
-                    std::abs(getFrame()->getWidth()-preferredRect().getWidth())<1.&&
-                    std::abs(getFrame()->getHeight()-preferredRect().getHeight())<1.?kResultOk:kResultFalse;
+                if(!open_||!getFrame()||negotiatingGeneration_!=0||
+                    std::abs(contentScaleFactor-factor)>=1.e-6||
+                    std::abs(getFrame()->getTransform().m11-getAbsScaleFactor())>=1.e-6||
+                    !frameMatches(preferredRect()))return kResultFalse;
+                // If the stale callback changed the host parent before
+                // delivering its rejected onSize, restore the committed
+                // rectangle after the older callback has unwound.
+                if(hasStaleEarlySize_){
+                    hasStaleEarlySize_=false;
+                    const auto current=preferredRect();
+                    if(!parentMatches(systemWindow,current)){
+                        const auto currentGeneration=attachmentGeneration_;
+                        IPtr<IPlugFrame> currentHost=plugFrame;
+                        if(!currentHost)return kResultFalse;
+                        auto repair=current;
+                        setRect(staleEarlySize_);
+                        const auto repaired=currentHost->resizeView(this,&repair);
+                        if(currentGeneration!=attachmentGeneration_||!getFrame())return kResultFalse;
+                        setRect(preferredRect());
+                        if(repaired!=kResultTrue||!equalDimensions(repair,current)||
+                           !frameMatches(preferredRect())||!parentMatches(systemWindow,preferredRect()))return kResultFalse;
+                    }
+                }
+                return kResultOk;
             }
             if(result!=kResultTrue||plugFrame.get()!=host.get()||
                wanted.getWidth()!=requested.getWidth()||wanted.getHeight()!=requested.getHeight()){
@@ -703,6 +746,29 @@ protected:
         VSTGUI::VST3Editor::onViewRemoved(frame,view);
     }
 private:
+    static bool equalDimensions(const ViewRect& a,const ViewRect& b){
+        return a.getWidth()==b.getWidth()&&a.getHeight()==b.getHeight();
+    }
+    bool frameMatches(const ViewRect& expected) {
+        if(!getFrame())return false;
+        VSTGUI::CRect native;
+        return std::abs(getFrame()->getWidth()-expected.getWidth())<1.&&
+            std::abs(getFrame()->getHeight()-expected.getHeight())<1.&&
+            getFrame()->getSize(native)&&
+            std::abs(native.getWidth()-expected.getWidth())<1.&&
+            std::abs(native.getHeight()-expected.getHeight())<1.;
+    }
+    bool parentMatches(void* parent,const ViewRect& expected) const {
+#ifdef _WIN32
+        RECT client{};
+        return parent&&GetClientRect(static_cast<HWND>(parent),&client)&&
+            client.right-client.left==expected.getWidth()&&client.bottom-client.top==expected.getHeight();
+#else
+        // Windows is the supported product target. No assumption about
+        // a non-Win32 parent whose dimensions cannot be inspected here.
+        (void)parent;(void)expected;return false;
+#endif
+    }
     void refreshDetachedPreference() {
         if(getFrame()||building_||preAttachResize_||open_)return;
         acceptedZoom_=parent_->zoomIndex();
@@ -723,6 +789,8 @@ private:
     bool building_=false,attachCanceled_=false,preAttachResize_=false;
     IPtr<IPlugFrame> attachHost_;
     ViewRect preAttachHostRect_{}; // last host-owned rectangle, not desired detached size
+    ViewRect staleEarlySize_{};
+    bool hasStaleEarlySize_=false;
     std::uint64_t attachmentGeneration_=0;
     std::uint64_t negotiatingGeneration_=0,registrationSerial_=0;
     double pendingScale_=0.;

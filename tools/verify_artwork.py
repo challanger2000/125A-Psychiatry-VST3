@@ -31,7 +31,9 @@ for atlas, size in [("MacroAtlas","128, 128"),("TherapyAtlas","224, 224")]:
     assert attrs["mulitframe-frames-per-row"] == "8"
     assert attrs["multiframe-size"] == size
 assert tags["LOSS_OF_CONTROL"]==9000 and tags["MONITOR_MOTION"]==9002
-assert tags["BYPASS"]==999 and tags["UI_ZOOM"]==9003 and "UI_LANGUAGE" not in tags
+assert tags["BYPASS"]==999 and "UI_ZOOM" not in tags and "UI_LANGUAGE" not in tags
+assert not ui.findall(".//view[@custom-view-name='PSYCHIATRY_ZOOM']")
+assert not ui.findall(".//view[@class='COptionMenu']")
 print(f"P028c: {len(manifest)} SHA256 entries; 13 knob/parameter/readout bindings; atlas geometry PASS")
 
 # P028h: exact library bytes, dimensions, unique complete assignment and code mapping.
@@ -80,7 +82,7 @@ if len(sys.argv) > 2:
     assert templates[0].attrib["size"] == "1536, 1024"
     assert templates[0].attrib["bitmap"] == "Faceplate"
     for kind, tag in [("CTextButton", "LOSS_OF_CONTROL"), ("CCheckBox", "BYPASS"),
-                      ("CCheckBox", "MONITOR_MOTION"), ("COptionMenu", "UI_ZOOM")]:
+                      ("CCheckBox", "MONITOR_MOTION")]:
         views = ui.findall(f".//view[@class='{kind}'][@control-tag='{tag}']")
         assert len(views) == 1, tag
         if tag == "LOSS_OF_CONTROL":

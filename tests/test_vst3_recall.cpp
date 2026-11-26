@@ -320,15 +320,15 @@ static void testAuditState(){
     for(int length=1;length<4;++length){
         AuditStream truncated;unsigned char bytes[3]{};int32 n=0;
         CHECK(truncated.write(bytes,length,&n)==kResultOk);truncated.rewind();
-        c.setMotionEnabled(true);c.setZoomIndex(2);
-        CHECK(c.setState(&truncated)==kResultFalse&&c.isMotionEnabled()&&c.zoomIndex()==2);
+        c.setMotionEnabled(true);
+        CHECK(c.setState(&truncated)==kResultFalse&&c.isMotionEnabled());
     }
     for(int offset=0;offset<20;offset+=4){
         AuditStream bad;CHECK(c.getState(&bad)==kResultOk);bad.rewind();bad.readFailAt=offset;
         CHECK(c.setState(&bad)==kResultFalse);
         AuditStream write;write.writeFailAt=offset;CHECK(c.getState(&write)==kResultFalse);
     }
-    ResizableMemoryIBStream empty;CHECK(c.setState(&empty)==kResultOk&&!c.isMotionEnabled()&&c.zoomIndex()==0);
+    ResizableMemoryIBStream empty;CHECK(c.setState(&empty)==kResultOk&&!c.isMotionEnabled());
     CHECK(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk);
     CHECK(c.terminate()==kResultOk&&p.terminate()==kResultOk);
     std::printf("P028k A01/A03/A04 state PASS: %d concurrent saves, reentrant stream, recall, full-count errors and truncated UI\n",saves);
@@ -523,17 +523,13 @@ int main(){
         CHECK(!controller.isMotionEnabled());
         controller.setGermanUi(true);
         controller.setMotionEnabled(true);
-        controller.setZoomIndex(3);
         CHECK(controller.getState(&saved)==kResultOk);
         controller.setGermanUi(false);
         controller.setMotionEnabled(false);
-        controller.setZoomIndex(0);
         saved.rewind();
         CHECK(controller.setState(&saved)==kResultOk);
         CHECK(controller.isGermanUi());
         CHECK(controller.isMotionEnabled());
-        CHECK(controller.zoomIndex()==3);
-        controller.setZoomIndex(0);
         controller.setGermanUi(false);
         controller.setMotionEnabled(false);
         ResizableMemoryIBStream savedEn;
@@ -544,6 +540,21 @@ int main(){
         CHECK(controller.setState(&savedEn)==kResultOk);
         CHECK(!controller.isGermanUi());
         CHECK(!controller.isMotionEnabled());
+        // P030: all legacy zoom indices remain readable but are ignored.
+        // New saves retain the v3 wire format and canonical reserved zero.
+        for(int32 oldZoom=0;oldZoom<6;++oldZoom){
+            ResizableMemoryIBStream old;
+            IBStreamer input(&old,kLittleEndian);
+            CHECK(input.writeInt32(0x50535955)&&input.writeInt32(3)&&
+                  input.writeInt32(0)&&input.writeInt32(1)&&input.writeInt32(oldZoom));
+            old.rewind();CHECK(controller.setState(&old)==kResultOk&&controller.isMotionEnabled());
+            ResizableMemoryIBStream migrated;
+            CHECK(controller.getState(&migrated)==kResultOk);migrated.rewind();
+            IBStreamer output(&migrated,kLittleEndian);int32 magic=0,version=0,lang=0,motion=0,reserved=-1;
+            CHECK(output.readInt32(magic)&&output.readInt32(version)&&output.readInt32(lang)&&
+                  output.readInt32(motion)&&output.readInt32(reserved));
+            CHECK(magic==0x50535955&&version==3&&lang==0&&motion==1&&reserved==0);
+        }
         // P009 compatibility: old v1 controller state only stored language.
         ResizableMemoryIBStream oldUi;
         IBStreamer legacy(&oldUi,kLittleEndian);

@@ -1,3 +1,6 @@
+## P030 — fixed-size editor (0.9.28 candidate)
+- Owner removed user zoom; fixed 960 × 640 at DPI 1, automatic host DPI only. Removed zoom control, context menu choices and controller zoom state/resize synchronization. Legacy UI state v1–v3 readable; v3 reserved zoom slot saved as zero. DSP, artwork and audio parameter IDs unchanged. Native and state verification pending.
+
 ## P028k / 0.9.27 (2026-11-25) — re-audit candidate, not final
 
 ## 0.9.28 — P028l audit-correction candidate (not verified)

@@ -1,6 +1,6 @@
 # P009: Windows-only runtime GUI probe against Steinberg's official EditorHost.
 # This validates an actual HWND, click-to-parameter-driven CRT change, and
-# ability to switch the GUI language. Does not use Studio Pro or audio input.
+# fixed editor and control interaction. Does not use Studio Pro or audio input.
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
@@ -10,43 +10,6 @@ using System.Runtime.InteropServices;
 public static class PSYGUI {
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X,Y; }
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left,Top,Right,Bottom; }
-    [StructLayout(LayoutKind.Sequential)] public struct MENUBARINFO {
-        public uint cbSize; public RECT rcBar; public IntPtr hMenu, hwndMenu; public uint flags;
-    }
-    [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent,IntPtr after,string cls,string title);
-    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
-    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd,out uint pid);
-    [DllImport("user32.dll")] static extern bool GetMenuBarInfo(IntPtr hwnd,int obj,int item,ref MENUBARINFO info);
-    [DllImport("user32.dll")] static extern int GetMenuItemCount(IntPtr menu);
-    [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetMenuString(IntPtr menu,uint item,System.Text.StringBuilder text,int max,uint flags);
-    [DllImport("user32.dll")] static extern bool GetMenuItemRect(IntPtr hwnd,IntPtr menu,uint item,out RECT rect);
-    // Find only the visible native popup owned by our EditorHost process.
-    // Read actual menu labels and item rectangles; no blind keyboard selection.
-    public static bool FindMenuItem(uint expectedPid,string label,out RECT rect) {
-        rect=new RECT();
-        IntPtr popup=IntPtr.Zero;
-        while((popup=FindWindowEx(IntPtr.Zero,popup,"#32768",null))!=IntPtr.Zero) {
-            uint pid; GetWindowThreadProcessId(popup,out pid);
-            if(pid!=expectedPid || !IsWindowVisible(popup)) continue;
-            var info=new MENUBARINFO(); info.cbSize=(uint)Marshal.SizeOf(typeof(MENUBARINFO));
-            if(!GetMenuBarInfo(popup,-4,0,ref info) || info.hMenu==IntPtr.Zero) continue;
-            int count=GetMenuItemCount(info.hMenu);
-            if(count!=6) continue;
-            for(uint i=0;i<(uint)count;i++) {
-                var name=new System.Text.StringBuilder(128);
-                GetMenuString(info.hMenu,i,name,name.Capacity,0x400);
-                if(name.ToString().Replace("&","").Trim()!=label) continue;
-                if(GetMenuItemRect(IntPtr.Zero,info.hMenu,i,out rect) && rect.Right>rect.Left && rect.Bottom>rect.Top)
-                    return true;
-                var item=new MENUBARINFO(); item.cbSize=(uint)Marshal.SizeOf(typeof(MENUBARINFO));
-                if(GetMenuBarInfo(popup,-4,(int)i+1,ref item)) {
-                    rect=item.rcBar;
-                    return rect.Right>rect.Left && rect.Bottom>rect.Top;
-                }
-            }
-        }
-        return false;
-    }
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd,IntPtr after,int x,int y,int cx,int cy,uint flags);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hwnd,ref RECT rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hwnd,ref POINT point);
@@ -67,7 +30,7 @@ function Screenshot([string]$name) {
 }
 function ClickClient([IntPtr]$hwnd,[int]$x,[int]$y) {
     $point=[PSYGUI+POINT]::new()
-    $point.X=$x;$point.Y=$y
+    $point.X=[int][math]::Round($x*1.25);$point.Y=[int][math]::Round($y*1.25)
     if(-not [PSYGUI]::ClientToScreen($hwnd,[ref]$point)) {
         throw 'P009 GUI test: ClientToScreen failed'
     }
@@ -106,7 +69,7 @@ try {
     $bounds=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds
     $work=[System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
     Write-Host "P028j runtime desktop $($bounds.Width)x$($bounds.Height), work area $($work.Width)x$($work.Height)"
-    if($work.Width -lt 1200 -or $work.Height -lt 840){throw 'P028j insufficient native desktop capacity for 75% zoom'}
+    if($work.Width -lt 1200 -or $work.Height -lt 840){throw 'P030 insufficient native desktop capacity'}
     if(-not [PSYGUI]::SetWindowPos($handle,[IntPtr]::Zero,($work.X+10),($work.Y+10),0,0,0x15)){throw 'P028j could not position actual EditorHost window'}
     Start-Sleep -Milliseconds 300
     New-Item -ItemType Directory -Force -Path 'artifacts' | Out-Null
@@ -115,9 +78,10 @@ try {
         throw 'P009 GUI test: cannot locate editor client origin'
     }
     $before=Screenshot 'P009-Editor-Before.png'
-    # P028d default zoom 50% -> 768x512 logical faceplate. Measure exact
-    # on-screen regions, not the old rectangular CRT/language coordinates.
+    # P030 fixed 960x640 faceplate; map existing 768x512 probe coordinates by 1.25.
     function Delta($a,$b,[int]$x,[int]$y,[int]$w,[int]$h) {
+        $x=[int][math]::Round($x*1.25);$y=[int][math]::Round($y*1.25)
+        $w=[int][math]::Round($w*1.25);$h=[int][math]::Round($h*1.25)
         $count=0
         for($yy=$y;$yy -lt $y+$h;$yy+=2){
             for($xx=$x;$xx -lt $x+$w;$xx+=2){
@@ -167,7 +131,7 @@ try {
         if((Delta $cycled $held 313 180 140 140) -gt 4){throw 'P028h MOTION off does not hold the selected scene'}
     }finally{$cycled.Dispose();$held.Dispose()}
     function DragClient([IntPtr]$hwnd,[int]$x,[int]$y) {
-        $point=[PSYGUI+POINT]::new();$point.X=$x;$point.Y=$y
+        $point=[PSYGUI+POINT]::new();$point.X=[int][math]::Round($x*1.25);$point.Y=[int][math]::Round($y*1.25)
         if(-not [PSYGUI]::ClientToScreen($hwnd,[ref]$point)){throw 'ClientToScreen failed'}
         [System.Windows.Forms.Cursor]::Position=[System.Drawing.Point]::new($point.X,$point.Y)
         Start-Sleep -Milliseconds 100
@@ -193,44 +157,19 @@ try {
     }
     $proc.Refresh()
     if($proc.HasExited){throw 'P028d EditorHost terminated during interaction'}
-    # Test actual native zoom menu selection with a desktop that fits 1152x768.
-    # Keep the exact HWND geometry gate; a clamped or cropped window is not a pass.
-    $rect0=[PSYGUI+RECT]::new()
-    if(-not [PSYGUI]::GetClientRect($handle,[ref]$rect0)){throw 'P028h initial client geometry unavailable'}
+    $fixed=[PSYGUI+RECT]::new()
+    if(-not [PSYGUI]::GetClientRect($handle,[ref]$fixed)){throw 'P030 fixed client geometry unavailable'}
+    $w=$fixed.Right-$fixed.Left;$h=$fixed.Bottom-$fixed.Top
+    if($w -ne 960 -or $h -ne 640){throw "P030 expected 960x640 actual $w x $h"}
     ClickClient $handle 450 493
-    $item=[PSYGUI+RECT]::new()
-    $menuFound=$false
-    for($i=0;$i -lt 20;++$i){
-        Start-Sleep -Milliseconds 100
-        if([PSYGUI]::FindMenuItem([uint32]$proc.Id,'75%',[ref]$item)){$menuFound=$true;break}
-    }
-    $popupShot=Screenshot 'P009-Editor-Zoom-Menu.png'
-    $popupShot.Dispose()
-    if(-not $menuFound){throw 'P028i native six-entry zoom popup or its 75% item was not observed'}
-    Write-Host "P028i native 75% menu item bounds: $($item.Left),$($item.Top) -> $($item.Right),$($item.Bottom)"
-    [System.Windows.Forms.Cursor]::Position=[System.Drawing.Point]::new([int](($item.Left+$item.Right)/2),[int](($item.Top+$item.Bottom)/2))
-    Start-Sleep -Milliseconds 150
-    [PSYGUI]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 100
-    [PSYGUI]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
-    $zoomOk=$false
-    for($i=0;$i -lt 30;++$i){
-        Start-Sleep -Milliseconds 100
-        $rect1=[PSYGUI+RECT]::new()
-        if([PSYGUI]::GetClientRect($handle,[ref]$rect1)){
-            $w0=$rect0.Right-$rect0.Left;$h0=$rect0.Bottom-$rect0.Top
-            $w1=$rect1.Right-$rect1.Left;$h1=$rect1.Bottom-$rect1.Top
-            if([math]::Abs($w1-1.5*$w0) -le 4 -and [math]::Abs($h1-1.5*$h0) -le 4){$zoomOk=$true;break}
-        }
-    }
-    $zoomShot=Screenshot 'P009-Editor-Zoom-After.png'
-    $zoomShot.Dispose()
-    if(-not $zoomOk){throw "P028i zoom 50 to 75 percent did not resize the host client: $w0 x $h0 -> $w1 x $h1"}
-    $zoomOrigin=[PSYGUI+POINT]::new()
-    if(-not [PSYGUI]::ClientToScreen($handle,[ref]$zoomOrigin)){throw 'P028j zoomed client origin unavailable'}
-    if($zoomOrigin.X -lt $work.Left -or $zoomOrigin.Y -lt $work.Top -or ($zoomOrigin.X+$w1) -gt $work.Right -or ($zoomOrigin.Y+$h1) -gt $work.Bottom){throw 'P028j zoomed client not fully visible'}
-    Write-Host "P028j actual zoom menu resize PASS: $w0 x $h0 -> $w1 x $h1"
-    Write-Host 'P028h native faceplate, randomization, bypass/restore, 13 knobs, MOTION, timed scene change and zoom PASS'
+    Start-Sleep -Milliseconds 200
+    $afterClick=[PSYGUI+RECT]::new()
+    if(-not [PSYGUI]::GetClientRect($handle,[ref]$afterClick)){throw 'P030 client geometry unavailable after click'}
+    if(($afterClick.Right-$afterClick.Left) -ne $w -or ($afterClick.Bottom-$afterClick.Top) -ne $h){throw 'P030 fixed editor changed size'}
+    $finalShot=Screenshot 'P009-Editor-Fixed.png'
+    $finalShot.Dispose()
+    Write-Host "P030 actual fixed editor PASS: $w x $h; former zoom area inactive"
+    Write-Host 'P030 native faceplate, randomization, bypass/restore, 13 knobs, MOTION and scene change PASS'
 } finally {
     if($before){$before.Dispose()}
     if($after){$after.Dispose()}

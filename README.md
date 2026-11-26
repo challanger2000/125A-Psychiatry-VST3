@@ -187,3 +187,6 @@ See [docs/P002.md](docs/P002.md) for the Windows Steinberg SDK build setup.
 **Release acceptance remains open:** P024 Windows VST3 and actual GUI, alias/intermodulation, phase, endpoints, dense automation and tail decay tests are verified. P025 recorded-source audit passed; actual Studio Pro listening and project recall have not yet been verified. A green build is not a substitute for listening.
 
 © 125A. Final license to be determined before redistribution.
+
+### Fixed editor (P030)
+The editor is fixed at 960 × 640 pixels at 100% host DPI. Host DPI scaling is supported; there is no user zoom or host drag-resize. Legacy controller zoom fields remain readable but no longer change geometry. DSP is unchanged.

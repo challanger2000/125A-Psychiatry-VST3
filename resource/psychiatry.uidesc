@@ -44,8 +44,6 @@
     <view class="CTextButton" custom-view-name="PSYCHIATRY_LOSS" origin="1359, 868" size="110, 106" control-tag="LOSS_OF_CONTROL" kick-style="true" transparent="true" mouse-enabled="true" wants-focus="true" tooltip="Randomize all twelve effects; THERAPY and BYPASS unchanged"/>
     <view class="CCheckBox" origin="410, 968" size="150, 36" control-tag="BYPASS" title="BYPASS" font="ValueFont" font-color="Text" box-frame-color="Muted" box-fill-color="Accent" check-mark-color="Text" mouse-enabled="true" wants-focus="true"/>
     <view class="CCheckBox" origin="582, 968" size="150, 36" control-tag="MONITOR_MOTION" title="MOTION" font="ValueFont" font-color="Text" box-frame-color="Muted" box-fill-color="Accent" check-mark-color="Text" mouse-enabled="true" wants-focus="true"/>
-    <view class="CTextLabel" origin="755, 968" size="86, 36" title="ZOOM" font="ValueFont" font-color="Text" text-alignment="center" back-color="Black" transparent="false" mouse-enabled="false"/>
-    <view class="COptionMenu" custom-view-name="PSYCHIATRY_ZOOM" origin="841, 968" size="124, 36" control-tag="UI_ZOOM" font="ValueFont" font-color="Text" back-color="Black" frame-color="Muted" frame-width="1" mouse-enabled="true" wants-focus="true"/>
   </template>
   <control-tags>
     <control-tag name="DEPRESSION" tag="100"/>
@@ -64,6 +62,5 @@
     <control-tag name="BYPASS" tag="999"/>
     <control-tag name="LOSS_OF_CONTROL" tag="9000"/>
     <control-tag name="MONITOR_MOTION" tag="9002"/>
-    <control-tag name="UI_ZOOM" tag="9003"/>
   </control-tags>
 </vstgui-ui-description>

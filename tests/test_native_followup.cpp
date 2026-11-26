@@ -97,8 +97,7 @@ static void saved(Vst::IEditController* c,int motion,int zoom){
     REQUIRE(s.readInt32(a)&&s.readInt32(b)&&s.readInt32(d)&&s.readInt32(m)&&s.readInt32(z));
     REQUIRE(a==0x50535955&&b==3&&m==motion&&z==zoom);
 }
-static constexpr std::array<int,6> widths{768,1152,1536,1920,2304,3072};
-static constexpr std::array<int,6> heights{512,768,1024,1280,1536,2048};
+static constexpr int width=960,height=640;
 struct View{
     Frame frame;
     IPlugView* view=nullptr;
@@ -106,7 +105,7 @@ struct View{
         if(!view)view=c->createView(Vst::ViewType::kEditor);REQUIRE(view);
         frame.detached=false;
         ViewRect initial;REQUIRE(view->getSize(&initial)==kResultOk);
-        RECT rect{0,0,parentIndex<0?initial.getWidth():widths[parentIndex],parentIndex<0?initial.getHeight():heights[parentIndex]};
+        RECT rect{0,0,parentIndex<0?initial.getWidth():768,parentIndex<0?initial.getHeight():512};
         REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
         frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A native audit",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
             x,y,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
@@ -117,9 +116,9 @@ struct View{
         pump(150);return result;
     }
     void open(Vst::IEditController* c,int x,int y){REQUIRE(attach(c,x,y)==kResultOk);}
-    void size(int index,double scale=1.,bool attached=true){
+    void size(double scale=1.,bool attached=true){
         ViewRect v;RECT r{};
-        const int w=static_cast<int>(std::floor(widths[index]*scale)),h=static_cast<int>(std::floor(heights[index]*scale));
+        const int w=static_cast<int>(std::floor(width*scale)),h=static_cast<int>(std::floor(height*scale));
         REQUIRE(view->getSize(&v)==kResultOk&&GetClientRect(frame.window,&r));
         if(v.getWidth()!=w||v.getHeight()!=h||r.right!=w||r.bottom!=h)
             std::fprintf(stderr,"geometry wanted %d x %d view %d x %d hwnd %ld x %ld\n",w,h,v.getWidth(),v.getHeight(),r.right,r.bottom);
@@ -206,391 +205,121 @@ int wmain(int argc,wchar_t** argv){
     REQUIRE(c->initialize(nullptr)==kResultOk);
     std::puts("P028l native controller initialized");
     recall(c,1,0);saved(c,1,0);
-    // A normal host starts with the advertised getSize() and may skip a
-    // resize when it equals the requested size. Never publish the requested
-    // geometry before asking the host to apply it.
-    {View official;official.frame.equalSizeShortcut=true;official.open(c,15,15);
-     official.size(0);recall(c,1,1);pump(60);official.size(1);official.close();}
-    recall(c,1,0);
-    std::puts("P028l native opening first editor");
-    View a;a.open(c,15,15);a.size(0);saved(c,1,0);
-    std::puts("P028l native first editor attached; checking MOTION");
+    // Actual fixed editor, no user/host drag resize. All valid old project
+    // zoom values must leave BOTH detached and attached geometry unchanged.
+    View a;
+    a.view=c->createView(Vst::ViewType::kEditor);REQUIRE(a.view);
+    REQUIRE(a.view->canResize()==kResultFalse);
+    for(int z=0;z<6;++z){
+        recall(c,1,z);saved(c,1,0);ViewRect rect{};
+        REQUIRE(a.view->getSize(&rect)==kResultOk&&rect.getWidth()==width&&rect.getHeight()==height);
+    }
+    a.frame.accept=false;a.open(c,15,15);a.size();
+    REQUIRE(a.frame.requests==0); // matching parent needs no resize
     SetForegroundWindow(a.frame.window);pump(150);
-    auto motionOn=pixels(a.frame.window,291,482,24,24);
-    recall(c,0,0);pump(180);saved(c,0,0);
-    auto motionOff=pixels(a.frame.window,291,482,24,24);
+    auto motionOn=pixels(a.frame.window,364,603,30,30);
+    recall(c,0,5);pump(180);saved(c,0,0);a.size();
+    auto motionOff=pixels(a.frame.window,364,603,30,30);
     REQUIRE(delta(motionOn,motionOff)>.25);
-    recall(c,1,0);pump(180);saved(c,1,0);
-    REQUIRE(delta(motionOn,pixels(a.frame.window,291,482,24,24))<.5);
-    std::puts("P028l native testing accepted zooms");
-    for(int z=0;z<6;++z){recall(c,1,z);pump(60);a.size(z);saved(c,1,z);}
-    recall(c,1,0);pump(100);a.size(0);
-    std::puts("P028l native testing refused zooms");
-    a.frame.accept=false;
-    for(int z=1;z<6;++z){recall(c,1,z);pump(40);a.size(0);saved(c,1,0);}
-    a.frame.accept=true;
-    std::puts("P028l native testing second view");
-    View b;b.open(c,810,20);b.size(0);saved(c,1,0);
-    recall(c,0,1);pump(100);a.size(1);b.size(1);saved(c,0,1);
-    b.frame.accept=false;recall(c,1,0);pump(100);a.size(0);b.size(1);saved(c,1,0);
-    b.close();a.close();saved(c,1,0);
-    std::puts("N03 create before recall, attach after recall");
-    {View pending;pending.view=c->createView(Vst::ViewType::kEditor);REQUIRE(pending.view);
-     recall(c,1,2);pending.open(c,15,15);pending.size(2);saved(c,1,2);pending.close();}
-    for(int order=1;order<=2;++order){
-        recall(c,1,0);
-        View closing,survivor;closing.open(c,15,15);survivor.open(c,810,20);
-        closing.size(0);survivor.size(0);
-        closing.frame.detachOnResize=order;
-        recall(c,1,2);pump(100);
-        REQUIRE(closing.frame.detached);survivor.size(2);saved(c,1,2);
-        // Reattach the SAME IPlugView, not a newly created editor.
-        closing.detach();closing.open(c,15,15);closing.size(2);saved(c,1,2);
-        recall(c,1,1);pump(100);closing.size(1);survivor.size(1);saved(c,1,1);
-        closing.close();survivor.close();
-        View reopened;reopened.open(c,15,15);reopened.size(1);reopened.close();
-        std::printf("N02 native synchronous detach order %d with survivor/reopen PASS\n",order);
-    }
-    // Initial attach: stale 50% parent, recalled 100% preference.
-    // Accept, refuse, and detach synchronously in both orders. A failed
-    // attach must be retryable on the same view, without a ghost child.
-    for(int mode=0;mode<4;++mode){
-        recall(c,1,0);
-        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
-        recall(c,1,2);
-        initial.frame.accept=mode!=1;
-        initial.frame.detachOnResize=mode>=2?mode-1:0;
-        const int before=initial.frame.requests;
-        const auto result=initial.attach(c,15,15,0);
-        REQUIRE(initial.frame.requests==before+1);
-        if(mode==0){REQUIRE(result==kResultOk);initial.size(2);}
-        else{
-            REQUIRE(result!=kResultOk);
-            if(mode>=2)REQUIRE(initial.frame.detached);
-            REQUIRE(GetWindow(initial.frame.window,GW_CHILD)==nullptr);
-            saved(c,1,2);
-            initial.discardFailedAttach();
-            initial.frame.accept=true;
-            REQUIRE(initial.attach(c,15,15,0)==kResultOk);initial.size(2);
-        }
-        recall(c,1,1);pump(100);initial.size(1);saved(c,1,1);
-        initial.close();
-        std::printf("N03 initial attach mode %d, same-view retry/next zoom PASS\n",mode);
-    }
-    // Supersede an initial attachment from *inside* the host resize
-    // callback. Returning from the older transaction must not close the
-    // replacement or overwrite its accepted rectangle.
-    for(int order=1;order<=2;++order)for(int acceptOld=0;acceptOld<=1;++acceptOld){
-        recall(c,1,0);
-        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
-        recall(c,1,2);
-        bool nested=false;
-        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect*) -> tresult {
-            if(order==1){REQUIRE(view->setFrame(nullptr)==kResultOk);REQUIRE(view->removed()==kResultOk);}
-            else{REQUIRE(view->removed()==kResultOk);REQUIRE(view->setFrame(nullptr)==kResultOk);}
-            REQUIRE(GetWindow(initial.frame.window,GW_CHILD)==nullptr);
-            REQUIRE(view->setFrame(&initial.frame)==kResultOk);
-            REQUIRE(view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
-            nested=true;initial.size(2);
-            return acceptOld?kResultTrue:kResultFalse;
-        };
-        REQUIRE(initial.attach(c,15,15,0)!=kResultOk);
-        REQUIRE(nested&&GetWindow(initial.frame.window,GW_CHILD)!=nullptr);
-        initial.size(2);saved(c,1,2);
-        recall(c,1,1);pump(100);initial.size(1);saved(c,1,1);
-        initial.close();REQUIRE(initial.frame.refs==1);
-        std::printf("P029 nested reattach order=%d outer-result=%d PASS\n",order,acceptOld);
-    }
-    // Recall while initial resize is in progress, with and without
-    // another attached view. Do not need a second external recall.
-    for(int multiple=0;multiple<=1;++multiple){
-        recall(c,1,0);
-        View survivor;if(multiple)survivor.open(c,810,20);
-        View initial;initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-            recall(c,1,1);
-            return initial.frame.resizeView(view,size);
-        };
-        initial.open(c,15,15);initial.size(1);saved(c,1,1);
-        if(multiple){survivor.size(1);survivor.close();}
-        recall(c,1,2);pump(60);initial.size(2);saved(c,1,2);
-        initial.close();REQUIRE(initial.frame.refs==1);
-        std::printf("P029 in-attach recall multiple=%d PASS\n",multiple);
-    }
-    // A later negotiation can itself be refused; abort without a ghost
-    // window, retain the recalled preference, and allow same-view retry.
-    recall(c,1,0);
-    {View initial;initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-        recall(c,1,1);
-        const auto result=initial.frame.resizeView(view,size);
-        initial.frame.accept=false;return result;
-     };
-     REQUIRE(initial.attach(c,15,15,0)!=kResultOk);
-     REQUIRE(GetWindow(initial.frame.window,GW_CHILD)==nullptr);saved(c,1,1);
-     initial.discardFailedAttach();initial.frame.accept=true;
-     initial.open(c,15,15);initial.size(1);initial.close();REQUIRE(initial.frame.refs==1);}
-    // Recall during an already-attached editor's resize: the previous
-    // applyingUi_ early return silently discarded the later zoom request.
-    // Test latest-wins, cancellation back to in-flight target, and host
-    // refusal of the follow-up, with one or two native editors.
-    for(int multiple=0;multiple<=1;++multiple)for(int mode=0;mode<3;++mode){
-        recall(c,1,0);
-        View first,second;first.open(c,15,15);if(multiple)second.open(c,810,20);
-        first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-            recall(c,1,3);recall(c,1,mode==1?2:1);
-            const auto result=first.frame.resizeView(view,size);
-            if(mode==2)first.frame.accept=false;
-            return result;
-        };
-        if(mode==2&&multiple){
-            second.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-                const auto result=second.frame.resizeView(view,size);
-                second.frame.accept=false;return result;
-            };
-        }
-        recall(c,1,2);pump(80);
-        const int expected=mode==0?1:2;
-        first.size(expected);saved(c,1,expected);
-        if(multiple)second.size(expected);
-        first.frame.accept=true;second.frame.accept=true;
-        recall(c,1,0);pump(80);first.size(0);saved(c,1,0);
-        if(multiple){second.size(0);second.close();REQUIRE(second.frame.refs==1);}
-        first.close();REQUIRE(first.frame.refs==1);
-        std::printf("P029a live-resize recall multiple=%d mode=%d PASS\n",multiple,mode);
-    }
-    // DPI and zoom must be one serialized geometry transaction.
-    // Test both directions of callback nesting, including DPI refusal.
-    for(int mode=0;mode<3;++mode){
-        recall(c,1,0);
-        View first;first.open(c,15,15);
-        FUnknownPtr<IPlugViewContentScaleSupport> dpi(first.view);REQUIRE(dpi);
-        if(mode==0){
-            first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-                recall(c,1,1);return first.frame.resizeView(view,size);
-            };
-            REQUIRE(dpi->setContentScaleFactor(2.f)==kResultOk);
-            first.size(1,2);saved(c,1,1);
-        }else if(mode==1){
-            first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-                REQUIRE(dpi->setContentScaleFactor(2.f)==kResultOk);
-                return first.frame.resizeView(view,size);
-            };
-            recall(c,1,1);first.size(1,2);saved(c,1,1);
-        }else{
-            first.frame.accept=false;
-            REQUIRE(dpi->setContentScaleFactor(2.f)!=kResultOk);
-            first.size(0);saved(c,1,0);first.frame.accept=true;
-            REQUIRE(dpi->setContentScaleFactor(2.f)==kResultOk);first.size(0,2);
-        }
-        recall(c,1,2);first.size(2,2);saved(c,1,2);
-        REQUIRE(dpi->setContentScaleFactor(1.f)==kResultOk);first.size(2);
-        dpi=nullptr;first.close();REQUIRE(first.frame.refs==1);
-        std::printf("P029b DPI/zoom mode=%d PASS\n",mode);
-    }
-    // A registration made inside another view's resize callback must
-    // receive the committed zoom after that callback completes.
-    for(int reuse=0;reuse<=1;++reuse)for(int acceptOld=0;acceptOld<=1;++acceptOld){
-        recall(c,1,0);
-        View first,second;first.open(c,15,15);
-        if(reuse)second.open(c,810,20);
-        first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-            if(reuse)second.detach();
-            second.open(c,810,20);
-            return acceptOld?first.frame.resizeView(view,size):kResultFalse;
-        };
-        recall(c,1,2);
-        first.size(acceptOld?2:0);
-        second.size(acceptOld?2:0);
-        // If the old first view refused but an old second attachment
-        // was superseded, neither old registration accepted the request.
-        // The new registration follows the committed old zoom instead.
-        saved(c,1,acceptOld?2:0);
-        recall(c,1,1);first.size(1);second.size(1);saved(c,1,1);
-        first.close();second.close();REQUIRE(first.frame.refs==1&&second.frame.refs==1);
-        std::printf("P029b nested registration reuse=%d accept=%d PASS\n",reuse,acceptOld);
-    }
-    // VST3 content-scale contract before setFrame(): size immediately
-    // reflects DPI and saved zoom. A fixed-size host constructs its
-    // parent from getSize and refuses any genuinely different request.
-    for(int index=0;index<6;++index)for(float scale:{1.f,1.25f,1.5f,1.75f,2.f}){
-        recall(c,1,index);
+    recall(c,1,1);pump(180);saved(c,1,0);a.size();
+    REQUIRE(delta(motionOn,pixels(a.frame.window,364,603,30,30))<.5);
+    for(int z=0;z<6;++z){recall(c,1,z);a.size();saved(c,1,0);}
+    REQUIRE(a.frame.requests==0);
+    ViewRect illegal(0,0,768,512);
+    REQUIRE(a.view->onSize(&illegal)!=kResultOk);a.size();
+    a.close();REQUIRE(a.frame.refs==1);
+    std::puts("P030 fixed geometry, all legacy recall values, MOTION and stale onSize PASS");
+
+    // Host DPI, including fractional factors and same-view reuse. The
+    // parent is allocated from getSize and refuses all redundant resizes.
+    for(float factor:{1.f,1.10f,1.25f,1.33f,1.5f,1.60f,1.75f,2.f,106.f/96.f,128.f/96.f}){
         View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
         FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
-        ViewRect r{},constraint(0,0,1,1);
-        REQUIRE(initial.view->getSize(&r)==kResultOk);
-        REQUIRE(r.getWidth()==widths[index]&&r.getHeight()==heights[index]);
-        REQUIRE(dpi->setContentScaleFactor(scale)==kResultOk);
-        REQUIRE(initial.view->getSize(&r)==kResultOk);
-        const int w=static_cast<int>(std::floor(widths[index]*scale)),h=static_cast<int>(std::floor(heights[index]*scale));
-        REQUIRE(r.getWidth()==w&&r.getHeight()==h);
-        REQUIRE(initial.view->checkSizeConstraint(&constraint)==kResultTrue);
-        REQUIRE(constraint.getWidth()==w&&constraint.getHeight()==h);
-        // Rejected invalid DPI must leave the valid pre-attach size intact.
+        REQUIRE(dpi->setContentScaleFactor(factor)==kResultOk);
+        ViewRect expected{},constrained(0,0,1,1);
+        REQUIRE(initial.view->getSize(&expected)==kResultOk);
+        REQUIRE(expected.getWidth()==static_cast<int>(std::floor(width*double(factor)))&&expected.getHeight()==static_cast<int>(std::floor(height*double(factor))));
+        REQUIRE(initial.view->checkSizeConstraint(&constrained)==kResultTrue);
+        REQUIRE(expected.getWidth()==constrained.getWidth()&&expected.getHeight()==constrained.getHeight());
         REQUIRE(dpi->setContentScaleFactor(0.f)!=kResultOk);
-        REQUIRE(initial.view->getSize(&r)==kResultOk&&r.getWidth()==w&&r.getHeight()==h);
-        initial.frame.fixedParent=true;
-        initial.open(c,15,15);initial.size(index,scale);
-        REQUIRE(GetWindow(initial.frame.window,GW_CHILD)!=nullptr);
+        recall(c,1,5);
+        initial.frame.accept=false;initial.open(c,15,15);initial.size(factor);
+        REQUIRE(initial.frame.requests==0);
         initial.detach();REQUIRE(initial.frame.refs==1);
-        // Same IPlugView, changed scale, new fixed parent.
-        REQUIRE(dpi->setContentScaleFactor(1.f)==kResultOk);
-        initial.open(c,15,15);initial.size(index);
-        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
-    }
-    std::puts("P029c pre-frame DPI/zoom fixed-parent matrix 30 cases + reattach PASS");
-    // A host frame can also be assigned before the native attach. In that
-    // order DPI must negotiate an actual resize with the existing parent.
-    for(int refuse=0;refuse<=1;++refuse){
-        recall(c,1,0);
-        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
-        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
-        RECT rect{0,0,widths[0],heights[0]};REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
-        initial.frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A preattach DPI",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
-            15,15,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
-        REQUIRE(initial.frame.window);
-        initial.frame.accept=!refuse;initial.frame.equalSizeShortcut=true;
-        REQUIRE(initial.view->setFrame(&initial.frame)==kResultOk);
-        const auto result=dpi->setContentScaleFactor(1.25f);
-        REQUIRE((result==kResultOk)==!refuse);
-        initial.size(0,refuse?1.:1.25,false);
-        initial.frame.accept=true;initial.frame.fixedParent=true;
-        REQUIRE(initial.view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
-        initial.size(0,refuse?1.:1.25);
-        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
-    }
-    std::puts("P029c frame-before-attach DPI accept/refuse PASS");
-    // Recall AFTER creation or removal, without a second DPI call.
-    // Both query orders must describe the latest accepted controller state
-    // before a fixed-size host allocates its parent.
-    for(int reuse=0;reuse<=1;++reuse)for(float scale:{1.f,1.25f,2.f})for(int constraintFirst=0;constraintFirst<=1;++constraintFirst){
-        recall(c,1,0);
-        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
-        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
-        REQUIRE(dpi->setContentScaleFactor(scale)==kResultOk);
-        initial.frame.fixedParent=true;
-        if(reuse){initial.open(c,15,15);initial.size(0,scale);initial.detach();REQUIRE(initial.frame.refs==1);}
-        recall(c,1,1);saved(c,1,1);
-        ViewRect r{},constraint(0,0,1,1);
-        const auto check=[&](){REQUIRE(initial.view->checkSizeConstraint(&constraint)==kResultTrue);REQUIRE(constraint.getWidth()==static_cast<int>(widths[1]*scale)&&constraint.getHeight()==static_cast<int>(heights[1]*scale));};
-        if(constraintFirst)check();
-        REQUIRE(initial.view->getSize(&r)==kResultOk&&r.getWidth()==static_cast<int>(widths[1]*scale)&&r.getHeight()==static_cast<int>(heights[1]*scale));
-        if(!constraintFirst)check();
-        initial.open(c,15,15);initial.size(1,scale);
-        REQUIRE(GetWindow(initial.frame.window,GW_CHILD)!=nullptr);
-        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
-    }
-    std::puts("P029d detached recall 12 fixed-parent cases PASS");
-    // Recall inside a pre-attach DPI resize, and reentrant attach before
-    // that outer request returns. Separate desired and host rectangles.
-    for(int mode=0;mode<3;++mode){
-        recall(c,1,0);
-        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
-        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
-        RECT rect{0,0,widths[0],heights[0]};REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
-        initial.frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A nested preattach DPI",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
-            15,15,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
-        REQUIRE(initial.frame.window);
-        initial.frame.equalSizeShortcut=true;
-        REQUIRE(initial.view->setFrame(&initial.frame)==kResultOk);
-        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-            if(mode==0){
-                recall(c,1,1);
-                return initial.frame.resizeView(view,size);
-            }
-            REQUIRE(view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
-            initial.size(0,1.25);
-            return mode==1?kResultTrue:kResultFalse;
-        };
-        REQUIRE(dpi->setContentScaleFactor(1.25f)==kResultOk);
-        if(mode==0){
-            ViewRect r{},constraint(0,0,1,1);
-            REQUIRE(initial.view->getSize(&r)==kResultOk&&r.getWidth()==1440&&r.getHeight()==960);
-            REQUIRE(initial.view->checkSizeConstraint(&constraint)==kResultTrue&&constraint.getWidth()==1440&&constraint.getHeight()==960);
-            REQUIRE(initial.view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
-            initial.size(1,1.25);saved(c,1,1);
-        }else{initial.size(0,1.25);saved(c,1,0);}
-        REQUIRE(GetWindow(initial.frame.window,GW_CHILD)!=nullptr);
-        recall(c,1,2);initial.size(2,1.25);saved(c,1,2);
-        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
-    }
-    std::puts("P029d early DPI nested recall/attach 3 cases PASS");
-    // Non-integral logical sizes: compare actual native child, parent,
-    // VST3 getSize and constraints, then cycle zoom without rounding drift.
-    for(int index=0;index<6;++index)for(float scale:{1.10f,1.33f,1.60f,106.f/96.f,128.f/96.f}){
-        recall(c,1,index);
-        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
-        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
-        REQUIRE(dpi->setContentScaleFactor(scale)==kResultOk);
-        initial.frame.fixedParent=true;
-        initial.open(c,15,15);initial.size(index,scale);
-        initial.frame.fixedParent=false;
-        for(int z:{(index+1)%6,(index+3)%6,index}){
-            recall(c,1,z);initial.size(z,scale);saved(c,1,z);
+        recall(c,1,2);initial.open(c,15,15);initial.size(factor);
+        initial.frame.accept=true;
+        for(float live:{1.25f,1.33f,1.f,factor}){
+            REQUIRE(dpi->setContentScaleFactor(live)==kResultOk);initial.size(live);
         }
         dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
     }
-    std::puts("P029f fractional DPI 30 attach cases + 90 zoom transitions PASS");
-    // Fixed parent can refuse even a redundant same-size resize.
-    // Refusal is harmless only when the actual parent already matches.
-    for(float scale:{1.25f,1.33f}){
-        recall(c,1,0);
+    std::puts("P030 ten DPI factors, fixed-parent attach/reopen and live scaling PASS");
+
+    // Two independent views share MOTION, never window geometry.
+    {View first,second;first.open(c,15,15);second.open(c,810,20);
+     FUnknownPtr<IPlugViewContentScaleSupport> dpi(first.view);REQUIRE(dpi);
+     REQUIRE(dpi->setContentScaleFactor(1.25f)==kResultOk);first.size(1.25);second.size();
+     first.frame.accept=false;REQUIRE(dpi->setContentScaleFactor(1.5f)!=kResultOk);
+     first.size(1.25);second.size();first.frame.accept=true;
+     recall(c,1,5);first.size(1.25);second.size();saved(c,1,0);
+     dpi=nullptr;first.close();second.close();REQUIRE(first.frame.refs==1&&second.frame.refs==1);}
+    // Before attach, with a host already assigned: accept/refuse and nested
+    // attach. A rejected reentrant DPI request must not mutate the view.
+    for(int mode=0;mode<3;++mode){
         View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
         FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
-        REQUIRE(dpi->setContentScaleFactor(scale)==kResultOk);
-        initial.frame.accept=false;
-        initial.open(c,15,15);initial.size(0,scale);
-        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
-    }
-    std::puts("P029f fixed matching parent refuses redundant resize PASS");
-    // A stale early DPI onSize must not mutate the newer frame.
-    // Exercise both direct stale confirmation and a host that physically
-    // shrinks the parent first; recover after the old callback returns.
-    for(int physical=0;physical<=1;++physical){
-        recall(c,1,0);
-        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
-        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
-        RECT rect{0,0,widths[0],heights[0]};REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
-        initial.frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A stale DPI onSize",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
+        RECT rect{0,0,width,height};REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
+        initial.frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A DPI",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
             15,15,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
         REQUIRE(initial.frame.window);initial.frame.equalSizeShortcut=true;
         REQUIRE(initial.view->setFrame(&initial.frame)==kResultOk);
-        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
-            recall(c,1,1);
+        if(mode==1)initial.frame.accept=false;
+        if(mode==2)initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
+            REQUIRE(dpi->setContentScaleFactor(1.5f)!=kResultOk);
+            recall(c,1,5);
+            REQUIRE(initial.frame.resizeView(view,size)==kResultOk);
             REQUIRE(view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
-            initial.size(1,1.25);
-            const auto rejected=physical?initial.frame.resizeView(view,size):view->onSize(size);
-            REQUIRE(rejected!=kResultOk);
-            ViewRect actual{};REQUIRE(view->getSize(&actual)==kResultOk);
-            REQUIRE(actual.getWidth()==1440&&actual.getHeight()==960);
-            RECT child{};REQUIRE(GetClientRect(GetWindow(initial.frame.window,GW_CHILD),&child));
-            REQUIRE(child.right==1440&&child.bottom==960);
-            return kResultTrue;
+            initial.size(1.25);return kResultTrue;
         };
-        REQUIRE(dpi->setContentScaleFactor(1.25f)==kResultOk);
-        initial.size(1,1.25);saved(c,1,1);
-        recall(c,1,2);initial.size(2,1.25);saved(c,1,2);
-        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
+        const auto result=dpi->setContentScaleFactor(1.25f);
+        REQUIRE((result==kResultOk)==(mode!=1));
+        if(mode!=2){
+            initial.size(mode==1?1.:1.25,false);
+            initial.frame.accept=true;
+            REQUIRE(initial.view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
+        }
+        initial.size(mode==1?1.:1.25);dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
     }
-    std::puts("P029f stale early onSize direct/physical parent PASS");
-    // Repeated destruction of the last native editor (Win32 scope).
-    recall(c,1,0);
+    std::puts("P030 early DPI accept/refuse/nested attach PASS");
+    // Stale host parent that genuinely differs: preserve prior refusal and
+    // retry semantics, without project-driven zoom.
+    for(int mode=0;mode<4;++mode){
+        View initial;initial.frame.accept=mode!=1;
+        initial.frame.detachOnResize=mode>=2?mode-1:0;
+        const auto result=initial.attach(c,15,15,0);
+        if(mode==0){REQUIRE(result==kResultOk);initial.size();}
+        else{
+            REQUIRE(result!=kResultOk&&GetWindow(initial.frame.window,GW_CHILD)==nullptr);
+            initial.discardFailedAttach();initial.frame.accept=true;
+            initial.open(c,15,15);initial.size();
+        }
+        initial.close();REQUIRE(initial.frame.refs==1);
+    }
+    // Last-view repeated native lifetime checks.
     {View last;for(int cycle=0;cycle<24;++cycle){
-        last.open(c,15,15);last.size(0);last.detach();REQUIRE(last.frame.refs==1);
-     }last.view->release();last.view=nullptr;
-     std::puts("P029b last-view Win32 reopen 24 cycles PASS");}
-    // If the only view closes, do not save an unaccepted size.
+        last.open(c,15,15);last.size();last.detach();REQUIRE(last.frame.refs==1);
+     }last.view->release();last.view=nullptr;}
+    std::puts("P030 stale parent accept/refuse/detach and 24 last-view cycles PASS");
     recall(c,1,0);
-    {View closing;closing.open(c,15,15);closing.frame.detachOnResize=1;
-     recall(c,1,2);REQUIRE(closing.frame.detached);saved(c,1,0);closing.close();}
-    recall(c,1,0);
-    a.open(c,15,15);a.size(0);saved(c,1,0);
+    a.frame.accept=true;a.open(c,15,15);a.size();saved(c,1,0);
     SetForegroundWindow(a.frame.window);
     std::puts("P028l native testing interrupted fade");
-    PixelCapture capture(120,120);
+    PixelCapture capture(150,150);
     bool measured=false;
     for(int trial=0;trial<3&&!measured;++trial){
         world(c,kDepression);pump(1600);
-        auto before=capture.grab(a.frame.window,323,190);
-        auto fixed=pixels(a.frame.window,50,50,60,60);
+        auto before=capture.grab(a.frame.window,404,238);
+        auto fixed=pixels(a.frame.window,63,63,75,75);
         auto last=before;
         double maxStep=0.,retarget=0.;int samples=0,validRetarget=0;
         auto lastTime=Clock::now();const auto start=lastTime;
@@ -600,7 +329,7 @@ int wmain(int argc,wchar_t** argv){
             if(!switched&&Clock::now()-start>=std::chrono::milliseconds(310)){
                 switchTime=Clock::now();world(c,kPanic);switched=true;
             }
-            pump(1);auto next=capture.grab(a.frame.window,323,190);auto now=Clock::now();
+            pump(1);auto next=capture.grab(a.frame.window,404,238);auto now=Clock::now();
             const double t=std::chrono::duration<double,std::milli>(now-start).count();
             const double gap=std::chrono::duration<double,std::milli>(now-lastTime).count();
             double d=delta(last,next);
@@ -617,7 +346,7 @@ int wmain(int argc,wchar_t** argv){
             }
             last=std::move(next);lastTime=now;
         }
-        REQUIRE(delta(before,last)>5.&&delta(fixed,pixels(a.frame.window,50,50,60,60))<.5);
+        REQUIRE(delta(before,last)>5.&&delta(fixed,pixels(a.frame.window,63,63,75,75))<.5);
         measured=samples>=15&&validRetarget>=2&&switched&&bracketed;
         std::printf("R04 trial %d max %.4f retarget %.4f short-gap=%d retarget=%d bracketed=%d valid=%d\n",
             trial,maxStep,retarget,samples,validRetarget,int(bracketed),int(measured));
@@ -625,6 +354,6 @@ int wmain(int argc,wchar_t** argv){
     REQUIRE(measured);
     a.close();saved(c,1,0);
     REQUIRE(c->terminate()==kResultOk);c->release();factory->release();REQUIRE(exit());FreeLibrary(dll);timeEndPeriod(1);CoUninitialize();
-    std::puts("P028l R04/R05/R07 native HWND actual DLL probes PASS (six geometry levels; visible pixels at 50%)");
+    std::puts("P030 native fixed geometry, DPI and R04/R07 actual DLL probes PASS");
     return 0;
 }

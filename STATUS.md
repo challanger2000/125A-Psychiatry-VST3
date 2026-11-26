@@ -472,3 +472,5 @@ P028x: independent P028w audit N01 PASS (24/24), original live detach fixed; new
 P028y: P028x official EditorHost revealed initial parent size mismatch (1536x1024 instead of 768x512); next 75% actually reached 1152x768. Correct host getSize/resizeView handshake and native equality-shortcut test; native follow-up no longer skipped on preceding test failure. DSP unchanged; P028x timing strict FAIL (4/32308 practical, 3026/9600 extreme). Pending verification; NO-GO.
 
 P028z: correct test-only ViewRect comparison C2678 and gate native follow-up on successful build. P028y product compiled/validator 47/47; GUI runtime NOT RUN. P028y timing strict FAIL 5/32308 practical, 2365/9600 extreme; no DSP changes. Pending native verification; NO-GO.
+
+P028z tested candidate 6fa62bbe: native GUI including official EditorHost and N02/N03 all PASS, DSP and functional Windows/package PASS, validator 47/47. Strict practical timing 8/32308 and extreme 64/9600 FAIL. Freeze for independent follow-up of GUI lifecycle; no speculative DSP change. NO-GO pending independent decision. See docs/P028l-FOLLOWUP.md.

@@ -444,41 +444,34 @@ public:
             motionControl_->invalid();
         }
     }
-    bool applyZoom(int index) {
-        if(!open_)return false;
-        // VSTGUI::setZoom continues using CFrame after the synchronous host
-        // resize callback. Retain the *frame*, not just this editor.
+    bool applyZoom(int index) {return applyGeometry(index,getContentScaleFactor());}
+    bool applyGeometry(int index,double scale) {
+        if(!open_||!getFrame())return false;
+        VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
         VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
         const auto generation=attachmentGeneration_;
-        const auto priorZoomFrame=zoomCallbackFrame_;
-        const bool priorApplying=applyingZoom_;
-        zoomCallbackFrame_=keepFrame.get();
-        applyingZoom_=true;
-        setZoomFactor(kZoomFactors[static_cast<std::size_t>(index)]);
-        applyingZoom_=priorApplying;
-        zoomCallbackFrame_=priorZoomFrame;
+        const auto oldZoom=zoomFactor,oldScale=contentScaleFactor;
+        const auto oldRect=getRect();
+        const auto targetZoom=kZoomFactors[static_cast<std::size_t>(index)];
+        const double target=targetZoom*scale;
+        // One operation owns both factors and the frame transform.
+        // Do not invoke VST3Editor's delegate-based zoom path: it can
+        // initiate another resize before the first CFrame::setZoom returns.
+        zoomFactor=targetZoom;contentScaleFactor=scale;
+        const bool already=std::abs(keepFrame->getTransform().m11-target)<1.e-6&&
+            std::abs(keepFrame->getWidth()-minSize.x*target)<1.&&
+            std::abs(keepFrame->getHeight()-minSize.y*target)<1.;
+        const bool accepted=already||keepFrame->setZoom(target);
         if(generation!=attachmentGeneration_||getFrame()!=keepFrame.get())return false;
-        syncZoomMenu();
-        return open_&&acceptedZoom_==index;
+        if(!accepted){
+            zoomFactor=oldZoom;contentScaleFactor=oldScale;
+            setRect(oldRect);syncZoomMenu();return false;
+        }
+        acceptedZoom_=index;syncZoomMenu();
+        return open_;
     }
     void syncZoomMenu() {
         if(open_&&zoomMenu_){zoomMenu_->setValue(static_cast<float>(acceptedZoom_));zoomMenu_->invalid();}
-    }
-    void onZoomChanged(VSTGUI::VST3Editor*,double factor) override {
-        if(rollingBack_||!open_||(zoomCallbackFrame_&&zoomCallbackFrame_!=getFrame()))return;
-        for(std::size_t i=0;i<kZoomFactors.size();++i)if(factor==kZoomFactors[i]){
-            // VSTGUI 4.15 notifies even if CFrame::setZoom rolled back.
-            if(getFrame()&&std::abs(getFrame()->getTransform().m11-getAbsScaleFactor())<1.e-6){
-                acceptedZoom_=static_cast<int>(i);
-                if(!applyingZoom_)parent_->setZoomIndex(acceptedZoom_);
-            }else{
-                rollingBack_=true;
-                setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
-                rollingBack_=false;
-            }
-            syncZoomMenu();
-            break;
-        }
     }
 protected:
     tresult PLUGIN_API attached(void* parent,FIDString type) override {
@@ -489,6 +482,7 @@ protected:
         attachHost_=plugFrame;
         if(!attachHost_)return kResultFalse;
         const auto generation=++attachmentGeneration_;
+        negotiatingGeneration_=generation;pendingScale_=0.;
         auto internal=Steinberg::owned(new AttachGeometryFrame(attachHost_));
         building_=true;attachCanceled_=false;
         plugFrame=internal.get();
@@ -541,17 +535,20 @@ protected:
         // Bound the number of negotiations even if a host changes its
         // preference on every callback. Refusal or persistent churn fails
         // this attachment cleanly rather than exposing inconsistent state.
-        for(unsigned attempt=0;acceptedZoom_!=parent_->zoomIndex();++attempt){
+        for(unsigned attempt=0;acceptedZoom_!=parent_->zoomIndex()||pendingScale_>0.;++attempt){
             if(attempt==6){
                 Steinberg::Vst::VSTGUIEditor::removed();setRect(oldRect);return kResultFalse;
             }
-            const bool zoomAccepted=applyZoom(parent_->zoomIndex());
+            const double scale=pendingScale_>0.?pendingScale_:getContentScaleFactor();
+            pendingScale_=0.;
+            const bool zoomAccepted=applyGeometry(parent_->zoomIndex(),scale);
             if(generation!=attachmentGeneration_)return kResultFalse;
             if(!zoomAccepted||!open_||!getFrame()||plugFrame.get()!=host.get()){
                 if(open_||getFrame())Steinberg::Vst::VSTGUIEditor::removed();
                 setRect(oldRect);return kResultFalse;
             }
         }
+        negotiatingGeneration_=0;
         parent_->editorOpened(this);syncMotion();syncZoomMenu();
         return kResultOk;
     }
@@ -576,7 +573,7 @@ protected:
     }
     void PLUGIN_API close() override {
         if(!getFrame())return;
-        ++attachmentGeneration_;
+        ++attachmentGeneration_;negotiatingGeneration_=0;pendingScale_=0.;
         VSTGUI::VST3Editor::close();
         // The pinned VSTGUI close() only clears its frame pointer when
         // refcount==1. If a resize or native event retains the frame,
@@ -591,14 +588,23 @@ protected:
     }
 #ifdef VST3_CONTENT_SCALE_SUPPORT
     tresult PLUGIN_API setContentScaleFactor(ScaleFactor factor) override {
+        if(!std::isfinite(factor)||factor<=0.||minSize.y*.5*factor<1.||
+           minSize.x*2.*factor>2147483647.)return kInvalidArgument;
         VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
-        VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
-        return VSTGUI::VST3Editor::setContentScaleFactor(factor);
+        if(building_||(negotiatingGeneration_!=0&&negotiatingGeneration_==attachmentGeneration_)){
+            pendingScale_=factor;return kResultOk;
+        }
+        if(!getFrame()){contentScaleFactor=factor;return kResultOk;}
+        return parent_->requestEditorScale(this,factor);
+
     }
 #endif
     bool onCommandMenuItemSelected(VSTGUI::CCommandMenuItem* item) override {
         VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
         VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
+        if(item&&item->getCommandCategory()=="Zoom"){
+            parent_->setZoomIndex(item->getTag());return true;
+        }
         return VSTGUI::VST3Editor::onCommandMenuItemSelected(item);
     }
     void valueChanged(VSTGUI::CControl* control) override {
@@ -642,11 +648,13 @@ private:
     VSTGUI::COptionMenu* zoomMenu_=nullptr;
     VSTGUI::CControl* motionControl_=nullptr;
     int acceptedZoom_=0;
-    bool rollingBack_=false,open_=false,applyingZoom_=false;
+    friend class Controller;
+    bool open_=false;
     bool building_=false,attachCanceled_=false;
     IPtr<IPlugFrame> attachHost_;
     std::uint64_t attachmentGeneration_=0;
-    VSTGUI::CFrame* zoomCallbackFrame_=nullptr; // borrowed, guarded by active zoom call
+    std::uint64_t negotiatingGeneration_=0,registrationSerial_=0;
+    double pendingScale_=0.;
 };
 
 // UI thread only. Keep actual per-view geometry and menu on refusal.
@@ -654,8 +662,10 @@ private:
 // view accepts it; if all refuse, retain the old preference. With no views,
 // store the preference for the next attachment. No repeated resize retries.
 void Controller::editorOpened(PsychiatryEditor* editor) {
-    if(std::find(editors_.begin(),editors_.end(),editor)==editors_.end())
+    if(std::find(editors_.begin(),editors_.end(),editor)==editors_.end()){
+        editor->registrationSerial_=++registrationSerial_;
         editors_.push_back(editor);
+    }
 }
 void Controller::editorClosed(PsychiatryEditor* editor) noexcept {
     editors_.erase(std::remove(editors_.begin(),editors_.end(),editor),editors_.end());
@@ -666,32 +676,70 @@ void Controller::setMotionEnabled(bool value) {
 }
 void Controller::setZoomIndex(int index) {
     if(index<0||index>=static_cast<int>(kZoomFactors.size()))return;
-    // Host resize callbacks can deliver another valid state recall.
-    // Do not recursively negotiate while VSTGUI is changing geometry.
-    // Coalesce to the latest explicit request, including cancellation
-    // by a request for the zoom currently in flight.
-    if(applyingUi_){pendingZoom_=index==activeZoom_?-1:index;return;}
+    pendingZoom_=index==activeZoom_?-1:index;
+    drainGeometry();
+}
+tresult Controller::requestEditorScale(PsychiatryEditor* editor,double scale) {
+    editor->pendingScale_=scale;
+    const bool deferred=applyingUi_;
+    const auto generation=editor->attachmentGeneration_;
+    drainGeometry();
+    if(deferred)return kResultOk;
+    return generation==editor->attachmentGeneration_&&
+        std::abs(editor->contentScaleFactor-scale)<1.e-6?kResultOk:kResultFalse;
+}
+void Controller::drainGeometry() {
+    if(applyingUi_)return;
     applyingUi_=true;
+    // Serialize controller zoom and per-view DPI requests on the UI thread.
+    // Retain each snapshot across synchronous host callbacks and use
+    // registration serials to distinguish reused IPlugView attachments.
     for(unsigned pass=0;pass<6;++pass){
-        activeZoom_=index;
+        const int index=pendingZoom_;
         pendingZoom_=-1;
-        if(editors_.empty())zoomIndex_=index;
-        else {
+        bool work=index>=0;
+        if(index>=0){
+            activeZoom_=index;
+            const auto cutoff=registrationSerial_;
             const auto snapshot=editors_;
             for(auto* editor:snapshot)editor->addRef();
-            bool accepted=false;
+            bool accepted=snapshot.empty();
             for(auto* editor:snapshot){
-                if(std::find(editors_.begin(),editors_.end(),editor)!=editors_.end())
+                if(std::find(editors_.begin(),editors_.end(),editor)!=editors_.end()&&
+                   editor->registrationSerial_<=cutoff)
                     accepted=editor->applyZoom(index)||accepted;
             }
             if(accepted)zoomIndex_=index;
             for(auto* editor:snapshot)editor->release();
+            // New/reused views created during callbacks read the prior
+            // committed zoom. Reconcile only those registrations now;
+            // do not retry ordinary host refusals on existing views.
+            const auto newcomers=editors_;
+            for(auto* editor:newcomers)editor->addRef();
+            for(auto* editor:newcomers){
+                if(std::find(editors_.begin(),editors_.end(),editor)!=editors_.end()&&
+                   editor->registrationSerial_>cutoff)
+                    editor->applyZoom(zoomIndex_);
+            }
+            for(auto* editor:newcomers)editor->release();
+            activeZoom_=-1;
         }
-        if(pendingZoom_<0)break;
-        index=pendingZoom_;
+        const auto scales=editors_;
+        for(auto* editor:scales)editor->addRef();
+        for(auto* editor:scales){
+            if(std::find(editors_.begin(),editors_.end(),editor)!=editors_.end()&&editor->pendingScale_>0.){
+                const double scale=editor->pendingScale_;
+                editor->pendingScale_=0.;
+                work=true;
+                editor->applyGeometry(editor->acceptedZoom_,scale);
+            }
+        }
+        for(auto* editor:scales)editor->release();
+        if(!work&&pendingZoom_<0)break;
     }
-    // A host issuing endless contradictory requests must not trap the UI
-    // thread. Preserve the last accepted geometry and saved preference.
+    // A continuously contradictory host cannot trap the UI thread.
+    // Keep the last accepted geometry and discard unprocessed requests.
+    for(auto* editor:editors_)editor->pendingScale_=0.;
     pendingZoom_=-1;activeZoom_=-1;applyingUi_=false;
 }
 void Controller::applyUiState(bool german,bool motion,int zoom) {

@@ -8,6 +8,7 @@
 #include "vst3/ids.h"
 #include "pluginterfaces/base/ipluginbase.h"
 #include "pluginterfaces/gui/iplugview.h"
+#include "pluginterfaces/gui/iplugviewcontentscalesupport.h"
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 #include "public.sdk/source/vst/utility/memoryibstream.h"
 #include "base/source/fstreamer.h"
@@ -111,12 +112,15 @@ struct View{
         pump(150);return result;
     }
     void open(Vst::IEditController* c,int x,int y){REQUIRE(attach(c,x,y)==kResultOk);}
-    void size(int index){
+    void size(int index,int scale=1){
         ViewRect v;RECT r{};
+        const int w=widths[index]*scale,h=heights[index]*scale;
         REQUIRE(view->getSize(&v)==kResultOk&&GetClientRect(frame.window,&r));
-        if(v.getWidth()!=widths[index]||v.getHeight()!=heights[index]||r.right!=widths[index]||r.bottom!=heights[index])
-            std::fprintf(stderr,"geometry wanted %d x %d view %d x %d hwnd %ld x %ld\n",widths[index],heights[index],v.getWidth(),v.getHeight(),r.right,r.bottom);
-        REQUIRE(v.getWidth()==widths[index]&&v.getHeight()==heights[index]&&r.right==widths[index]&&r.bottom==heights[index]);
+        if(v.getWidth()!=w||v.getHeight()!=h||r.right!=w||r.bottom!=h)
+            std::fprintf(stderr,"geometry wanted %d x %d view %d x %d hwnd %ld x %ld\n",w,h,v.getWidth(),v.getHeight(),r.right,r.bottom);
+        REQUIRE(v.getWidth()==w&&v.getHeight()==h&&r.right==w&&r.bottom==h);
+        ViewRect constraint(0,0,1,1);REQUIRE(view->checkSizeConstraint(&constraint)==kResultTrue);
+        REQUIRE(constraint.getWidth()==w&&constraint.getHeight()==h);
     }
     void detach(){
         if(!frame.detached){REQUIRE(view->removed()==kResultOk);REQUIRE(view->setFrame(nullptr)==kResultOk);}
@@ -346,6 +350,63 @@ int wmain(int argc,wchar_t** argv){
         first.close();REQUIRE(first.frame.refs==1);
         std::printf("P029a live-resize recall multiple=%d mode=%d PASS\n",multiple,mode);
     }
+    // DPI and zoom must be one serialized geometry transaction.
+    // Test both directions of callback nesting, including DPI refusal.
+    for(int mode=0;mode<3;++mode){
+        recall(c,1,0);
+        View first;first.open(c,15,15);
+        FUnknownPtr<IPlugViewContentScaleSupport> dpi(first.view);REQUIRE(dpi);
+        if(mode==0){
+            first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+                recall(c,1,1);return first.frame.resizeView(view,size);
+            };
+            REQUIRE(dpi->setContentScaleFactor(2.f)==kResultOk);
+            first.size(1,2);saved(c,1,1);
+        }else if(mode==1){
+            first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+                REQUIRE(dpi->setContentScaleFactor(2.f)==kResultOk);
+                return first.frame.resizeView(view,size);
+            };
+            recall(c,1,1);first.size(1,2);saved(c,1,1);
+        }else{
+            first.frame.accept=false;
+            REQUIRE(dpi->setContentScaleFactor(2.f)!=kResultOk);
+            first.size(0);saved(c,1,0);first.frame.accept=true;
+            REQUIRE(dpi->setContentScaleFactor(2.f)==kResultOk);first.size(0,2);
+        }
+        recall(c,1,2);first.size(2,2);saved(c,1,2);
+        REQUIRE(dpi->setContentScaleFactor(1.f)==kResultOk);first.size(2);
+        dpi=nullptr;first.close();REQUIRE(first.frame.refs==1);
+        std::printf("P029b DPI/zoom mode=%d PASS\n",mode);
+    }
+    // A registration made inside another view's resize callback must
+    // receive the committed zoom after that callback completes.
+    for(int reuse=0;reuse<=1;++reuse)for(int acceptOld=0;acceptOld<=1;++acceptOld){
+        recall(c,1,0);
+        View first,second;first.open(c,15,15);
+        if(reuse)second.open(c,810,20);
+        first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+            if(reuse)second.detach();
+            second.open(c,810,20);
+            return acceptOld?first.frame.resizeView(view,size):kResultFalse;
+        };
+        recall(c,1,2);
+        first.size(acceptOld?2:0);
+        second.size(acceptOld?2:0);
+        // If the old first view refused but an old second attachment
+        // was superseded, neither old registration accepted the request.
+        // The new registration follows the committed old zoom instead.
+        saved(c,1,acceptOld?2:0);
+        recall(c,1,1);first.size(1);second.size(1);saved(c,1,1);
+        first.close();second.close();REQUIRE(first.frame.refs==1&&second.frame.refs==1);
+        std::printf("P029b nested registration reuse=%d accept=%d PASS\n",reuse,acceptOld);
+    }
+    // Repeated destruction of the last native editor (Win32 scope).
+    recall(c,1,0);
+    {View last;for(int cycle=0;cycle<24;++cycle){
+        last.open(c,15,15);last.size(0);last.detach();REQUIRE(last.frame.refs==1);
+     }last.view->release();last.view=nullptr;
+     std::puts("P029b last-view Win32 reopen 24 cycles PASS");}
     // If the only view closes, do not save an unaccepted size.
     recall(c,1,0);
     {View closing;closing.open(c,15,15);closing.frame.detachOnResize=1;

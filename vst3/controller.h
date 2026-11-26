@@ -3,6 +3,7 @@
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include <random>
 #include <vector>
+#include <cstdint>
 
 namespace psychiatry::vst3 {
 class PsychiatryEditor;
@@ -23,6 +24,7 @@ public:
     void setMotionEnabled(bool value);
     int zoomIndex() const noexcept {return zoomIndex_;}
     void setZoomIndex(int index);
+    Steinberg::tresult requestEditorScale(PsychiatryEditor*,double);
     void editorOpened(PsychiatryEditor*);
     void editorClosed(PsychiatryEditor*) noexcept;
     Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override;
@@ -33,6 +35,8 @@ public:
         Steinberg::Vst::String128 string) override;
 private:
     void applyUiState(bool german, bool motion, int zoom);
+    void drainGeometry();
+    std::uint64_t registrationSerial_=0;
     std::vector<PsychiatryEditor*> editors_; // UI thread, attached views only
     bool applyingUi_=false;
     int activeZoom_=-1,pendingZoom_=-1; // UI-thread coalesced resize requests

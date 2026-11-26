@@ -665,20 +665,34 @@ void Controller::setMotionEnabled(bool value) {
     for(auto* editor:editors_)editor->syncMotion();
 }
 void Controller::setZoomIndex(int index) {
-    if(index<0||index>=static_cast<int>(kZoomFactors.size())||applyingUi_)return;
-    if(editors_.empty()){zoomIndex_=index;return;}
-    // resizeView is host code and may synchronously remove a view.
-    const auto snapshot=editors_;
-    for(auto* editor:snapshot)editor->addRef();
+    if(index<0||index>=static_cast<int>(kZoomFactors.size()))return;
+    // Host resize callbacks can deliver another valid state recall.
+    // Do not recursively negotiate while VSTGUI is changing geometry.
+    // Coalesce to the latest explicit request, including cancellation
+    // by a request for the zoom currently in flight.
+    if(applyingUi_){pendingZoom_=index==activeZoom_?-1:index;return;}
     applyingUi_=true;
-    bool accepted=false;
-    for(auto* editor:snapshot){
-        if(std::find(editors_.begin(),editors_.end(),editor)!=editors_.end())
-            accepted=editor->applyZoom(index)||accepted;
+    for(unsigned pass=0;pass<6;++pass){
+        activeZoom_=index;
+        pendingZoom_=-1;
+        if(editors_.empty())zoomIndex_=index;
+        else {
+            const auto snapshot=editors_;
+            for(auto* editor:snapshot)editor->addRef();
+            bool accepted=false;
+            for(auto* editor:snapshot){
+                if(std::find(editors_.begin(),editors_.end(),editor)!=editors_.end())
+                    accepted=editor->applyZoom(index)||accepted;
+            }
+            if(accepted)zoomIndex_=index;
+            for(auto* editor:snapshot)editor->release();
+        }
+        if(pendingZoom_<0)break;
+        index=pendingZoom_;
     }
-    if(accepted)zoomIndex_=index;
-    applyingUi_=false;
-    for(auto* editor:snapshot)editor->release();
+    // A host issuing endless contradictory requests must not trap the UI
+    // thread. Preserve the last accepted geometry and saved preference.
+    pendingZoom_=-1;activeZoom_=-1;applyingUi_=false;
 }
 void Controller::applyUiState(bool german,bool motion,int zoom) {
     germanUi_=german;

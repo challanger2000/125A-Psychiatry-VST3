@@ -317,6 +317,35 @@ int wmain(int argc,wchar_t** argv){
      REQUIRE(GetWindow(initial.frame.window,GW_CHILD)==nullptr);saved(c,1,1);
      initial.discardFailedAttach();initial.frame.accept=true;
      initial.open(c,15,15);initial.size(1);initial.close();REQUIRE(initial.frame.refs==1);}
+    // Recall during an already-attached editor's resize: the previous
+    // applyingUi_ early return silently discarded the later zoom request.
+    // Test latest-wins, cancellation back to in-flight target, and host
+    // refusal of the follow-up, with one or two native editors.
+    for(int multiple=0;multiple<=1;++multiple)for(int mode=0;mode<3;++mode){
+        recall(c,1,0);
+        View first,second;first.open(c,15,15);if(multiple)second.open(c,810,20);
+        first.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+            recall(c,1,3);recall(c,1,mode==1?2:1);
+            const auto result=first.frame.resizeView(view,size);
+            if(mode==2)first.frame.accept=false;
+            return result;
+        };
+        if(mode==2&&multiple){
+            second.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+                const auto result=second.frame.resizeView(view,size);
+                second.frame.accept=false;return result;
+            };
+        }
+        recall(c,1,2);pump(80);
+        const int expected=mode==0?1:2;
+        first.size(expected);saved(c,1,expected);
+        if(multiple)second.size(expected);
+        first.frame.accept=true;second.frame.accept=true;
+        recall(c,1,0);pump(80);first.size(0);saved(c,1,0);
+        if(multiple){second.size(0);second.close();REQUIRE(second.frame.refs==1);}
+        first.close();REQUIRE(first.frame.refs==1);
+        std::printf("P029a live-resize recall multiple=%d mode=%d PASS\n",multiple,mode);
+    }
     // If the only view closes, do not save an unaccepted size.
     recall(c,1,0);
     {View closing;closing.open(c,15,15);closing.frame.detachOnResize=1;

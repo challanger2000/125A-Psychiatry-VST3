@@ -476,3 +476,5 @@ P028z: correct test-only ViewRect comparison C2678 and gate native follow-up on 
 P028z tested candidate 6fa62bbe: native GUI including official EditorHost and N02/N03 all PASS, DSP and functional Windows/package PASS, validator 47/47. Strict practical timing 8/32308 and extreme 64/9600 FAIL. Freeze for independent follow-up of GUI lifecycle; no speculative DSP change. NO-GO pending independent decision. See docs/P028l-FOLLOWUP.md.
 
 P029: independent P028z review confirms previous GUI fixes; new nested attach rollback and initial resize recall defects reproduced on Linux. Generation-bound completion and bounded preference reconciliation implemented with native regression probes. Audio/DSP unchanged. Await actual CI and independent replay; NO-GO.
+
+P029a: P029 native GUI all PASS (including Codex nested reattach and in-attach recall), functional DSP/Windows/package PASS; strict timing 22/24, 2/32308 practical and 2971/9600 extreme FAIL. Broaden audit to live-resize nested recall previously discarded by applyingUi_; coalesce latest request after current resize, bounded passes; six-case native matrix. Pending verification; NO-GO.

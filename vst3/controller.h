@@ -35,6 +35,7 @@ private:
     void applyUiState(bool german, bool motion, int zoom);
     std::vector<PsychiatryEditor*> editors_; // UI thread, attached views only
     bool applyingUi_=false;
+    int activeZoom_=-1,pendingZoom_=-1; // UI-thread coalesced resize requests
     bool germanUi_=false;
     bool motionEnabled_=false; // reduced-motion mode is the default
     int zoomIndex_=0; // 50% initial size fits smaller host displays

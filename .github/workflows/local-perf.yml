@@ -51,7 +51,7 @@ jobs:
           $driver = @(Get-ChildItem perf-build -Recurse -File -Filter driver_test.exe | Where-Object { $_.FullName -match 'Release' })
           if ($driver.Count -ne 1) { throw 'Expected one native driver host' }
           Copy-Item $driver[0].FullName package/driver_test.exe
-          Copy-Item tools/local-perf/start.bat,tools/local-perf/START-ASIO.BAT,tools/local-perf/README.txt package
+          Copy-Item tools/local-perf/start.bat,tools/local-perf/START-ASIO.BAT,tools/local-perf/START-DIAG.BAT,tools/local-perf/README.txt package
           Copy-Item external/asio/LICENSE.txt package/LICENSE-DRIVER-SDK.txt
           Copy-Item external/vst3sdk/LICENSE.txt package/LICENSE-TESTHOST-SDK.txt
           (Get-FileHash $module -Algorithm SHA256).Hash | Set-Content -Encoding ascii package/module.sha256
@@ -64,7 +64,13 @@ jobs:
           & ./package/driver_test.exe $module "$PWD/driver-smoke.csv" --selftest
           if ($LASTEXITCODE -notin @(0,4)) { throw "Driver callback selftest failed: $LASTEXITCODE" }
           if (@(Import-Csv driver-smoke.csv).Count -ne 750) { throw 'Wrong driver selftest count' }
-          Write-Host 'Both actual DLL smoke paths completed; no real hardware claim.'
+          & ./package/driver_test.exe $module "$PWD/diag-smoke.csv" --diagnostic-selftest
+          if ($LASTEXITCODE -notin @(0,4)) { throw "Diagnostic selftest failed: $LASTEXITCODE" }
+          $diag = @(Import-Csv diag-smoke.csv)
+          if ($diag.Count -ne 4500) { throw 'Wrong diagnostic selftest count' }
+          if (@($diag | Where-Object { $_.instances -eq 0 -and ([double]$_.peak -ne 0 -or [double]$_.plugin_us -ne 0) }).Count -ne 0) { throw 'Driver-only baseline executed plugin' }
+          if (@($diag | Where-Object { $_.instances -eq 1 -and [double]$_.plugin_us -le 0 }).Count -ne 0) { throw 'Missing plugin time evidence' }
+          Write-Host 'Both actual DLL smoke paths and diagnostic controls completed; no real hardware claim.'
       - uses: actions/upload-artifact@v4
         with:
           name: 125A-PSYCHIATRY-P030d-Performance-Test-Windows

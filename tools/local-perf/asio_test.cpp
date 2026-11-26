@@ -58,7 +58,24 @@ struct LoadedProcessor{
 
 using Clock=std::chrono::steady_clock;
 static constexpr int warmup=128;
-struct Record {double wall=0,interval=0,peak=0;uint64_t position=0,cycles=0;bool validPosition=false,processOk=false;};
+// Diagnostic modes: -2/-1 driver-only controls; 2 neutral; 3..14
+// individual macros; 15 all high/static; original 0/1 unchanged.
+static const char* modeName(int mode){
+    static constexpr const char* names[]={"DEPRESSION","PARANOIA","SCHIZOPHRENIA","MANIA","PANIC","DISSOCIATION","OBSESSION","HALLUCINATION","PSYCHOSIS","DELIRIUM","CATATONIA","AMNESIA"};
+    if(mode==-2)return "driver-only-before";
+    if(mode==-1)return "driver-only-after";
+    if(mode==0)return "steady";
+    if(mode==1)return "dense";
+    if(mode==2)return "neutral";
+    if(mode>=3&&mode<=14)return names[mode-3];
+    return "all-high-static";
+}
+static float macroValue(int mode,int j){
+    if(mode==1||mode==15)return .85f;
+    if(mode==0)return j==0?.45f:j==1?.35f:j==4?.50f:j==10?.55f:0.f;
+    return mode==3+j?.85f:0.f;
+}
+struct Record {double wall=0,interval=0,peak=0,pluginUs=0,driverUs=0;uint64_t position=0,cycles=0;int overloadTotal=0;bool validPosition=false,processOk=false;};
 struct Case {
     int rate,block,count,mode,groups;
     IASIO* driver;
@@ -91,16 +108,16 @@ struct Case {
             check(p->setupProcessing(setup)==kResultOk,"processor setup");
             ResizableMemoryIBStream state;IBStreamer w(&state,kLittleEndian);
             check(w.writeInt32(kStateMagic)&&w.writeInt32(kStateVersion),"state header");
-            for(int j=0;j<9;++j)check(w.writeFloat(mode?.85f:(j==0?.45f:j==1?.35f:j==4?.50f:0.f)),"macro state");
-            check(w.writeFloat(mode?.15f:.25f)&&w.writeInt32(0),"globals");
-            for(int j=0;j<3;++j)check(w.writeFloat(mode?.85f:(j==1?.55f:0.f)),"extra macros");
+            for(int j=0;j<9;++j)check(w.writeFloat(macroValue(mode,j)),"macro state");
+            check(w.writeFloat(mode==0?.25f:.15f)&&w.writeInt32(0),"globals");
+            for(int j=0;j<3;++j)check(w.writeFloat(macroValue(mode,9+j)),"extra macros");
             state.rewind();
             check(p->setState(&state)==kResultOk&&p->setActive(true)==kResultOk&&p->setProcessing(true)==kResultOk,"activate");
             ptrs[i]={ol[i].data(),orr[i].data()};bo[i].numChannels=2;bo[i].channelBuffers32=ptrs[i].data();
         }
         // Prebuild queues off the callback thread. Stress all macros at high
         // values, with one point per sample; no bypass toggling or allocations.
-        if(mode)for(int lane=0;lane<13;++lane){
+        if(mode==1)for(int lane=0;lane<13;++lane){
             int32 qi=0,pi=0;auto* q=changes.addParameterData(lane<12?100+lane:kTherapy,qi);
             check(q!=nullptr,"parameter queue");
             for(int i=0;i<n;++i)check(q->addPoint(i,lane<12?.75+.2*((i+lane)%17)/16.:.05+.2*(i%19)/18.,pi)==kResultOk,"parameter point");
@@ -130,8 +147,10 @@ struct Case {
         for(int i=0;i<count;++i){
             Vst::ProcessData data{};data.processMode=Vst::kRealtime;data.symbolicSampleSize=Vst::kSample32;
             data.numSamples=block;data.numInputs=data.numOutputs=1;data.inputs=&bi;data.outputs=&bo[i];
-            data.inputParameterChanges=mode?&changes:nullptr;
+            data.inputParameterChanges=mode==1?&changes:nullptr;
+            const auto ps=Clock::now();
             rec.processOk=(processors[i]->process(data)==kResultOk)&&rec.processOk;
+            rec.pluginUs+=std::chrono::duration<double,std::micro>(Clock::now()-ps).count();
             for(int j=0;j<block;++j){
                 const double a=ol[i][j],b=orr[i][j];
                 rec.processOk=std::isfinite(a)&&std::isfinite(b)&&rec.processOk;
@@ -139,8 +158,10 @@ struct Case {
             }
         }
         // Real hardware clock/callback; deliberately silent physical output.
-        clear(index);if(outputReady)driver->outputReady();
+        clear(index);const auto ds=Clock::now();if(outputReady)driver->outputReady();
         const auto end=Clock::now();
+        rec.driverUs=std::chrono::duration<double,std::micro>(end-ds).count();
+        rec.overloadTotal=overloads.load(std::memory_order_relaxed);
         if(gotCycles&&QueryThreadCycleTime(GetCurrentThread(),&ce))rec.cycles=ce-cb;
         rec.wall=std::chrono::duration<double,std::micro>(end-start).count();
         records[g]=rec;completed.store(g+1,std::memory_order_release);
@@ -177,24 +198,29 @@ static int analyze(Case& c,std::ostream& out){
     const int done=c.completed.load(std::memory_order_acquire);
     const double budget=1.e6*c.block/c.rate;
     int miss=0,gaps=0,invalid=0,positionCount=0;double peak=0.;
-    std::vector<double> times;
+    std::vector<double> times,pluginTimes,driverTimes;
     for(int g=warmup;g<done;++g){
         const auto& r=c.records[g];const auto& prev=c.records[g-1];
         const bool gap=r.validPosition&&prev.validPosition&&r.position!=prev.position+uint64_t(c.block);
-        positionCount+=r.validPosition;gaps+=gap;miss+=r.wall>budget;invalid+=!r.processOk;peak=std::max(peak,r.peak);times.push_back(r.wall);
-        out<<c.rate<<','<<c.block<<','<<c.count<<','<<c.mode<<','<<g-warmup<<','<<r.wall<<','<<budget<<','<<(r.wall>budget)<<','<<r.interval<<','<<r.cycles<<','<<r.validPosition<<','<<r.position<<','<<gap<<','<<r.processOk<<','<<r.peak<<'\n';
+        positionCount+=r.validPosition;gaps+=gap;miss+=r.wall>budget;invalid+=!r.processOk;peak=std::max(peak,r.peak);times.push_back(r.wall);pluginTimes.push_back(r.pluginUs);driverTimes.push_back(r.driverUs);
+        out<<c.rate<<','<<c.block<<','<<c.count<<','<<c.mode<<','<<g-warmup<<','<<r.wall<<','<<budget<<','<<(r.wall>budget)<<','<<r.interval<<','<<r.cycles<<','<<r.validPosition<<','<<r.position<<','<<gap<<','<<r.processOk<<','<<r.peak<<','<<r.pluginUs<<','<<r.driverUs<<','<<r.overloadTotal<<'\n';
     }
     out.flush();
-    const bool incomplete=done!=int(c.records.size())||invalid||peak<=1.e-8||c.reset||c.rateChange||c.reentrant||!out.good();
+    const bool incomplete=done!=int(c.records.size())||invalid||(c.count>0&&peak<=1.e-8)||c.reset||c.rateChange||c.reentrant||!out.good();
     const bool failed=miss||gaps||c.overloads||c.resync;
     std::sort(times.begin(),times.end());
     const double p99=times.empty()?0.:times[times.size()*99/100],max=times.empty()?0.:times.back();
     std::printf("%d Hz / %d samples / %d instances / %s: %s measured=%zu/%d p99=%.2f us max=%.2f us budget=%.2f us misses=%d position_gaps=%d position_valid=%d overloads=%d resync=%d resets=%d rate_changes=%d reentrant=%d invalid=%d peak=%.6f\n",
-       c.rate,c.block,c.count,c.mode?"dense":"steady",incomplete?"INCOMPLETE":failed?"FAIL":"PASS",
+       c.rate,c.block,c.count,modeName(c.mode),incomplete?"INCOMPLETE":failed?"FAIL":"PASS",
        times.size(),c.groups,p99,max,budget,miss,gaps,positionCount,c.overloads.load(),c.resync.load(),c.reset.load(),c.rateChange.load(),c.reentrant.load(),invalid,peak);
+    std::sort(pluginTimes.begin(),pluginTimes.end());std::sort(driverTimes.begin(),driverTimes.end());
+    const auto p99of=[](const std::vector<double>& x){return x.empty()?0.:x[x.size()*99/100];};
+    const int warmOver=done>=warmup?c.records[warmup-1].overloadTotal:0;
+    const int measuredOver=done>warmup?c.records[done-1].overloadTotal-warmOver:0;
+    std::printf("  plugin_p99_us=%.2f driver_outputReady_p99_us=%.2f overloads_before_measurement=%d overloads_during_measurement=%d overloads_after_last_record=%d\n",p99of(pluginTimes),p99of(driverTimes),warmOver,measuredOver,c.overloads.load()-warmOver-measuredOver);
     return incomplete?3:failed?4:0;
 }
-static int runCase(IPluginFactory* factory,IASIO* driver,int rate,int block,int count,int mode,std::ostream& out,bool& retry){
+static int runCase(IPluginFactory* factory,IASIO* driver,int rate,int block,int count,int mode,std::ostream& out,bool& retry,int seconds){
     retry=false;
     ASIOSampleRate actual=0;
     if(driver->getSampleRate(&actual)!=ASE_OK||std::abs(actual-rate)>.01){
@@ -205,7 +231,7 @@ static int runCase(IPluginFactory* factory,IASIO* driver,int rate,int block,int 
         (gran==0&&block!=pref)||(gran>0&&(block-min)%gran!=0)){
         std::printf("%d/%d/%d/%d NOT RUN: driver does not accept requested buffer; min=%ld max=%ld preferred=%ld gran=%ld\n",rate,block,count,mode,min,max,pref,gran);return 3;
     }
-    Case c(factory,driver,rate,block,count,mode,10);
+    Case c(factory,driver,rate,block,count,mode,seconds);
     long inputs=0,outputs=0;
     if(driver->getChannels(&inputs,&outputs)!=ASE_OK||outputs<2){c.close();return 3;}
     // Open the interface in full duplex when available, as DAWs normally do.
@@ -252,7 +278,11 @@ static int runCase(IPluginFactory* factory,IASIO* driver,int rate,int block,int 
 int wmain(int argc,wchar_t** argv){
     std::setvbuf(stdout,nullptr,_IONBF,0);std::setvbuf(stderr,nullptr,_IONBF,0);
     if(argc!=3&&argc!=4)return 3;
-    const bool smoke=argc==4&&std::wstring(argv[3])==L"--selftest";if(argc==4&&!smoke)return 3;
+    const std::wstring option=argc==4?argv[3]:L"";
+    const bool diagnostic=option==L"--diagnostic";
+    const bool smoke=option==L"--selftest"||option==L"--diagnostic-selftest";
+    const bool diagSmoke=option==L"--diagnostic-selftest";
+    if(argc==4&&!smoke&&!diagnostic)return 3;
     check(SUCCEEDED(CoInitialize(nullptr)),"COM");
     const auto path=std::filesystem::absolute(argv[1]);
     HMODULE dll=LoadLibraryExW(path.c_str(),nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
@@ -263,12 +293,14 @@ int wmain(int argc,wchar_t** argv){
     check(init&&exitModule&&factoryFn&&init(),"module init");
     auto* factory=factoryFn();check(factory&&factory->countClasses()==2,"factory");
     std::ofstream out{std::filesystem::path(argv[2])};check(out.good(),"CSV open");
-    out<<std::setprecision(12)<<"rate,block,instances,mode,group,wall_us,budget_us,miss,interval_us,thread_cycles,position_valid,position,position_gap,process_ok,peak\n";
+    out<<std::setprecision(12)<<"rate,block,instances,mode,group,wall_us,budget_us,miss,interval_us,thread_cycles,position_valid,position,position_gap,process_ok,peak,plugin_us,output_ready_us,overload_total\n";
     int failures=0,incomplete=0;
     if(smoke){
         // No real driver on CI. Exercise the exact DLL callback path, output
         // zeroing and metric generation; never report this as a hardware run.
-        Case c(factory,nullptr,48000,64,1,1,1);
+        const std::vector<std::pair<int,int>> probes=diagSmoke?std::vector<std::pair<int,int>>{{0,-2},{1,2},{1,3},{1,14},{1,15},{0,-1}}:std::vector<std::pair<int,int>>{{1,1}};
+        for(const auto& probe:probes){
+        Case c(factory,nullptr,48000,64,probe.first,probe.second,1);
         std::array<std::array<unsigned char,256>,4> samples{};
         for(int i=0;i<2;++i){c.bytes[i]=4;c.buffers[i].buffers[0]=samples[2*i].data();c.buffers[i].buffers[1]=samples[2*i+1].data();}
         for(int g=0;g<int(c.records.size());++g){
@@ -276,7 +308,8 @@ int wmain(int argc,wchar_t** argv){
             c.callback(index,nullptr);
             for(int i=0;i<2;++i)check(std::all_of(samples[2*i+index].begin(),samples[2*i+index].end(),[](unsigned char x){return x==0;}),"silence verification");
         }
-        const int result=analyze(c,out);c.close();check(result!=3,"selftest complete");failures=result==4;
+        const int result=analyze(c,out);c.close();check(result!=3,"selftest complete");failures+=result==4;
+        }
         std::puts("SELFTEST ONLY, no hardware driver used");
     }else{
         AsioDriverList drivers;
@@ -303,7 +336,15 @@ int wmain(int argc,wchar_t** argv){
         // Release probe session. Every measurement uses a freshly initialized
         // driver, with bounded full reopen after a reset/rate-change request.
         drivers.asioCloseDriver(selected);
-        for(int count:{1,4})for(int mode:{0,1}){
+        struct Probe{int count,mode,seconds;};
+        std::vector<Probe> probes;
+        if(diagnostic){
+            probes.push_back({0,-2,10});probes.push_back({1,2,5});
+            for(int m=3;m<=14;++m)probes.push_back({1,m,5});
+            probes.push_back({1,15,10});probes.push_back({1,1,10});probes.push_back({0,-1,10});
+        }else for(int count:{1,4})for(int mode:{0,1})probes.push_back({count,mode,10});
+        for(const auto& probe:probes){
+            const int count=probe.count,mode=probe.mode;
             int code=3;
             for(int attempt=0;attempt<3;++attempt){
                 driver=openDriver();
@@ -314,9 +355,9 @@ int wmain(int argc,wchar_t** argv){
                    driver->getBufferSize(&l,&h,&p,&g)!=ASE_OK||p!=block){
                     std::puts("NOT RUN: configuration changed on reopen");drivers.asioCloseDriver(selected);break;
                 }
-                std::printf("Case %d instances mode=%d attempt=%d\n",count,mode,attempt+1);
+                std::printf("Case %d instances mode=%d (%s) attempt=%d\n",count,mode,modeName(mode),attempt+1);
                 bool retry=false;
-                code=runCase(factory,driver,int(rate+.5),int(block),count,mode,out,retry);
+                code=runCase(factory,driver,int(rate+.5),int(block),count,mode,out,retry,probe.seconds);
                 drivers.asioCloseDriver(selected);
                 if(!retry)break;
                 std::puts("Reset recovery: driver fully closed; retry with same hardware configuration");

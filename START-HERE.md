@@ -1,27 +1,11 @@
 # START HERE — 125A PSYCHIATRY
 
-**Current continuation P028k / v0.9.27 — independent re-audit pending, NO-GO for Studio Pro:** All four CI workflows PASS at product commit `502227585a874dccd84cd5031bbae2092f354ae7`. Actual Windows ZIP artifact 15030461616 independently downloaded, CRC/hash and versions verified. Read STATUS.md and [audit correction gate](docs/P028k-AUDIT-CORRECTIONS.md), repeat original A01–A10 counterprobes and unresolved gates. No creative DSP or artwork changes; no final DAW approval.
+**Current handoff: P031 / v0.9.29, frozen Windows x64 VST3 acceptance candidate.** Development loops ended at owner request; no additional DSP, GUI or build changes authorized by the cleanup itself. V1.0 not released.
 
-**Current design authorities: P026 sound and P027 visuals, confirmed 2026-11-24.** Read [docs/P027-GUI-DESIGN.md](docs/P027-GUI-DESIGN.md) in full for GUI work. Read [docs/P026-SOUND-DESIGN.md](docs/P026-SOUND-DESIGN.md) in full, then [STATUS.md](STATUS.md), [docs/SPEC.md](docs/SPEC.md) (historical baseline where conflicting), and relevant DSP code before changes. Follow 125A Engineering mandatory reading and guardrails. Do not assume older green tests establish musical quality.
+1. Read [STATUS.md](STATUS.md) for exact source, downloadable artifact, PASS/FAIL/NOT VERIFIED results and limitations.
+2. Read [README.md](README.md) for product controls, installation and documentation.
+3. Review [CHANGELOG.md](CHANGELOG.md) and relevant historical design/QA files in [docs/](docs/) only as needed. [Previous handoff](https://github.com/challanger2000/125A-Psychiatry-VST3/blob/99e89f9bf43ad1f204bde2ea9dbb62896cf10452/START-HERE.md) is archived in Git history, not current work instructions.
 
-User audition of v0.9.12: some macros convincing above 50% (acceptable), PANIC bird chirps and PSYCHOSIS too weak. DEPRESSION mostly reverb, SCHIZOPHRENIA mostly delay on initial impression. Original placeholder art and minimal MOTION not accepted. No global curve change. Preserve successful parts.
+For any newly authorized development or release work, follow the current [125A Engineering START-HERE](https://github.com/challanger2000/125A-Engineering/blob/main/START-HERE.md) and its mandatory reading/QA requirements. Product source baseline: `49a8837ab733f29c5f05f546732aba146da1968b`. Only `main`; no speculative rebuilds, no silent changes to sound, artwork, automation IDs or recall.
 
-**Next task:** P027g v0.9.24 functional gate passed all four workflows; freeze DSP. Owner requests step-by-step GUI review. P028a [geometry draft](docs/gui-layout/README.md) awaits approval; no faceplate generation or runtime integration until layout is accepted. Original graphics may be transferred by ZIP if direct upload is unavailable. Zoom planned; no runtime change yet. Final listening and Studio Pro acceptance remain open.
-
-**GUI after sound:** [P027 design](docs/P027-GUI-DESIGN.md) is current: dirty COLOR ivory/green/brown tiled faceplate, genuine rendered black Bakelite knob filmstrips with aged ivory dials, central circular image field (B/W or yellowed/sepia fictional horror photography), ivory THERAPY, red LOSS OF CONTROL, MOTION, DE/EN. Do not use old CRT placeholder art or replace real raster artwork with standard vector knobs.
-
-Only main. v0.9.24 P027g is the latest four-workflow and controller baseline, NOT an accepted final product. Keep latest tested source and verification status current in STATUS.md. No unnecessary intermediate DAW requests; final real DAW test only when engineering is ready. Never substitute technical metrics for audible judgment.
-
-**New owner-approved sound-layer extension (2026-11-24):** read [sound-library/README.md](sound-library/README.md) and [source manifest](sound-library/sources.json). Selected worlds may blend real atonal recordings reactively with their own DSP; no extra controls. Source recordings are candidates, not proof of musical approval. Preserve 0%/THERAPY dry and silence behavior.
-
-P026c candidate: PARANOIA acoustic layer uses six pinned recordings embedded by tools/prepare_acoustic_bank.py at build time; see docs/P026c.md. Verify native Windows source/host/level regressions before claiming success. Other worlds still require design and review. v0.9.13 candidate not approved.
-
-P026d: P026c Linux decoded all six files and passed 7/7 DSP tests. Windows build failed on interpreter mismatch; CI now pins and passes the exact decoder-equipped Python. Inspect new Actions results before further DSP edits. No final approval.
-
-P026d is now a verified technical checkpoint (v0.9.13, all four CI workflows successful; see STATUS). P026e v0.9.14 candidate replaces OBSESSION bit reduction with progressive filtered/saturated replay; preserve frozen capture and verify new test results. Remaining work: DEPRESSION, SCHIZOPHRENIA, MANIA, DISSOCIATION, HALLUCINATION and three new worlds, then circular GUI. No user audition yet.
-
-P026f: P026e DSP/EditorHost passed, Windows audio gain guard failed for drums at +6.789 dB. Corrected wet-only replay gain and added a percussion regression. Verify P026f CI before further DSP changes. Last fully verified v0.9.13.
-
-P026g: P026f v0.9.14 verified all four CI workflows; current DEPRESSION candidate v0.9.15 uses transient attenuation, slow leveling, processed dark body and subtle downward drift, less dominant hall. See docs/P026g.md. Verify all regressions before further edits; resonant filter/granular return not implemented in this pass. Next SCHIZOPHRENIA after DEPRESSION verification. No final DAW test until all worlds and GUI complete.
-
-P026h: v0.9.15 P026g all four CI workflows passed. SCHIZOPHRENIA v0.9.16 candidate replaces the shared long-lag pitch paths with three independent short-grain voices. See docs/P026h.md. Verify all four workflows before continuing. Next MANIA, DISSOCIATION, HALLUCINATION, then DELIRIUM/CATATONIA/AMNESIA and GUI. No final listening acceptance yet.
+Final Studio Pro acceptance, separate Plugin Tester and independent final release decision are not recorded for this exact candidate. Keep the existing evidence and do not relabel failed or unexecuted tests as PASS.

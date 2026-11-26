@@ -492,3 +492,5 @@ P029c tested product 66809e97: native GUI all PASS including 30 pre-frame DPI/zo
 P029d: independent P029c review confirms prior fixes; detached recall stale preferred size and nested preattach DPI return mismatch remain. Candidate separates requested detached size from last host rectangle and verifies effective nested attachment DPI; 12+3 native cases added. CI pending, X11 issue open, DSP unchanged, NO-GO.
 
 P029e: P029d product compiled and functional DSP/Windows/package/validator PASS, GUI harness C3487 prevented native execution. Explicit callback tresult types, test/docs only. Practical timing 22/24, 4/32308, extreme 3425/9600 FAIL. Native tests pending, NO-GO.
+
+P029e tested 03fde438 (P029d product unchanged): all native GUI incl. 12+3 new cases PASS, functional DSP/Windows/package/validator 47/47 PASS. Practical timing 24/24 PASS, 0/32308 misses; extreme 55/9600 FAIL. Freeze pending independent review; no ASIO claim. X11 issue remains open. NO-GO pending independent decision.

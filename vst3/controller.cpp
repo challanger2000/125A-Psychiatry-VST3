@@ -25,6 +25,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <cstdint>
 
 namespace psychiatry::vst3 {
 using namespace Steinberg;
@@ -448,9 +449,15 @@ public:
         // VSTGUI::setZoom continues using CFrame after the synchronous host
         // resize callback. Retain the *frame*, not just this editor.
         VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
+        const auto generation=attachmentGeneration_;
+        const auto priorZoomFrame=zoomCallbackFrame_;
+        const bool priorApplying=applyingZoom_;
+        zoomCallbackFrame_=keepFrame.get();
         applyingZoom_=true;
         setZoomFactor(kZoomFactors[static_cast<std::size_t>(index)]);
-        applyingZoom_=false;
+        applyingZoom_=priorApplying;
+        zoomCallbackFrame_=priorZoomFrame;
+        if(generation!=attachmentGeneration_||getFrame()!=keepFrame.get())return false;
         syncZoomMenu();
         return open_&&acceptedZoom_==index;
     }
@@ -458,7 +465,7 @@ public:
         if(open_&&zoomMenu_){zoomMenu_->setValue(static_cast<float>(acceptedZoom_));zoomMenu_->invalid();}
     }
     void onZoomChanged(VSTGUI::VST3Editor*,double factor) override {
-        if(rollingBack_||!open_)return;
+        if(rollingBack_||!open_||(zoomCallbackFrame_&&zoomCallbackFrame_!=getFrame()))return;
         for(std::size_t i=0;i<kZoomFactors.size();++i)if(factor==kZoomFactors[i]){
             // VSTGUI 4.15 notifies even if CFrame::setZoom rolled back.
             if(getFrame()&&std::abs(getFrame()->getTransform().m11-getAbsScaleFactor())<1.e-6){
@@ -481,6 +488,7 @@ protected:
         const auto oldRect=getRect();
         attachHost_=plugFrame;
         if(!attachHost_)return kResultFalse;
+        const auto generation=++attachmentGeneration_;
         auto internal=Steinberg::owned(new AttachGeometryFrame(attachHost_));
         building_=true;attachCanceled_=false;
         plugFrame=internal.get();
@@ -489,6 +497,7 @@ protected:
         acceptedZoom_=parent_->zoomIndex();
         setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
         nonEditRect=VSTGUI::CRect();
+        sizeRequest={};
         const auto scale=getAbsScaleFactor();
         ViewRect wanted(0,0,static_cast<int32>(std::floor(minSize.x*scale)),
                             static_cast<int32>(std::floor(minSize.y*scale)));
@@ -515,13 +524,34 @@ protected:
         setRect(oldRect);
         const auto requested=wanted;
         const auto accepted=host->resizeView(this,&wanted);
-        if(accepted!=kResultTrue||!open_||!getFrame()||!plugFrame||
+        // The callback can remove this attachment and attach the same
+        // IPlugView again before returning. The older transaction has no
+        // authority over the new frame, rectangle or controller registry.
+        if(generation!=attachmentGeneration_)return kResultFalse;
+        if(accepted!=kResultTrue||!open_||!getFrame()||plugFrame.get()!=host.get()||
            wanted.getWidth()!=requested.getWidth()||wanted.getHeight()!=requested.getHeight()||
            getFrame()->getWidth()!=requested.getWidth()||getFrame()->getHeight()!=requested.getHeight()){
             if(open_||getFrame())Steinberg::Vst::VSTGUIEditor::removed();
             setRect(oldRect);return kResultFalse;
         }
         setRect(requested);
+        // The view is intentionally absent from the controller registry
+        // during construction/initial negotiation. Reconcile any UI recall
+        // delivered by those callbacks before publishing this attachment.
+        // Bound the number of negotiations even if a host changes its
+        // preference on every callback. Refusal or persistent churn fails
+        // this attachment cleanly rather than exposing inconsistent state.
+        for(unsigned attempt=0;acceptedZoom_!=parent_->zoomIndex();++attempt){
+            if(attempt==6){
+                Steinberg::Vst::VSTGUIEditor::removed();setRect(oldRect);return kResultFalse;
+            }
+            const bool zoomAccepted=applyZoom(parent_->zoomIndex());
+            if(generation!=attachmentGeneration_)return kResultFalse;
+            if(!zoomAccepted||!open_||!getFrame()||plugFrame.get()!=host.get()){
+                if(open_||getFrame())Steinberg::Vst::VSTGUIEditor::removed();
+                setRect(oldRect);return kResultFalse;
+            }
+        }
         parent_->editorOpened(this);syncMotion();syncZoomMenu();
         return kResultOk;
     }
@@ -539,10 +569,14 @@ protected:
     }
     bool beforeSizeChange(const VSTGUI::CRect& next,const VSTGUI::CRect& old) override {
         if(building_)return true;
-        return VSTGUI::VST3Editor::beforeSizeChange(next,old);
+        const auto generation=attachmentGeneration_;
+        IPtr<IPlugFrame> keepHost=plugFrame;
+        const bool accepted=VSTGUI::VST3Editor::beforeSizeChange(next,old);
+        return accepted&&generation==attachmentGeneration_&&plugFrame.get()==keepHost.get();
     }
     void PLUGIN_API close() override {
         if(!getFrame())return;
+        ++attachmentGeneration_;
         VSTGUI::VST3Editor::close();
         // The pinned VSTGUI close() only clears its frame pointer when
         // refcount==1. If a resize or native event retains the frame,
@@ -611,6 +645,8 @@ private:
     bool rollingBack_=false,open_=false,applyingZoom_=false;
     bool building_=false,attachCanceled_=false;
     IPtr<IPlugFrame> attachHost_;
+    std::uint64_t attachmentGeneration_=0;
+    VSTGUI::CFrame* zoomCallbackFrame_=nullptr; // borrowed, guarded by active zoom call
 };
 
 // UI thread only. Keep actual per-view geometry and menu on refusal.

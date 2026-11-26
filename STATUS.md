@@ -474,3 +474,5 @@ P028y: P028x official EditorHost revealed initial parent size mismatch (1536x102
 P028z: correct test-only ViewRect comparison C2678 and gate native follow-up on successful build. P028y product compiled/validator 47/47; GUI runtime NOT RUN. P028y timing strict FAIL 5/32308 practical, 2365/9600 extreme; no DSP changes. Pending native verification; NO-GO.
 
 P028z tested candidate 6fa62bbe: native GUI including official EditorHost and N02/N03 all PASS, DSP and functional Windows/package PASS, validator 47/47. Strict practical timing 8/32308 and extreme 64/9600 FAIL. Freeze for independent follow-up of GUI lifecycle; no speculative DSP change. NO-GO pending independent decision. See docs/P028l-FOLLOWUP.md.
+
+P029: independent P028z review confirms previous GUI fixes; new nested attach rollback and initial resize recall defects reproduced on Linux. Generation-bound completion and bounded preference reconciliation implemented with native regression probes. Audio/DSP unchanged. Await actual CI and independent replay; NO-GO.

@@ -17,6 +17,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <functional>
+#include <utility>
 #include <vector>
 using namespace Steinberg;
 using namespace psychiatry::vst3;
@@ -47,6 +49,7 @@ struct Frame final:IPlugFrame{
     int detachOnResize=0;
     bool detached=false;
     bool equalSizeShortcut=false;
+    std::function<tresult(IPlugView*,ViewRect*)> resizeOnce;
     tresult PLUGIN_API queryInterface(const TUID iid,void** out) override{
         if(!out)return kInvalidArgument;
         *out=nullptr;
@@ -57,6 +60,7 @@ struct Frame final:IPlugFrame{
     uint32 PLUGIN_API release() override{return --refs;}
     tresult PLUGIN_API resizeView(IPlugView* view,ViewRect* size) override{
         ++requests;
+        if(resizeOnce){auto callback=std::move(resizeOnce);resizeOnce={};return callback(view,size);}
         if(detachOnResize){
             const int order=detachOnResize;detachOnResize=0;
             if(order==1){REQUIRE(view->setFrame(nullptr)==kResultOk);REQUIRE(view->removed()==kResultOk);}
@@ -262,6 +266,57 @@ int wmain(int argc,wchar_t** argv){
         initial.close();
         std::printf("N03 initial attach mode %d, same-view retry/next zoom PASS\n",mode);
     }
+    // Supersede an initial attachment from *inside* the host resize
+    // callback. Returning from the older transaction must not close the
+    // replacement or overwrite its accepted rectangle.
+    for(int order=1;order<=2;++order)for(int acceptOld=0;acceptOld<=1;++acceptOld){
+        recall(c,1,0);
+        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
+        recall(c,1,2);
+        bool nested=false;
+        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect*){
+            if(order==1){REQUIRE(view->setFrame(nullptr)==kResultOk);REQUIRE(view->removed()==kResultOk);}
+            else{REQUIRE(view->removed()==kResultOk);REQUIRE(view->setFrame(nullptr)==kResultOk);}
+            REQUIRE(GetWindow(initial.frame.window,GW_CHILD)==nullptr);
+            REQUIRE(view->setFrame(&initial.frame)==kResultOk);
+            REQUIRE(view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
+            nested=true;initial.size(2);
+            return acceptOld?kResultTrue:kResultFalse;
+        };
+        REQUIRE(initial.attach(c,15,15,0)!=kResultOk);
+        REQUIRE(nested&&GetWindow(initial.frame.window,GW_CHILD)!=nullptr);
+        initial.size(2);saved(c,1,2);
+        recall(c,1,1);pump(100);initial.size(1);saved(c,1,1);
+        initial.close();REQUIRE(initial.frame.refs==1);
+        std::printf("P029 nested reattach order=%d outer-result=%d PASS\n",order,acceptOld);
+    }
+    // Recall while initial resize is in progress, with and without
+    // another attached view. Do not need a second external recall.
+    for(int multiple=0;multiple<=1;++multiple){
+        recall(c,1,0);
+        View survivor;if(multiple)survivor.open(c,810,20);
+        View initial;initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+            recall(c,1,1);
+            return initial.frame.resizeView(view,size);
+        };
+        initial.open(c,15,15);initial.size(1);saved(c,1,1);
+        if(multiple){survivor.size(1);survivor.close();}
+        recall(c,1,2);pump(60);initial.size(2);saved(c,1,2);
+        initial.close();REQUIRE(initial.frame.refs==1);
+        std::printf("P029 in-attach recall multiple=%d PASS\n",multiple);
+    }
+    // A later negotiation can itself be refused; abort without a ghost
+    // window, retain the recalled preference, and allow same-view retry.
+    recall(c,1,0);
+    {View initial;initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+        recall(c,1,1);
+        const auto result=initial.frame.resizeView(view,size);
+        initial.frame.accept=false;return result;
+     };
+     REQUIRE(initial.attach(c,15,15,0)!=kResultOk);
+     REQUIRE(GetWindow(initial.frame.window,GW_CHILD)==nullptr);saved(c,1,1);
+     initial.discardFailedAttach();initial.frame.accept=true;
+     initial.open(c,15,15);initial.size(1);initial.close();REQUIRE(initial.frame.refs==1);}
     // If the only view closes, do not save an unaccepted size.
     recall(c,1,0);
     {View closing;closing.open(c,15,15);closing.frame.detachOnResize=1;

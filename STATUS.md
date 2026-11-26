@@ -482,3 +482,5 @@ P029a: P029 native GUI all PASS (including Codex nested reattach and in-attach r
 P029a tested product e610b01c: all native GUI including P029/P029a, functional Windows, DSP/package and validator 47/47 PASS. Strict timing 22/24, 40/32308 misses at 64 samples, extreme 146/9600 FAIL; all 128/256 cases PASS. Frozen for independent lifecycle follow-up; NO-GO pending review, no speculative DSP changes. See docs/P028l-FOLLOWUP.md.
 
 P029b: independent P029a audit confirms prior fixes, new DPI/recall and nested registration failures, X11 last-view Cairo/XCB sporadic abort. Candidate serializes geometry and reconciles newly registered attachments; native tests added. X11 root cause unresolved; Win32 repeat test pending. DSP unchanged, NO-GO until verification.
+
+P029b tested product 4115d07e: all native Windows GUI including 8 new scenarios (24 last-view reopen cycles), functional Windows/DSP/package/validator PASS. Timing 16/24, 42/32308 practical and 3314/9600 extreme FAIL; 128/256 also affected in this run. X11 root cause unresolved; Win32 last-view repeat PASS. Freeze for independent review; NO-GO. No DSP changes.

@@ -10,6 +10,12 @@ tags = {x.attrib["name"]: int(x.attrib["tag"]) for x in ui.findall("./control-ta
 knobs = ui.findall(".//view[@class='CAnimKnob']")
 displays = ui.findall(".//view[@class='CParamDisplay']")
 assert len(knobs) == len(displays) == 13
+assert all(k.attrib.get("custom-view-name") == "PSYCHIATRY_RESET_KNOB" for k in knobs)
+reset = ui.findall(".//view[@control-tag='RESET_ALL']")
+assert len(reset) == 1 and tags["RESET_ALL"] == 9003
+assert reset[0].attrib["custom-view-name"] == "PSYCHIATRY_FIRST_AID"
+assert reset[0].attrib["origin"] == "1350, 212" and reset[0].attrib["size"] == "164, 136"
+assert reset[0].attrib["kick-style"] == "true"
 for i, item in enumerate(g["macro_controls"] + [dict(g["therapy"], label="THERAPY")]):
     label, size = item["label"], item["sprite_size"]
     view = [v for v in knobs if v.attrib["control-tag"] == label]

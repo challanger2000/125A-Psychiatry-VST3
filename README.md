@@ -192,3 +192,6 @@ See [docs/P002.md](docs/P002.md) for the Windows Steinberg SDK build setup.
 
 ### Fixed editor (P030)
 The editor is fixed at 960 × 640 pixels at 100% host DPI. Host DPI scaling is supported; there is no user zoom or host drag-resize. The controller state contains no zoom field. Unreleased legacy UI state formats are not supported. DSP is unchanged.
+
+### Quick reset (P031 candidate)
+Click the first-aid box to reset the twelve effect knobs and THERAPY to 0%. Double-click any knob to reset only that knob. BYPASS and MOTION are not changed by reset. MOTION is enabled by default for new instances; saved explicit settings are recalled. LOSS OF CONTROL still changes only the twelve effect knobs.

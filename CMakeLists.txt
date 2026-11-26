@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(PsychiatryAudioPrototype VERSION 0.9.28 LANGUAGES CXX)
+project(PsychiatryAudioPrototype VERSION 0.9.29 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

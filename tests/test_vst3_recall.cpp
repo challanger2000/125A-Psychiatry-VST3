@@ -328,7 +328,8 @@ static void testAuditState(){
         CHECK(c.setState(&bad)==kResultFalse);
         AuditStream write;write.writeFailAt=offset;CHECK(c.getState(&write)==kResultFalse);
     }
-    ResizableMemoryIBStream empty;CHECK(c.setState(&empty)==kResultOk&&!c.isMotionEnabled());
+    c.setMotionEnabled(false);
+    ResizableMemoryIBStream empty;CHECK(c.setState(&empty)==kResultOk&&c.isMotionEnabled());
     CHECK(p.setProcessing(false)==kResultOk&&p.setActive(false)==kResultOk);
     CHECK(c.terminate()==kResultOk&&p.terminate()==kResultOk);
     std::printf("P028k A01/A03/A04 state PASS: %d concurrent saves, reentrant stream, recall, full-count errors and truncated UI\n",saves);
@@ -340,6 +341,7 @@ int main(){
     Controller controller;
     CHECK(component.initialize(nullptr)==kResultOk);
     CHECK(controller.initialize(nullptr)==kResultOk);
+    CHECK(controller.isMotionEnabled());
     // This is a non-GUI executable without a Win32 host platform/frame.
     // Creating a VSTGUI editor here would initialize the plugin UI outside
     // a valid host lifecycle. UI resource/binding inspection is performed
@@ -501,6 +503,25 @@ int main(){
             CHECK(controller.isGermanUi()==german&&controller.isMotionEnabled()==motion);
         }
         for(bool active:observedNonzero)CHECK(active);
+        // Reset after randomization with nonzero values on every knob.
+        for(auto id:soundIds)CHECK(controller.setParamNormalized(id,.75)==kResultOk);
+        CHECK(controller.setParamNormalized(kTherapy,.65)==kResultOk);
+        const auto keepBypass=controller.getParamNormalized(kBypass);
+        const auto keepMotion=controller.isMotionEnabled();
+        const auto keepLanguage=controller.isGermanUi();
+        spy->events.clear();
+        controller.triggerResetAll();
+        CHECK(spy->groupStarts==65&&spy->groupFinishes==65&&spy->events.size()==39);
+        for(size_t i=0;i<13;++i){
+            const auto id=i<12?soundIds[i]:kTherapy;
+            CHECK(controller.getParamNormalized(id)==0.);
+            CHECK(spy->events[3*i].type=='B'&&spy->events[3*i].id==id);
+            CHECK(spy->events[3*i+1].type=='P'&&spy->events[3*i+1].id==id&&spy->events[3*i+1].value==0.);
+            CHECK(spy->events[3*i+2].type=='E'&&spy->events[3*i+2].id==id);
+        }
+        CHECK(controller.getParamNormalized(kBypass)==keepBypass);
+        CHECK(controller.isMotionEnabled()==keepMotion&&controller.isGermanUi()==keepLanguage);
+        std::puts("P031 RESET ALL 13 host parameter gestures PASS");
         CHECK(controller.setComponentHandler(nullptr)==kResultOk);
         spy->release();
         controller.setGermanUi(false);

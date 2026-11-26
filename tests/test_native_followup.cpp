@@ -212,6 +212,7 @@ int wmain(int argc,wchar_t** argv){
     std::puts("P028l native controller created");
     REQUIRE(c->initialize(nullptr)==kResultOk);
     std::puts("P028l native controller initialized");
+    saved(c,1); // verify actual fresh DLL controller default before recall
     recall(c,1);saved(c,1);
     // Actual fixed editor, no user/host drag resize. MOTION recall must
     // leave both detached and attached geometry unchanged.
@@ -235,6 +236,37 @@ int wmain(int argc,wchar_t** argv){
     REQUIRE(a.frame.requests==0);
     ViewRect illegal(0,0,768,512);
     REQUIRE(a.view->onSize(&illegal)!=kResultOk);a.size();
+    // Native child input through Win32, using independent faceplate coordinates.
+    const HWND child=GetWindow(a.frame.window,GW_CHILD);REQUIRE(child);
+    constexpr Vst::ParamID ids[]={100,101,102,103,104,105,106,107,108,109,110,111,200};
+    constexpr POINT centers[]={{481,105},{602,123},{685,202},{702,310},{671,418},{598,501},{480,527},{365,501},{291,419},{263,310},{284,202},{361,123},{129,530}};
+    auto seed=[&](){for(auto id:ids)REQUIRE(c->setParamNormalized(id,.6)==kResultOk);pump(35);};
+    auto click=[&](POINT point,bool dbl){
+        const auto xy=MAKELPARAM(point.x,point.y);
+        SendMessageW(child,WM_MOUSEMOVE,0,xy);
+        SendMessageW(child,WM_LBUTTONDOWN,MK_LBUTTON,xy);
+        SendMessageW(child,WM_LBUTTONUP,0,xy);
+        if(dbl){
+            SendMessageW(child,WM_LBUTTONDBLCLK,MK_LBUTTON,xy);
+            SendMessageW(child,WM_LBUTTONUP,0,xy);
+        }
+        pump(50);
+    };
+    REQUIRE(c->setParamNormalized(kBypass,1.)==kResultOk);
+    recall(c,0);
+    for(size_t i=0;i<13;++i){
+        seed();click(centers[i],true);
+        for(size_t j=0;j<13;++j)REQUIRE(std::abs(c->getParamNormalized(ids[j])-(i==j?0.:.6))<1e-6);
+        REQUIRE(c->getParamNormalized(kBypass)==1.);saved(c,0);
+    }
+    seed();click(POINT{830,175},false); // nearby wall must not reset
+    for(auto id:ids)REQUIRE(std::abs(c->getParamNormalized(id)-.6)<1e-6);
+    click(POINT{902,173},false); // first-aid box
+    for(auto id:ids)REQUIRE(c->getParamNormalized(id)==0.);
+    REQUIRE(c->getParamNormalized(kBypass)==1.);saved(c,0);
+    REQUIRE(c->setParamNormalized(kBypass,0.)==kResultOk);
+    recall(c,1);
+    std::puts("P031 native 13 double-click resets, first-aid hit and miss, globals preserved PASS");
     a.close();REQUIRE(a.frame.refs==1);
     std::puts("P030 fixed geometry, MOTION state recall, MOTION and stale onSize PASS");
 

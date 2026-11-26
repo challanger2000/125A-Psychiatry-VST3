@@ -77,6 +77,9 @@ try {
     if(-not [PSYGUI]::ClientToScreen($handle,[ref]$origin)) {
         throw 'P009 GUI test: cannot locate editor client origin'
     }
+    # Default is now ON. Disable it explicitly for static bypass/restore comparisons.
+    ClickClient $handle 302 493
+    Start-Sleep -Milliseconds 250
     $before=Screenshot 'P009-Editor-Before.png'
     # P030 fixed 960x640 faceplate; map existing 768x512 probe coordinates by 1.25.
     function Delta($a,$b,[int]$x,[int]$y,[int]$w,[int]$h) {

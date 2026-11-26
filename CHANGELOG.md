@@ -1,3 +1,9 @@
+## P031 — 0.9.29 candidate, owner-requested usability
+- First-aid box resets all 13 rotary controls through grouped host edits; BYPASS and MOTION unchanged.
+- Left double-click resets the individual knob, retaining native drag, wheel and keyboard behavior.
+- MOTION defaults on for new or empty controller state; explicit saved off is preserved.
+- DSP, latency, artwork and audio state unchanged. Native and recall tests updated; not yet verified.
+
 ## P030a — remove development-only zoom state
 - UI state v4 is 16 bytes, containing only magic, version, language and MOTION. No legacy zoom field or migration. Unreleased v1–v3 UI states rejected; audio processor state unchanged. Restore original artwork README.txt to preserve the manifest; current editor documentation lives in README.md. P030 configure stopped at README.txt SHA256 mismatch, no Windows runtime evidence yet.
 

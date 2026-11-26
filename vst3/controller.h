@@ -18,6 +18,7 @@ public:
     // UI-thread action. Changes all twelve real host-automatable macro IDs.
     // Never modifies the global THERAPY mix, Bypass, or the audio callback.
     void triggerLossOfControl();
+    void triggerResetAll();
     bool isGermanUi() const noexcept {return germanUi_;}
     void setGermanUi(bool german) noexcept {germanUi_=german;}
     bool isMotionEnabled() const noexcept {return motionEnabled_;}
@@ -34,7 +35,7 @@ private:
     void applyUiState(bool german, bool motion);
     std::vector<PsychiatryEditor*> editors_; // UI thread, attached views only
     bool germanUi_=false;
-    bool motionEnabled_=false; // reduced-motion mode is the default
+    bool motionEnabled_=true; // owner-approved default; explicit saved off is retained
     std::mt19937 random_{std::random_device{}()};
 };
 } // namespace psychiatry::vst3

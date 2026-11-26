@@ -17,6 +17,7 @@
 #include "vstgui/lib/coffscreencontext.h"
 #include "vstgui/lib/cfont.h"
 #include "vstgui/lib/controls/cbuttons.h"
+#include "vstgui/lib/controls/cknob.h"
 #include <cstring>
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 
@@ -36,6 +37,7 @@ namespace psychiatry::vst3 {
 using namespace Steinberg;
 namespace {
 constexpr Steinberg::int32 kLossOfControlUiTag=9000;
+constexpr Steinberg::int32 kResetAllUiTag=9003;
 constexpr double kFixedEditorScale=.625; // 960 x 640 at host DPI 1
 constexpr Steinberg::int32 kMotionUiTag=9002;
 constexpr Steinberg::int32 kLanguageStateMagic=0x50535955; // 'PSYU'
@@ -132,7 +134,7 @@ tresult PLUGIN_API Controller::setState(IBStream* state) {
     StateStream stream(state);
     int32 magic=0,version=0,lang=0,motion=0;
     if(stream.empty()) {
-        applyUiState(false,false);
+        applyUiState(false,true);
         return kResultOk;
     }
     if(!stream.readInt32(magic)||magic!=kLanguageStateMagic||
@@ -175,6 +177,48 @@ void Controller::triggerLossOfControl() {
     }
     finishGroupEdit();
 }
+
+void Controller::triggerResetAll() {
+    // All thirteen automatable rotary controls, never Bypass or UI state.
+    startGroupEdit();
+    auto reset=[this](Steinberg::Vst::ParamID id) {
+        beginEdit(id);
+        setParamNormalized(id,0.);
+        performEdit(id,0.);
+        endEdit(id);
+    };
+    for(auto id:kMacroIds)reset(id);
+    reset(kTherapy);
+    finishGroupEdit();
+}
+
+// Retain the native atlas, drag, wheel and keyboard behavior. Only a
+// left double-click is intercepted; no subsequent drag from that click.
+class ResettableAnimKnob final : public VSTGUI::CAnimKnob {
+public:
+    ResettableAnimKnob():CAnimKnob(VSTGUI::CRect(0,0,128,128),nullptr,-1,nullptr){}
+    VSTGUI::CMouseEventResult onMouseDown(VSTGUI::CPoint& where,
+                                         const VSTGUI::CButtonState& buttons) override {
+        if(buttons.isLeftButton()&&buttons.isDoubleClick()) {
+            invalidMouseWheelEditTimer(this);
+            beginEdit();
+            setValueNormalized(0.f);
+            valueChanged();
+            invalid();
+            endEdit();
+            return VSTGUI::kMouseDownEventHandledButDontNeedMovedOrUpEvents;
+        }
+        return CAnimKnob::onMouseDown(where,buttons);
+    }
+};
+
+// The first-aid box is already part of the verified faceplate. A
+// momentary native button provides the hit target without painting over it.
+class FirstAidResetButton final : public VSTGUI::CTextButton {
+public:
+    FirstAidResetButton():CTextButton(VSTGUI::CRect(0,0,164,136),nullptr,-1,nullptr,kKickStyle){}
+    void draw(VSTGUI::CDrawContext*) override {setDirty(false);}
+};
 
 // P028d: owner-approved raster faceplate. The standard native CAnimKnob
 // handles the multi-frame atlases and host gestures; only the observation
@@ -414,6 +458,8 @@ public:
         if(!name)return nullptr;
         if(std::strcmp(name,"PSYCHIATRY_OBSERVATION")==0)return new ObservationWindow(parent_);
         if(std::strcmp(name,"PSYCHIATRY_LOSS")==0)return new RasterLossButton;
+        if(std::strcmp(name,"PSYCHIATRY_RESET_KNOB")==0)return new ResettableAnimKnob;
+        if(std::strcmp(name,"PSYCHIATRY_FIRST_AID")==0)return new FirstAidResetButton;
         return nullptr;
     }
     void didOpen(VSTGUI::VST3Editor*) override {open_=true;syncMotion();}
@@ -578,6 +624,10 @@ protected:
         }
         if(control&&control->getTag()==kLossOfControlUiTag){
             if(control->getValueNormalized()>.5f)parent_->triggerLossOfControl();
+            return;
+        }
+        if(control&&control->getTag()==kResetAllUiTag){
+            if(open_&&control->getValueNormalized()>.5f)parent_->triggerResetAll();
             return;
         }
         VSTGUI::VST3Editor::valueChanged(control);

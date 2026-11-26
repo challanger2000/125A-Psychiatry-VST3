@@ -63,8 +63,9 @@ struct Case {
     int rate,block,count,mode,groups;
     IASIO* driver;
     bool outputReady=false;
-    std::array<ASIOBufferInfo,2> buffers{};
-    std::array<int,2> bytes{};
+    std::array<ASIOBufferInfo,4> buffers{};
+    int bufferCount=2, inputCount=0;
+    std::array<int,4> bytes{};
     std::array<std::unique_ptr<LoadedProcessor>,4> processors;
     std::array<float,256> left{},right{};
     std::array<std::array<float,256>,4> ol{},orr{};
@@ -110,7 +111,7 @@ struct Case {
     }
     void clear(long index){
         if(index<0||index>1)return;
-        for(int i=0;i<2;++i)if(buffers[i].buffers[index])std::memset(buffers[i].buffers[index],0,size_t(block)*bytes[i]);
+        for(int i=inputCount;i<bufferCount;++i)if(buffers[i].buffers[index])std::memset(buffers[i].buffers[index],0,size_t(block)*bytes[i]);
     }
     void callback(long index,const ASIOTime* timing){
         if(busy.test_and_set(std::memory_order_acquire)){++reentrant;return;}
@@ -193,7 +194,8 @@ static int analyze(Case& c,std::ostream& out){
        times.size(),c.groups,p99,max,budget,miss,gaps,positionCount,c.overloads.load(),c.resync.load(),c.reset.load(),c.rateChange.load(),c.reentrant.load(),invalid,peak);
     return incomplete?3:failed?4:0;
 }
-static int runCase(IPluginFactory* factory,IASIO* driver,int rate,int block,int count,int mode,std::ostream& out){
+static int runCase(IPluginFactory* factory,IASIO* driver,int rate,int block,int count,int mode,std::ostream& out,bool& retry){
+    retry=false;
     ASIOSampleRate actual=0;
     if(driver->getSampleRate(&actual)!=ASE_OK||std::abs(actual-rate)>.01){
         std::printf("%d/%d/%d/%d NOT RUN: driver sample rate mismatch\n",rate,block,count,mode);return 3;
@@ -204,23 +206,31 @@ static int runCase(IPluginFactory* factory,IASIO* driver,int rate,int block,int 
         std::printf("%d/%d/%d/%d NOT RUN: driver does not accept requested buffer; min=%ld max=%ld preferred=%ld gran=%ld\n",rate,block,count,mode,min,max,pref,gran);return 3;
     }
     Case c(factory,driver,rate,block,count,mode,10);
-    for(int i=0;i<2;++i){
-        c.buffers[i].isInput=ASIOFalse;c.buffers[i].channelNum=i;
-        ASIOChannelInfo info{};info.channel=i;info.isInput=ASIOFalse;
+    long inputs=0,outputs=0;
+    if(driver->getChannels(&inputs,&outputs)!=ASE_OK||outputs<2){c.close();return 3;}
+    // Open the interface in full duplex when available, as DAWs normally do.
+    // Input samples are not read, recorded or exported.
+    c.inputCount=int(std::min(2L,inputs));c.bufferCount=c.inputCount+2;
+    for(int i=0;i<c.bufferCount;++i){
+        const bool input=i<c.inputCount;
+        const int channel=input?i:i-c.inputCount;
+        c.buffers[i].isInput=input?ASIOTrue:ASIOFalse;c.buffers[i].channelNum=channel;
+        ASIOChannelInfo info{};info.channel=channel;info.isInput=c.buffers[i].isInput;
         if(driver->getChannelInfo(&info)!=ASE_OK||!(c.bytes[i]=sampleBytes(info.type))){
             std::puts("NOT RUN: unsupported driver output type");c.close();return 3;}
     }
     ASIOCallbacks callbacks{bufferSwitch,rateChanged,message,bufferTime};
-    const auto created=driver->createBuffers(c.buffers.data(),2,block,&callbacks);
-    if(created!=ASE_OK){std::printf("NOT RUN: createBuffers failed %ld\n",long(created));c.close();return 3;}
+    active.store(&c,std::memory_order_release);
+    const auto created=driver->createBuffers(c.buffers.data(),c.bufferCount,block,&callbacks);
+    if(created!=ASE_OK){active.store(nullptr,std::memory_order_release);std::printf("NOT RUN: createBuffers failed %ld\n",long(created));retry=c.reset||c.rateChange;c.close();return 3;}
     c.clear(0);c.clear(1);
     long inLatency=0,outLatency=0;
     const auto lat=driver->getLatencies(&inLatency,&outLatency);
     c.outputReady=driver->outputReady()==ASE_OK;
     std::printf("Driver buffer=%d latency_samples input=%ld output=%ld latency_status=%ld overload_reporting=%s\n",block,inLatency,outLatency,long(lat),driver->future(kAsioCanReportOverload,nullptr)==ASE_SUCCESS?"supported":"unknown/not supported");
     active.store(&c,std::memory_order_release);
-    const auto started=driver->start();
-    if(started!=ASE_OK){active.store(nullptr,std::memory_order_release);driver->disposeBuffers();c.close();std::printf("NOT RUN: driver start failed %ld\n",long(started));return 3;}
+    const auto started=(c.reset||c.rateChange)?ASE_NotPresent:driver->start();
+    if(started!=ASE_OK){active.store(nullptr,std::memory_order_release);check(driver->disposeBuffers()==ASE_OK,"dispose after start rejection");retry=c.reset||c.rateChange;std::printf("NOT RUN: start failed/skipped %ld resets=%d rate_changes=%d\n",long(started),c.reset.load(),c.rateChange.load());c.close();return 3;}
     const auto until=Clock::now()+std::chrono::seconds(25);
     while(c.completed.load(std::memory_order_acquire)<int(c.records.size())&&!c.reset&&!c.rateChange&&Clock::now()<until){
         MSG msg{};while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){TranslateMessage(&msg);DispatchMessageW(&msg);}
@@ -230,6 +240,13 @@ static int runCase(IPluginFactory* factory,IASIO* driver,int rate,int block,int 
     check(driver->stop()==ASE_OK,"driver stop failed");
     active.store(nullptr,std::memory_order_release);
     check(driver->disposeBuffers()==ASE_OK,"dispose buffers");
+    retry=c.reset||c.rateChange;
+    if(retry){
+        // Keep interrupted attempts out of the accepted measurement CSV.
+        // Never mix two driver sessions or silently count a reset as PASS.
+        std::printf("INTERRUPTED: callbacks=%d resets=%d rate_changes=%d overloads=%d resync=%d; reopen requested\n",c.completed.load(),c.reset.load(),c.rateChange.load(),c.overloads.load(),c.resync.load());
+        c.close();return 3;
+    }
     const int result=analyze(c,out);c.close();return result;
 }
 int wmain(int argc,wchar_t** argv){
@@ -268,26 +285,45 @@ int wmain(int argc,wchar_t** argv){
         int selected=-1;
         std::puts("Installed native drivers (select Yamaha Steinberg USB ASIO for UR22):");
         for(int i=0;i<num;++i){char name[128]{};if(drivers.asioGetDriverName(i,name,sizeof(name))==0)std::printf("%d: %s\n",i,name);}
-        std::printf("Driver number: ");std::cin>>selected;
-        check(std::cin.good()&&selected>=0&&selected<num,"invalid driver choice");
-        void* raw=nullptr;check(drivers.asioOpenDriver(selected,&raw)==0&&raw,"driver open");
-        auto* driver=static_cast<IASIO*>(raw);
-        check(driver->init(GetConsoleWindow())!=0,"driver initialization; close DAW and other audio clients");
+        if(num==1){selected=0;std::puts("Only one driver: automatically selected 0");}
+        else {std::printf("Driver number: ");std::cin>>selected;check(std::cin.good()&&selected>=0&&selected<num,"invalid driver choice");}
+        auto openDriver=[&]()->IASIO*{
+            void* raw=nullptr;
+            if(drivers.asioOpenDriver(selected,&raw)!=0||!raw)return nullptr;
+            auto* d=static_cast<IASIO*>(raw);
+            if(!d->init(GetConsoleWindow())){drivers.asioCloseDriver(selected);return nullptr;}
+            return d;
+        };
+        auto* driver=openDriver();check(driver!=nullptr,"driver init; close other audio clients");
         char name[128]{};driver->getDriverName(name);
-        long in=0,outChannels=0;check(driver->getChannels(&in,&outChannels)==ASE_OK&&outChannels>=2,"two output channels required");
-        ASIOSampleRate original=0;check(driver->getSampleRate(&original)==ASE_OK,"read original sample rate");
-        std::printf("Native driver: %s; version=%ld; outputs=%ld; original rate=%.1f; hardware output silent\n",name,driver->getDriverVersion(),outChannels,original);
-        for(int rate:{48000,44100}){
-            ASIOSampleRate current=0;const bool same=driver->getSampleRate(&current)==ASE_OK&&std::abs(current-rate)<.01;
-            if(!same&&(driver->canSampleRate(rate)!=ASE_OK||driver->setSampleRate(rate)!=ASE_OK)){
-                std::printf("NOT RUN: requested %d Hz unavailable\n",rate);incomplete+=12;continue;}
-            for(int block:{256,128,64})for(int count:{1,4})for(int mode:{0,1}){
-                const int code=runCase(factory,driver,rate,block,count,mode,out);
-                failures+=code==4;incomplete+=code==3;
-            }
-        }
-        if(original>0&&driver->setSampleRate(original)!=ASE_OK){std::puts("WARNING: original driver sample rate could not be restored");++incomplete;}
+        ASIOSampleRate rate=0;long lo=0,hi=0,block=0,gran=0;
+        check(driver->getSampleRate(&rate)==ASE_OK&&(std::abs(rate-44100.)<.01||std::abs(rate-48000.)<.01),"set 44.1 or 48 kHz in driver control panel");
+        check(driver->getBufferSize(&lo,&hi,&block,&gran)==ASE_OK&&(block==64||block==128||block==256),"set preferred buffer to 64, 128 or 256 in driver panel");
+        std::printf("Native driver: %s; version=%ld; fixed current rate=%.1f block=%ld; no rate or buffer changes\n",name,driver->getDriverVersion(),rate,block);
+        // Release probe session. Every measurement uses a freshly initialized
+        // driver, with bounded full reopen after a reset/rate-change request.
         drivers.asioCloseDriver(selected);
+        for(int count:{1,4})for(int mode:{0,1}){
+            int code=3;
+            for(int attempt=0;attempt<3;++attempt){
+                driver=openDriver();
+                if(!driver){std::puts("NOT RUN: driver reopen failed");break;}
+                long l=0,h=0,p=0,g=0;
+                ASIOSampleRate actual=0;
+                if(driver->getSampleRate(&actual)!=ASE_OK||std::abs(actual-rate)>.01||
+                   driver->getBufferSize(&l,&h,&p,&g)!=ASE_OK||p!=block){
+                    std::puts("NOT RUN: configuration changed on reopen");drivers.asioCloseDriver(selected);break;
+                }
+                std::printf("Case %d instances mode=%d attempt=%d\n",count,mode,attempt+1);
+                bool retry=false;
+                code=runCase(factory,driver,int(rate+.5),int(block),count,mode,out,retry);
+                drivers.asioCloseDriver(selected);
+                if(!retry)break;
+                std::puts("Reset recovery: driver fully closed; retry with same hardware configuration");
+                Sleep(750);
+            }
+            failures+=code==4;incomplete+=code==3;
+        }
     }
     out.close();check(!out.fail(),"CSV close");
     factory->release();check(exitModule(),"module exit");FreeLibrary(dll);CoUninitialize();

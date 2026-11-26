@@ -98,6 +98,14 @@ static void saved(Vst::IEditController* c,int motion){
     REQUIRE(a==0x50535955&&b==4&&d==0&&m==motion);
 }
 static constexpr int width=960,height=640;
+// The VST3 DPI interface transports binary32, not an exact rational.
+// Force the same stored float and double multiplication in this independent
+// pixel oracle; constant-folded expressions must not use excess precision.
+static int expectedPixels(int logical,float factor){
+    volatile float stored=factor;
+    volatile double product=double(logical)*double(stored);
+    return static_cast<int>(std::floor(product));
+}
 struct View{
     Frame frame;
     IPlugView* view=nullptr;
@@ -116,9 +124,9 @@ struct View{
         pump(150);return result;
     }
     void open(Vst::IEditController* c,int x,int y){REQUIRE(attach(c,x,y)==kResultOk);}
-    void size(double scale=1.,bool attached=true){
+    void size(float scale=1.f,bool attached=true){
         ViewRect v;RECT r{};
-        const int w=static_cast<int>(std::floor(width*scale)),h=static_cast<int>(std::floor(height*scale));
+        const int w=expectedPixels(width,scale),h=expectedPixels(height,scale);
         REQUIRE(view->getSize(&v)==kResultOk&&GetClientRect(frame.window,&r));
         if(v.getWidth()!=w||v.getHeight()!=h||r.right!=w||r.bottom!=h)
             std::fprintf(stderr,"geometry wanted %d x %d view %d x %d hwnd %ld x %ld\n",w,h,v.getWidth(),v.getHeight(),r.right,r.bottom);
@@ -232,13 +240,20 @@ int wmain(int argc,wchar_t** argv){
 
     // Host DPI, including fractional factors and same-view reuse. The
     // parent is allocated from getSize and refuses all redundant resizes.
-    for(float factor:{1.f,1.10f,1.25f,1.33f,1.5f,1.60f,1.75f,2.f,106.f/96.f,128.f/96.f}){
+    struct DpiCase{float factor;int w,h;};
+    // Explicit independent reference pixels from the transmitted binary32.
+    const DpiCase cases[]={{1.f,960,640},{1.10f,1056,704},{1.25f,1200,800},
+        {1.33f,1276,851},{1.5f,1440,960},{1.60f,1536,1024},{1.75f,1680,1120},
+        {2.f,1920,1280},{106.f/96.f,1059,706},{128.f/96.f,1280,853}};
+    for(const auto& item:cases){
+        const float factor=item.factor;
+        REQUIRE(expectedPixels(width,factor)==item.w&&expectedPixels(height,factor)==item.h);
         View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
         FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
         REQUIRE(dpi->setContentScaleFactor(factor)==kResultOk);
         ViewRect expected{},constrained(0,0,1,1);
         REQUIRE(initial.view->getSize(&expected)==kResultOk);
-        const int wantedW=static_cast<int>(std::floor(width*double(factor))),wantedH=static_cast<int>(std::floor(height*double(factor)));
+        const int wantedW=item.w,wantedH=item.h;
         std::printf("P030 detached DPI %.9g expected %d x %d actual %d x %d\n",double(factor),wantedW,wantedH,expected.getWidth(),expected.getHeight());
         REQUIRE(expected.getWidth()==wantedW&&expected.getHeight()==wantedH);
         REQUIRE(initial.view->checkSizeConstraint(&constrained)==kResultTrue);

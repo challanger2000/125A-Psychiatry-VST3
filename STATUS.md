@@ -488,3 +488,5 @@ P029b tested product 4115d07e: all native Windows GUI including 8 new scenarios 
 P029c: P029b independent audit confirms previous fixes; new pre-frame DPI/getSize mismatch blocks fixed-parent host attach. Candidate publishes canonical pre-frame geometry, negotiates DPI when host assigned, and adds 30-case DPI/zoom fixed-parent + reuse matrix and frame-before-attach accept/refuse. Native CI pending. X11 issue remains open; DSP unchanged. NO-GO.
 
 P029c tested product 66809e97: native GUI all PASS including 30 pre-frame DPI/zoom cases + same-view reattach, frame-before-attach accept/refuse, 24 last-view cycles. DSP/state/audio/package/validator 47/47 PASS. Strict timing 21/24, 5/32308 practical at 64 samples, 3154/9600 extreme FAIL; all 128/256 PASS. Frozen pending independent review; NO-GO. X11 issue open, DSP unchanged.
+
+P029d: independent P029c review confirms prior fixes; detached recall stale preferred size and nested preattach DPI return mismatch remain. Candidate separates requested detached size from last host rectangle and verifies effective nested attachment DPI; 12+3 native cases added. CI pending, X11 issue open, DSP unchanged, NO-GO.

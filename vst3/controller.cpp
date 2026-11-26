@@ -475,11 +475,21 @@ public:
         if(open_&&zoomMenu_){zoomMenu_->setValue(static_cast<float>(acceptedZoom_));zoomMenu_->invalid();}
     }
 protected:
+    tresult PLUGIN_API getSize(ViewRect* size) override {
+        if(!size)return kInvalidArgument;
+        refreshDetachedPreference();
+        return Steinberg::Vst::VSTGUIEditor::getSize(size);
+    }
+    tresult PLUGIN_API checkSizeConstraint(ViewRect* size) override {
+        if(!size)return kInvalidArgument;
+        refreshDetachedPreference();
+        return VSTGUI::VST3Editor::checkSizeConstraint(size);
+    }
     tresult PLUGIN_API attached(void* parent,FIDString type) override {
         if(building_||open_||getFrame()||!type||
            isPlatformTypeSupported(type)!=kResultTrue)return kResultFalse;
         VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
-        const auto oldRect=getRect();
+        const auto oldRect=plugFrame?preAttachHostRect_:getRect();
         attachHost_=plugFrame;
         if(!attachHost_)return kResultFalse;
         const auto generation=++attachmentGeneration_;
@@ -561,6 +571,7 @@ protected:
             if(attachHost_.get()!=host)attachCanceled_=true;
             attachHost_=host;return kResultOk;
         }
+        if(host&&!getFrame()&&plugFrame.get()!=host)preAttachHostRect_=getRect();
         return Steinberg::Vst::VSTGUIEditor::setFrame(host);
     }
     bool beforeSizeChange(const VSTGUI::CRect& next,const VSTGUI::CRect& old) override {
@@ -572,6 +583,7 @@ protected:
     }
     void PLUGIN_API close() override {
         if(!getFrame())return;
+        preAttachHostRect_=getRect();
         ++attachmentGeneration_;negotiatingGeneration_=0;pendingScale_=0.;
         VSTGUI::VST3Editor::close();
         // The pinned VSTGUI close() only clears its frame pointer when
@@ -583,7 +595,10 @@ protected:
     tresult PLUGIN_API onSize(ViewRect* rect) override {
         VSTGUI::SharedPointer<PsychiatryEditor> keepEditor(this);
         VSTGUI::SharedPointer<VSTGUI::CFrame> keepFrame(getFrame());
-        return VSTGUI::VST3Editor::onSize(rect);
+        if(!rect)return kInvalidArgument;
+        const auto result=VSTGUI::VST3Editor::onSize(rect);
+        if(!getFrame()&&plugFrame&&result==kResultTrue)preAttachHostRect_=*rect;
+        return result;
     }
 #ifdef VST3_CONTENT_SCALE_SUPPORT
     tresult PLUGIN_API setContentScaleFactor(ScaleFactor factor) override {
@@ -599,7 +614,7 @@ protected:
             // a host frame exists, negotiate with it before publishing,
             // preserving the old rectangle for equality-shortcut hosts.
             if(preAttachResize_)return kResultFalse;
-            const auto oldRect=getRect();
+            const auto oldRect=plugFrame?preAttachHostRect_:getRect();
             const auto oldScale=contentScaleFactor,oldZoom=zoomFactor;
             const auto oldIndex=acceptedZoom_;
             contentScaleFactor=factor;
@@ -610,16 +625,34 @@ protected:
             IPtr<IPlugFrame> host=plugFrame;
             if(!host){setRect(requested);return kResultOk;}
             const auto generation=attachmentGeneration_;
+            setRect(oldRect);
             preAttachResize_=true;
             const auto result=host->resizeView(this,&wanted);
             preAttachResize_=false;
-            if(generation!=attachmentGeneration_||getFrame())return kResultFalse;
+            // A nested attachment owns the final geometry. Report success
+            // if that attachment actually adopted the requested DPI, even
+            // when the older resize callback returns a refusal.
+            if(generation!=attachmentGeneration_||getFrame()){
+                return open_&&getFrame()&&negotiatingGeneration_==0&&
+                    std::abs(contentScaleFactor-factor)<1.e-6&&
+                    std::abs(getFrame()->getTransform().m11-getAbsScaleFactor())<1.e-6&&
+                    std::abs(getFrame()->getWidth()-preferredRect().getWidth())<1.&&
+                    std::abs(getFrame()->getHeight()-preferredRect().getHeight())<1.?kResultOk:kResultFalse;
+            }
             if(result!=kResultTrue||plugFrame.get()!=host.get()||
                wanted.getWidth()!=requested.getWidth()||wanted.getHeight()!=requested.getHeight()){
                 contentScaleFactor=oldScale;zoomFactor=oldZoom;acceptedZoom_=oldIndex;
+                preAttachHostRect_=oldRect;
                 setRect(oldRect);return kResultFalse;
             }
-            setRect(requested);return kResultOk;
+            preAttachHostRect_=requested;
+            setRect(requested);
+            // Recall inside the early callback may have changed the saved
+            // zoom. Detached queries must expose the latest preference,
+            // while the real host rectangle stays separately tracked for
+            // the subsequent attached() negotiation.
+            refreshDetachedPreference();
+            return kResultOk;
         }
         return parent_->requestEditorScale(this,factor);
 
@@ -670,6 +703,12 @@ protected:
         VSTGUI::VST3Editor::onViewRemoved(frame,view);
     }
 private:
+    void refreshDetachedPreference() {
+        if(getFrame()||building_||preAttachResize_||open_)return;
+        acceptedZoom_=parent_->zoomIndex();
+        zoomFactor=kZoomFactors[static_cast<std::size_t>(acceptedZoom_)];
+        setRect(preferredRect());
+    }
     ViewRect preferredRect() const {
         const auto scale=getAbsScaleFactor();
         return ViewRect(0,0,static_cast<int32>(std::floor(minSize.x*scale)),
@@ -683,6 +722,7 @@ private:
     bool open_=false;
     bool building_=false,attachCanceled_=false,preAttachResize_=false;
     IPtr<IPlugFrame> attachHost_;
+    ViewRect preAttachHostRect_{}; // last host-owned rectangle, not desired detached size
     std::uint64_t attachmentGeneration_=0;
     std::uint64_t negotiatingGeneration_=0,registrationSerial_=0;
     double pendingScale_=0.;

@@ -456,6 +456,61 @@ int wmain(int argc,wchar_t** argv){
         dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
     }
     std::puts("P029c frame-before-attach DPI accept/refuse PASS");
+    // Recall AFTER creation or removal, without a second DPI call.
+    // Both query orders must describe the latest accepted controller state
+    // before a fixed-size host allocates its parent.
+    for(int reuse=0;reuse<=1;++reuse)for(float scale:{1.f,1.25f,2.f})for(int constraintFirst=0;constraintFirst<=1;++constraintFirst){
+        recall(c,1,0);
+        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
+        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
+        REQUIRE(dpi->setContentScaleFactor(scale)==kResultOk);
+        initial.frame.fixedParent=true;
+        if(reuse){initial.open(c,15,15);initial.size(0,scale);initial.detach();REQUIRE(initial.frame.refs==1);}
+        recall(c,1,1);saved(c,1,1);
+        ViewRect r{},constraint(0,0,1,1);
+        const auto check=[&](){REQUIRE(initial.view->checkSizeConstraint(&constraint)==kResultTrue);REQUIRE(constraint.getWidth()==static_cast<int>(widths[1]*scale)&&constraint.getHeight()==static_cast<int>(heights[1]*scale));};
+        if(constraintFirst)check();
+        REQUIRE(initial.view->getSize(&r)==kResultOk&&r.getWidth()==static_cast<int>(widths[1]*scale)&&r.getHeight()==static_cast<int>(heights[1]*scale));
+        if(!constraintFirst)check();
+        initial.open(c,15,15);initial.size(1,scale);
+        REQUIRE(GetWindow(initial.frame.window,GW_CHILD)!=nullptr);
+        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
+    }
+    std::puts("P029d detached recall 12 fixed-parent cases PASS");
+    // Recall inside a pre-attach DPI resize, and reentrant attach before
+    // that outer request returns. Separate desired and host rectangles.
+    for(int mode=0;mode<3;++mode){
+        recall(c,1,0);
+        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
+        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
+        RECT rect{0,0,widths[0],heights[0]};REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
+        initial.frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A nested preattach DPI",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
+            15,15,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
+        REQUIRE(initial.frame.window);
+        initial.frame.equalSizeShortcut=true;
+        REQUIRE(initial.view->setFrame(&initial.frame)==kResultOk);
+        initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size){
+            if(mode==0){
+                recall(c,1,1);
+                return initial.frame.resizeView(view,size);
+            }
+            REQUIRE(view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
+            initial.size(0,1.25);
+            return mode==1?kResultTrue:kResultFalse;
+        };
+        REQUIRE(dpi->setContentScaleFactor(1.25f)==kResultOk);
+        if(mode==0){
+            ViewRect r{},constraint(0,0,1,1);
+            REQUIRE(initial.view->getSize(&r)==kResultOk&&r.getWidth()==1440&&r.getHeight()==960);
+            REQUIRE(initial.view->checkSizeConstraint(&constraint)==kResultTrue&&constraint.getWidth()==1440&&constraint.getHeight()==960);
+            REQUIRE(initial.view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
+            initial.size(1,1.25);saved(c,1,1);
+        }else{initial.size(0,1.25);saved(c,1,0);}
+        REQUIRE(GetWindow(initial.frame.window,GW_CHILD)!=nullptr);
+        recall(c,1,2);initial.size(2,1.25);saved(c,1,2);
+        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
+    }
+    std::puts("P029d early DPI nested recall/attach 3 cases PASS");
     // Repeated destruction of the last native editor (Win32 scope).
     recall(c,1,0);
     {View last;for(int cycle=0;cycle<24;++cycle){

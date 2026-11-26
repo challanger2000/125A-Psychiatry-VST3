@@ -1,6 +1,6 @@
 # 125A PSYCHIATRY
 
-> **Current checkpoint (2026-11-26):** P030d / v0.9.28 — independent technical GO for controlled Studio Pro audition only, at 48 kHz, 256 samples and unchanged Windows DPI. Exact product commit `4828981be7013e8dcba711dce29d97cd7673ad72`. No final release approval. See [STATUS.md](STATUS.md). The earlier P025 description below is historical.
+> **Current checkpoint (2026-11-26):** P031 / v0.9.29 candidate. Three owner-requested usability changes pass native Win32 and state regressions; validator 47/47, DSP and audio tests pass. Hosted timing remains FAIL overall; actual Studio Pro acceptance and final release decision pending. Exact product commit `49a8837ab733f29c5f05f546732aba146da1968b`. See [STATUS.md](STATUS.md). The earlier P025 description below is historical.
 
 **Experimental dark multi-effect for Gothic, Darkwave, EBM, Industrial and cinematic horror sound design.**
 

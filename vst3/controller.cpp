@@ -467,16 +467,20 @@ protected:
             if(open_||getFrame())Steinberg::Vst::VSTGUIEditor::removed();
             attaching_=false;setRect(pixelRect());return kResultFalse;
         }
-        // An already matching native parent needs no resize at all.
-        // Otherwise the old host geometry must be visible during negotiation
-        // (some hosts skip resize when getSize already equals the request).
-        if(!parentMatches(parent,wanted)){
-            setRect(hostRect_);
+        // Win32 hosts can allocate the parent from getSize(), then report
+        // DPI before setFrame()/attached(). The last advertised rectangle
+        // is not evidence of the actual client area. Publish measured host
+        // geometry during negotiation so equality-shortcut hosts resize.
+        ViewRect actualParent{};
+        const bool measured=readParentRect(parent,actualParent);
+        if(!measured||!containsDimensions(actualParent,wanted)){
+            setRect(measured?actualParent:hostRect_);
             auto request=wanted;
             const auto accepted=host->resizeView(this,&request);
             if(generation!=generation_)return kResultFalse;
             if(accepted!=kResultTrue||!open_||!getFrame()||
-               plugFrame.get()!=host.get()||!equalDimensions(request,wanted)||!frameMatches(wanted)){
+               plugFrame.get()!=host.get()||!equalDimensions(request,wanted)||!frameMatches(wanted)||
+               !parentCanContain(parent,wanted)){
                 if(open_||getFrame())Steinberg::Vst::VSTGUIEditor::removed();
                 attaching_=false;setRect(pixelRect());return kResultFalse;
             }
@@ -609,13 +613,27 @@ private:
             std::abs(native.getWidth()-wanted.getWidth())<1.&&
             std::abs(native.getHeight()-wanted.getHeight())<1.;
     }
-    bool parentMatches(void* parent,const ViewRect& wanted) const {
+    static bool containsDimensions(const ViewRect& actual,const ViewRect& wanted){
+        return actual.getWidth()>=wanted.getWidth()&&actual.getHeight()>=wanted.getHeight();
+    }
+    static bool readParentRect(void* parent,ViewRect& result){
 #ifdef _WIN32
         RECT client{};
-        return parent&&GetClientRect(static_cast<HWND>(parent),&client)&&
-            client.right-client.left==wanted.getWidth()&&client.bottom-client.top==wanted.getHeight();
+        if(!parent||!GetClientRect(static_cast<HWND>(parent),&client))return false;
+        result=ViewRect(0,0,client.right-client.left,client.bottom-client.top);
+        return true;
 #else
-        (void)parent;(void)wanted;return false;
+        (void)parent;(void)result;return false;
+#endif
+    }
+    static bool parentCanContain(void* parent,const ViewRect& wanted){
+#ifdef _WIN32
+        ViewRect actual{};
+        return readParentRect(parent,actual)&&containsDimensions(actual,wanted);
+#else
+        // Native parent inspection is implemented for the Windows target.
+        // Other platforms still depend on the host's resize result.
+        (void)parent;(void)wanted;return true;
 #endif
     }
     Controller* parent_;

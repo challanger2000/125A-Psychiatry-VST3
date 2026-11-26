@@ -309,6 +309,59 @@ int wmain(int argc,wchar_t** argv){
         initial.size(mode==1?1.:1.25);dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
     }
     std::puts("P030 early DPI accept/refuse/nested attach PASS");
+    // EditorHost ordering: allocate parent from the original getSize(),
+    // then report DPI before setFrame and attached. The resize callback
+    // uses the SDK host's equality shortcut. Check the actual HWNDs, not
+    // just the plugin's reported size. Also test false success and refusal.
+    for(float factor:{1.25f,1.5f,1.33f})for(int mode=0;mode<3;++mode){
+        View late;late.view=c->createView(Vst::ViewType::kEditor);REQUIRE(late.view);
+        FUnknownPtr<IPlugViewContentScaleSupport> dpi(late.view);REQUIRE(dpi);
+        ViewRect original{};REQUIRE(late.view->getSize(&original)==kResultOk);
+        REQUIRE(original.getWidth()==width&&original.getHeight()==height);
+        RECT rect{0,0,original.getWidth(),original.getHeight()};
+        REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
+        late.frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A late DPI",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
+            15,15,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
+        REQUIRE(late.frame.window);
+        REQUIRE(dpi->setContentScaleFactor(factor)==kResultOk);
+        ViewRect scaled{};REQUIRE(late.view->getSize(&scaled)==kResultOk);
+        REQUIRE(scaled.getWidth()==expectedPixels(width,factor)&&scaled.getHeight()==expectedPixels(height,factor));
+        late.frame.equalSizeShortcut=true;
+        REQUIRE(late.view->setFrame(&late.frame)==kResultOk);
+        if(mode==1)late.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
+            // Host claims success, including onSize, but leaves parent stale.
+            REQUIRE(view->onSize(size)==kResultOk);return kResultTrue;
+        };
+        if(mode==2)late.frame.accept=false;
+        const auto attached=late.view->attached(late.frame.window,kPlatformTypeHWND);
+        REQUIRE(late.frame.requests==1);
+        if(mode==0){
+            REQUIRE(attached==kResultOk);late.size(factor);
+        }else{
+            REQUIRE(attached!=kResultOk&&GetWindow(late.frame.window,GW_CHILD)==nullptr);
+            RECT unchanged{};REQUIRE(GetClientRect(late.frame.window,&unchanged));
+            REQUIRE(unchanged.right==width&&unchanged.bottom==height);
+            late.discardFailedAttach();late.frame.accept=true;
+            late.open(c,15,15);late.size(factor);
+        }
+        dpi=nullptr;late.close();REQUIRE(late.frame.refs==1);
+    }
+    std::puts("P030d late DPI / EditorHost equality shortcut, false success, refusal and retry 9 cases PASS");
+    // A larger parent is allowed: the plugin child is fixed-size and the
+    // host owns any extra client space. No redundant resize is necessary.
+    {View larger;larger.view=c->createView(Vst::ViewType::kEditor);REQUIRE(larger.view);
+     RECT rect{0,0,1200,800};REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
+     larger.frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A larger parent",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
+        15,15,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
+     REQUIRE(larger.frame.window);larger.frame.accept=false;
+     REQUIRE(larger.view->setFrame(&larger.frame)==kResultOk);
+     REQUIRE(larger.view->attached(larger.frame.window,kPlatformTypeHWND)==kResultOk);
+     REQUIRE(larger.frame.requests==0);
+     RECT parent{},child{};ViewRect advertised{};
+     REQUIRE(GetClientRect(larger.frame.window,&parent)&&parent.right==1200&&parent.bottom==800);
+     REQUIRE(GetClientRect(GetWindow(larger.frame.window,GW_CHILD),&child)&&child.right==width&&child.bottom==height);
+     REQUIRE(larger.view->getSize(&advertised)==kResultOk&&advertised.getWidth()==width&&advertised.getHeight()==height);
+     larger.close();REQUIRE(larger.frame.refs==1);}
     // Stale host parent that genuinely differs: preserve prior refusal and
     // retry semantics, without project-driven zoom.
     for(int mode=0;mode<4;++mode){

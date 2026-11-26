@@ -50,6 +50,7 @@ struct Frame final:IPlugFrame{
     int detachOnResize=0;
     bool detached=false;
     bool equalSizeShortcut=false;
+    bool fixedParent=false;
     std::function<tresult(IPlugView*,ViewRect*)> resizeOnce;
     tresult PLUGIN_API queryInterface(const TUID iid,void** out) override{
         if(!out)return kInvalidArgument;
@@ -70,6 +71,10 @@ struct Frame final:IPlugFrame{
             return kResultFalse;
         }
         if(!accept||!size||size->getWidth()<=0||size->getHeight()<=0)return kResultFalse;
+        if(fixedParent){
+            RECT actual{};REQUIRE(GetClientRect(window,&actual));
+            return actual.right==size->getWidth()&&actual.bottom==size->getHeight()?kResultTrue:kResultFalse;
+        }
         if(equalSizeShortcut){
             ViewRect current;REQUIRE(view->getSize(&current)==kResultOk);
             if(current.left==size->left&&current.top==size->top&&
@@ -112,9 +117,9 @@ struct View{
         pump(150);return result;
     }
     void open(Vst::IEditController* c,int x,int y){REQUIRE(attach(c,x,y)==kResultOk);}
-    void size(int index,int scale=1){
+    void size(int index,double scale=1.){
         ViewRect v;RECT r{};
-        const int w=widths[index]*scale,h=heights[index]*scale;
+        const int w=static_cast<int>(std::floor(widths[index]*scale)),h=static_cast<int>(std::floor(heights[index]*scale));
         REQUIRE(view->getSize(&v)==kResultOk&&GetClientRect(frame.window,&r));
         if(v.getWidth()!=w||v.getHeight()!=h||r.right!=w||r.bottom!=h)
             std::fprintf(stderr,"geometry wanted %d x %d view %d x %d hwnd %ld x %ld\n",w,h,v.getWidth(),v.getHeight(),r.right,r.bottom);
@@ -401,6 +406,56 @@ int wmain(int argc,wchar_t** argv){
         first.close();second.close();REQUIRE(first.frame.refs==1&&second.frame.refs==1);
         std::printf("P029b nested registration reuse=%d accept=%d PASS\n",reuse,acceptOld);
     }
+    // VST3 content-scale contract before setFrame(): size immediately
+    // reflects DPI and saved zoom. A fixed-size host constructs its
+    // parent from getSize and refuses any genuinely different request.
+    for(int index=0;index<6;++index)for(float scale:{1.f,1.25f,1.5f,1.75f,2.f}){
+        recall(c,1,index);
+        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
+        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
+        ViewRect r{},constraint(0,0,1,1);
+        REQUIRE(initial.view->getSize(&r)==kResultOk);
+        REQUIRE(r.getWidth()==widths[index]&&r.getHeight()==heights[index]);
+        REQUIRE(dpi->setContentScaleFactor(scale)==kResultOk);
+        REQUIRE(initial.view->getSize(&r)==kResultOk);
+        const int w=static_cast<int>(std::floor(widths[index]*scale)),h=static_cast<int>(std::floor(heights[index]*scale));
+        REQUIRE(r.getWidth()==w&&r.getHeight()==h);
+        REQUIRE(initial.view->checkSizeConstraint(&constraint)==kResultTrue);
+        REQUIRE(constraint.getWidth()==w&&constraint.getHeight()==h);
+        // Rejected invalid DPI must leave the valid pre-attach size intact.
+        REQUIRE(dpi->setContentScaleFactor(0.f)!=kResultOk);
+        REQUIRE(initial.view->getSize(&r)==kResultOk&&r.getWidth()==w&&r.getHeight()==h);
+        initial.frame.fixedParent=true;
+        initial.open(c,15,15);initial.size(index,scale);
+        REQUIRE(GetWindow(initial.frame.window,GW_CHILD)!=nullptr);
+        initial.detach();REQUIRE(initial.frame.refs==1);
+        // Same IPlugView, changed scale, new fixed parent.
+        REQUIRE(dpi->setContentScaleFactor(1.f)==kResultOk);
+        initial.open(c,15,15);initial.size(index);
+        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
+    }
+    std::puts("P029c pre-frame DPI/zoom fixed-parent matrix 30 cases + reattach PASS");
+    // A host frame can also be assigned before the native attach. In that
+    // order DPI must negotiate an actual resize with the existing parent.
+    for(int refuse=0;refuse<=1;++refuse){
+        recall(c,1,0);
+        View initial;initial.view=c->createView(Vst::ViewType::kEditor);REQUIRE(initial.view);
+        FUnknownPtr<IPlugViewContentScaleSupport> dpi(initial.view);REQUIRE(dpi);
+        RECT rect{0,0,widths[0],heights[0]};REQUIRE(AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,FALSE,0));
+        initial.frame.window=CreateWindowExW(0,L"125A_NativeAuditWindow",L"125A preattach DPI",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
+            15,15,rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
+        REQUIRE(initial.frame.window);
+        initial.frame.accept=!refuse;initial.frame.equalSizeShortcut=true;
+        REQUIRE(initial.view->setFrame(&initial.frame)==kResultOk);
+        const auto result=dpi->setContentScaleFactor(1.25f);
+        REQUIRE((result==kResultOk)==!refuse);
+        initial.size(0,refuse?1.:1.25);
+        initial.frame.accept=true;initial.frame.fixedParent=true;
+        REQUIRE(initial.view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
+        initial.size(0,refuse?1.:1.25);
+        dpi=nullptr;initial.close();REQUIRE(initial.frame.refs==1);
+    }
+    std::puts("P029c frame-before-attach DPI accept/refuse PASS");
     // Repeated destruction of the last native editor (Win32 scope).
     recall(c,1,0);
     {View last;for(int cycle=0;cycle<24;++cycle){

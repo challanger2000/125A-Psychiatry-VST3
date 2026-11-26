@@ -406,6 +406,7 @@ public:
         setAllowedZoomFactors(std::vector<double>(kZoomFactors.begin(),kZoomFactors.end()));
         acceptedZoom_=parent_->zoomIndex();
         setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
+        setRect(preferredRect());
     }
     VSTGUI::CView* createCustomView(VSTGUI::UTF8StringPtr name,
             const VSTGUI::UIAttributes&,
@@ -492,9 +493,7 @@ protected:
         setZoomFactor(kZoomFactors[static_cast<std::size_t>(acceptedZoom_)]);
         nonEditRect=VSTGUI::CRect();
         sizeRequest={};
-        const auto scale=getAbsScaleFactor();
-        ViewRect wanted(0,0,static_cast<int32>(std::floor(minSize.x*scale)),
-                            static_cast<int32>(std::floor(minSize.y*scale)));
+        ViewRect wanted=preferredRect();
         setRect(wanted);
         const auto result=Steinberg::Vst::VSTGUIEditor::attached(parent,type);
         building_=false;
@@ -594,7 +593,34 @@ protected:
         if(building_||(negotiatingGeneration_!=0&&negotiatingGeneration_==attachmentGeneration_)){
             pendingScale_=factor;return kResultOk;
         }
-        if(!getFrame()){contentScaleFactor=factor;return kResultOk;}
+        if(!getFrame()){
+            // Before setFrame(), the host sizes its future parent from
+            // getSize(). Publish the scaled rectangle immediately. Once
+            // a host frame exists, negotiate with it before publishing,
+            // preserving the old rectangle for equality-shortcut hosts.
+            if(preAttachResize_)return kResultFalse;
+            const auto oldRect=getRect();
+            const auto oldScale=contentScaleFactor,oldZoom=zoomFactor;
+            const auto oldIndex=acceptedZoom_;
+            contentScaleFactor=factor;
+            acceptedZoom_=parent_->zoomIndex();
+            zoomFactor=kZoomFactors[static_cast<std::size_t>(acceptedZoom_)];
+            auto wanted=preferredRect();
+            const auto requested=wanted;
+            IPtr<IPlugFrame> host=plugFrame;
+            if(!host){setRect(requested);return kResultOk;}
+            const auto generation=attachmentGeneration_;
+            preAttachResize_=true;
+            const auto result=host->resizeView(this,&wanted);
+            preAttachResize_=false;
+            if(generation!=attachmentGeneration_||getFrame())return kResultFalse;
+            if(result!=kResultTrue||plugFrame.get()!=host.get()||
+               wanted.getWidth()!=requested.getWidth()||wanted.getHeight()!=requested.getHeight()){
+                contentScaleFactor=oldScale;zoomFactor=oldZoom;acceptedZoom_=oldIndex;
+                setRect(oldRect);return kResultFalse;
+            }
+            setRect(requested);return kResultOk;
+        }
         return parent_->requestEditorScale(this,factor);
 
     }
@@ -644,13 +670,18 @@ protected:
         VSTGUI::VST3Editor::onViewRemoved(frame,view);
     }
 private:
+    ViewRect preferredRect() const {
+        const auto scale=getAbsScaleFactor();
+        return ViewRect(0,0,static_cast<int32>(std::floor(minSize.x*scale)),
+                            static_cast<int32>(std::floor(minSize.y*scale)));
+    }
     Controller* parent_;
     VSTGUI::COptionMenu* zoomMenu_=nullptr;
     VSTGUI::CControl* motionControl_=nullptr;
     int acceptedZoom_=0;
     friend class Controller;
     bool open_=false;
-    bool building_=false,attachCanceled_=false;
+    bool building_=false,attachCanceled_=false,preAttachResize_=false;
     IPtr<IPlugFrame> attachHost_;
     std::uint64_t attachmentGeneration_=0;
     std::uint64_t negotiatingGeneration_=0,registrationSerial_=0;

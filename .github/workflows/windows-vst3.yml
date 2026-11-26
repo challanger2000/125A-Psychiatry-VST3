@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
     paths-ignore:
+      - 'tools/local-perf/**'
+      - '.github/workflows/local-perf.yml'
+      - '.github/workflows/windows-vst3.yml'
+      - '.github/workflows/audio-prototype.yml'
       - 'tools/gui_smoke.ps1'
       - '.github/workflows/gui-smoke.yml'
   workflow_dispatch:

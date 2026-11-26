@@ -1,0 +1,64 @@
+name: P030d Local Windows Performance Test Package
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/local-perf/**'
+      - '.github/workflows/local-perf.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned SDK
+        shell: pwsh
+        run: |
+          git clone --no-checkout https://github.com/steinbergmedia/vst3sdk.git external/vst3sdk
+          git -C external/vst3sdk checkout 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          git -C external/vst3sdk submodule update --init --recursive
+      - name: Build standalone host
+        shell: pwsh
+        run: |
+          cmake -S tools/local-perf -B perf-build -G "Visual Studio 17 2022" -A x64 "-DSDK_DIR=$PWD/external/vst3sdk"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build perf-build --config Release --target performance --parallel 4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retrieve exact previously verified P030d artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45858536737
+          name: 125A-PSYCHIATRY-P028-RASTER-NOT-FINAL
+          path: candidate
+      - name: Assemble and smoke-test actual DLL package
+        shell: pwsh
+        run: |
+          $zip = Get-Item candidate/125A-PSYCHIATRY-P028l.zip
+          $expected = ((Get-Content "$($zip.FullName).sha256" -Raw).Trim() -split '\s+')[0]
+          if ((Get-FileHash $zip.FullName -Algorithm SHA256).Hash -ne $expected) { throw 'P030d original archive checksum mismatch' }
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath package
+          $module = (Resolve-Path package/125A-PSYCHIATRY.vst3/Contents/x86_64-win/125A-PSYCHIATRY.vst3).Path
+          $exe = @(Get-ChildItem perf-build -Recurse -File -Filter performance.exe | Where-Object { $_.FullName -match 'Release' })
+          if ($exe.Count -ne 1) { throw 'Expected one performance host' }
+          Copy-Item $exe[0].FullName package/performance.exe
+          Copy-Item tools/local-perf/start.bat,tools/local-perf/README.txt package
+          Copy-Item external/vst3sdk/LICENSE.txt package/LICENSE-TESTHOST-SDK.txt
+          (Get-FileHash $module -Algorithm SHA256).Hash | Set-Content -Encoding ascii package/module.sha256
+          & ./package/performance.exe $module "$PWD/smoke.csv" --smoke
+          $code = $LASTEXITCODE
+          if ($code -notin @(0,4)) { throw "Host runtime error: $code" }
+          $rows = @(Import-Csv smoke.csv)
+          if ($rows.Count -ne 1500) { throw "Unexpected smoke sample count $($rows.Count)" }
+          if (@($rows | Where-Object { $_.sample_rate -ne 48000 -or $_.block -ne 64 -or $_.instances -ne 1 }).Count -ne 0) { throw 'Wrong smoke configuration' }
+          Write-Host 'Local host actual DLL smoke completed; timing result recorded, not an ASIO assertion.'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 125A-PSYCHIATRY-P030d-Performance-Test-Windows
+          path: package/
+          if-no-files-found: error
+          retention-days: 7

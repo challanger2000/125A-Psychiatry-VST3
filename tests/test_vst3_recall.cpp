@@ -323,7 +323,7 @@ static void testAuditState(){
         c.setMotionEnabled(true);
         CHECK(c.setState(&truncated)==kResultFalse&&c.isMotionEnabled());
     }
-    for(int offset=0;offset<20;offset+=4){
+    for(int offset=0;offset<16;offset+=4){
         AuditStream bad;CHECK(c.getState(&bad)==kResultOk);bad.rewind();bad.readFailAt=offset;
         CHECK(c.setState(&bad)==kResultFalse);
         AuditStream write;write.writeFailAt=offset;CHECK(c.getState(&write)==kResultFalse);
@@ -540,32 +540,24 @@ int main(){
         CHECK(controller.setState(&savedEn)==kResultOk);
         CHECK(!controller.isGermanUi());
         CHECK(!controller.isMotionEnabled());
-        // P030: all legacy zoom indices remain readable but are ignored.
-        // New saves retain the v3 wire format and canonical reserved zero.
-        for(int32 oldZoom=0;oldZoom<6;++oldZoom){
-            ResizableMemoryIBStream old;
-            IBStreamer input(&old,kLittleEndian);
-            CHECK(input.writeInt32(0x50535955)&&input.writeInt32(3)&&
-                  input.writeInt32(0)&&input.writeInt32(1)&&input.writeInt32(oldZoom));
-            old.rewind();CHECK(controller.setState(&old)==kResultOk&&controller.isMotionEnabled());
-            ResizableMemoryIBStream migrated;
-            CHECK(controller.getState(&migrated)==kResultOk);migrated.rewind();
-            IBStreamer output(&migrated,kLittleEndian);int32 magic=0,version=0,lang=0,motion=0,reserved=-1;
-            CHECK(output.readInt32(magic)&&output.readInt32(version)&&output.readInt32(lang)&&
-                  output.readInt32(motion)&&output.readInt32(reserved));
-            CHECK(magic==0x50535955&&version==3&&lang==0&&motion==1&&reserved==0);
-        }
-        // P009 compatibility: old v1 controller state only stored language.
-        ResizableMemoryIBStream oldUi;
-        IBStreamer legacy(&oldUi,kLittleEndian);
-        CHECK(legacy.writeInt32(0x50535955));
-        CHECK(legacy.writeInt32(1));
-        CHECK(legacy.writeInt32(1));
-        oldUi.rewind();
-        controller.setMotionEnabled(true);
-        CHECK(controller.setState(&oldUi)==kResultOk);
-        CHECK(controller.isGermanUi());
-        CHECK(!controller.isMotionEnabled());
+        // Current UI state has exactly four words and no zoom field.
+        ResizableMemoryIBStream current;
+        CHECK(controller.getState(&current)==kResultOk);
+        CHECK(current.getSize()==16);
+        current.rewind();
+        IBStreamer reader(&current,kLittleEndian);
+        int32 magic=0,version=0,lang=0,motion=0;
+        CHECK(reader.readInt32(magic)&&reader.readInt32(version)&&
+              reader.readInt32(lang)&&reader.readInt32(motion));
+        CHECK(magic==0x50535955&&version==4&&lang==0&&motion==0);
+        // Old development UI format is explicitly unsupported.
+        ResizableMemoryIBStream old;
+        IBStreamer legacy(&old,kLittleEndian);
+        CHECK(legacy.writeInt32(0x50535955)&&legacy.writeInt32(3)&&
+              legacy.writeInt32(1)&&legacy.writeInt32(1)&&legacy.writeInt32(2));
+        old.rewind();
+        CHECK(controller.setState(&old)==kResultFalse);
+        CHECK(!controller.isGermanUi()&&!controller.isMotionEnabled());
     }
     // P022: the monitor represents effective macro settings, not audio level.
     {

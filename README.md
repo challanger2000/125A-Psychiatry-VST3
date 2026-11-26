@@ -189,4 +189,4 @@ See [docs/P002.md](docs/P002.md) for the Windows Steinberg SDK build setup.
 © 125A. Final license to be determined before redistribution.
 
 ### Fixed editor (P030)
-The editor is fixed at 960 × 640 pixels at 100% host DPI. Host DPI scaling is supported; there is no user zoom or host drag-resize. Legacy controller zoom fields remain readable but no longer change geometry. DSP is unchanged.
+The editor is fixed at 960 × 640 pixels at 100% host DPI. Host DPI scaling is supported; there is no user zoom or host drag-resize. The controller state contains no zoom field. Unreleased legacy UI state formats are not supported. DSP is unchanged.

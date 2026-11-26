@@ -37,10 +37,9 @@ using namespace Steinberg;
 namespace {
 constexpr Steinberg::int32 kLossOfControlUiTag=9000;
 constexpr double kFixedEditorScale=.625; // 960 x 640 at host DPI 1
-constexpr int32 kLegacyZoomCount=6;
 constexpr Steinberg::int32 kMotionUiTag=9002;
 constexpr Steinberg::int32 kLanguageStateMagic=0x50535955; // 'PSYU'
-constexpr Steinberg::int32 kLanguageStateVersion=3;
+constexpr Steinberg::int32 kLanguageStateVersion=4;
 // Exactly the twelve sound-macro IDs; no global or UI-only controls.
 constexpr std::array<Steinberg::Vst::ParamID,12> kMacroIds{
     kDepression,kParanoia,kSchizophrenia,kMania,kPanic,
@@ -117,34 +116,30 @@ tresult PLUGIN_API Controller::setComponentState(IBStream* state) {
     return kResultOk;
 }
 
-// Controller-only UI state; independent from processor project state v4.
-// Empty state means an older version which saved no UI preferences.
+// Controller-only UI state, separate from all audio parameters.
+// No zoom field or development-version migration.
 tresult PLUGIN_API Controller::getState(IBStream* state) {
     if(!state)return kResultFalse;
     StateStream stream(state);
     if(!stream.writeInt32(kLanguageStateMagic)||
        !stream.writeInt32(kLanguageStateVersion)||
        !stream.writeInt32(germanUi_?1:0)||
-       !stream.writeInt32(motionEnabled_?1:0)||
-       !stream.writeInt32(0)) // reserved legacy zoom slotreturn kResultFalse;
+       !stream.writeInt32(motionEnabled_?1:0))return kResultFalse;
     return kResultOk;
 }
 tresult PLUGIN_API Controller::setState(IBStream* state) {
     if(!state)return kResultFalse;
     StateStream stream(state);
-    int32 magic=0,version=0,lang=0,motion=0,zoom=0;
+    int32 magic=0,version=0,lang=0,motion=0;
     if(stream.empty()) {
         applyUiState(false,false);
         return kResultOk;
     }
     if(!stream.readInt32(magic)||magic!=kLanguageStateMagic||
-       !stream.readInt32(version)||(version<1||version>kLanguageStateVersion)||
-       !stream.readInt32(lang)||(lang!=0&&lang!=1))return kResultFalse;
-    if(version>=2 && (!stream.readInt32(motion)||(motion!=0&&motion!=1)))
-        return kResultFalse;
-    if(version>=3 && (!stream.readInt32(zoom)||zoom<0||zoom>=kLegacyZoomCount))
-        return kResultFalse;
-    applyUiState(lang==1,motion!=0); // validated legacy zoom deliberately ignored
+       !stream.readInt32(version)||version!=kLanguageStateVersion||
+       !stream.readInt32(lang)||(lang!=0&&lang!=1)||
+       !stream.readInt32(motion)||(motion!=0&&motion!=1))return kResultFalse;
+    applyUiState(lang==1,motion!=0);
     return kResultOk;
 }
 

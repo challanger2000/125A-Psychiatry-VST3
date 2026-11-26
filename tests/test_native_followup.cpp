@@ -86,16 +86,16 @@ struct Frame final:IPlugFrame{
         return view->onSize(size);
     }
 };
-static void recall(Vst::IEditController* c,int motion,int zoom){
+static void recall(Vst::IEditController* c,int motion){
     ResizableMemoryIBStream mem;IBStreamer s(&mem,kLittleEndian);
-    REQUIRE(s.writeInt32(0x50535955)&&s.writeInt32(3)&&s.writeInt32(0)&&s.writeInt32(motion)&&s.writeInt32(zoom));
+    REQUIRE(s.writeInt32(0x50535955)&&s.writeInt32(4)&&s.writeInt32(0)&&s.writeInt32(motion));
     mem.rewind();REQUIRE(c->setState(&mem)==kResultOk);
 }
-static void saved(Vst::IEditController* c,int motion,int zoom){
+static void saved(Vst::IEditController* c,int motion){
     ResizableMemoryIBStream mem;REQUIRE(c->getState(&mem)==kResultOk);mem.rewind();
-    IBStreamer s(&mem,kLittleEndian);int32 a=0,b=0,d=0,m=0,z=0;
-    REQUIRE(s.readInt32(a)&&s.readInt32(b)&&s.readInt32(d)&&s.readInt32(m)&&s.readInt32(z));
-    REQUIRE(a==0x50535955&&b==3&&m==motion&&z==zoom);
+    IBStreamer s(&mem,kLittleEndian);int32 a=0,b=0,d=0,m=0;
+    REQUIRE(s.readInt32(a)&&s.readInt32(b)&&s.readInt32(d)&&s.readInt32(m));
+    REQUIRE(a==0x50535955&&b==4&&d==0&&m==motion);
 }
 static constexpr int width=960,height=640;
 struct View{
@@ -204,31 +204,31 @@ int wmain(int argc,wchar_t** argv){
     std::puts("P028l native controller created");
     REQUIRE(c->initialize(nullptr)==kResultOk);
     std::puts("P028l native controller initialized");
-    recall(c,1,0);saved(c,1,0);
-    // Actual fixed editor, no user/host drag resize. All valid old project
-    // zoom values must leave BOTH detached and attached geometry unchanged.
+    recall(c,1);saved(c,1);
+    // Actual fixed editor, no user/host drag resize. MOTION recall must
+    // leave both detached and attached geometry unchanged.
     View a;
     a.view=c->createView(Vst::ViewType::kEditor);REQUIRE(a.view);
     REQUIRE(a.view->canResize()==kResultFalse);
-    for(int z=0;z<6;++z){
-        recall(c,1,z);saved(c,1,0);ViewRect rect{};
+    for(int motion:{0,1,0,1}){
+        recall(c,motion);saved(c,motion);ViewRect rect{};
         REQUIRE(a.view->getSize(&rect)==kResultOk&&rect.getWidth()==width&&rect.getHeight()==height);
     }
     a.frame.accept=false;a.open(c,15,15);a.size();
     REQUIRE(a.frame.requests==0); // matching parent needs no resize
     SetForegroundWindow(a.frame.window);pump(150);
     auto motionOn=pixels(a.frame.window,364,603,30,30);
-    recall(c,0,5);pump(180);saved(c,0,0);a.size();
+    recall(c,0);pump(180);saved(c,0);a.size();
     auto motionOff=pixels(a.frame.window,364,603,30,30);
     REQUIRE(delta(motionOn,motionOff)>.25);
-    recall(c,1,1);pump(180);saved(c,1,0);a.size();
+    recall(c,1);pump(180);saved(c,1);a.size();
     REQUIRE(delta(motionOn,pixels(a.frame.window,364,603,30,30))<.5);
-    for(int z=0;z<6;++z){recall(c,1,z);a.size();saved(c,1,0);}
+    for(int motion:{0,1,0,1}){recall(c,motion);a.size();saved(c,motion);}
     REQUIRE(a.frame.requests==0);
     ViewRect illegal(0,0,768,512);
     REQUIRE(a.view->onSize(&illegal)!=kResultOk);a.size();
     a.close();REQUIRE(a.frame.refs==1);
-    std::puts("P030 fixed geometry, all legacy recall values, MOTION and stale onSize PASS");
+    std::puts("P030 fixed geometry, MOTION state recall, MOTION and stale onSize PASS");
 
     // Host DPI, including fractional factors and same-view reuse. The
     // parent is allocated from getSize and refuses all redundant resizes.
@@ -242,11 +242,11 @@ int wmain(int argc,wchar_t** argv){
         REQUIRE(initial.view->checkSizeConstraint(&constrained)==kResultTrue);
         REQUIRE(expected.getWidth()==constrained.getWidth()&&expected.getHeight()==constrained.getHeight());
         REQUIRE(dpi->setContentScaleFactor(0.f)!=kResultOk);
-        recall(c,1,5);
+        recall(c,1);
         initial.frame.accept=false;initial.open(c,15,15);initial.size(factor);
         REQUIRE(initial.frame.requests==0);
         initial.detach();REQUIRE(initial.frame.refs==1);
-        recall(c,1,2);initial.open(c,15,15);initial.size(factor);
+        recall(c,1);initial.open(c,15,15);initial.size(factor);
         initial.frame.accept=true;
         for(float live:{1.25f,1.33f,1.f,factor}){
             REQUIRE(dpi->setContentScaleFactor(live)==kResultOk);initial.size(live);
@@ -261,7 +261,7 @@ int wmain(int argc,wchar_t** argv){
      REQUIRE(dpi->setContentScaleFactor(1.25f)==kResultOk);first.size(1.25);second.size();
      first.frame.accept=false;REQUIRE(dpi->setContentScaleFactor(1.5f)!=kResultOk);
      first.size(1.25);second.size();first.frame.accept=true;
-     recall(c,1,5);first.size(1.25);second.size();saved(c,1,0);
+     recall(c,1);first.size(1.25);second.size();saved(c,1);
      dpi=nullptr;first.close();second.close();REQUIRE(first.frame.refs==1&&second.frame.refs==1);}
     // Before attach, with a host already assigned: accept/refuse and nested
     // attach. A rejected reentrant DPI request must not mutate the view.
@@ -276,7 +276,7 @@ int wmain(int argc,wchar_t** argv){
         if(mode==1)initial.frame.accept=false;
         if(mode==2)initial.frame.resizeOnce=[&](IPlugView* view,ViewRect* size) -> tresult {
             REQUIRE(dpi->setContentScaleFactor(1.5f)!=kResultOk);
-            recall(c,1,5);
+            recall(c,1);
             REQUIRE(initial.frame.resizeView(view,size)==kResultOk);
             REQUIRE(view->attached(initial.frame.window,kPlatformTypeHWND)==kResultOk);
             initial.size(1.25);return kResultTrue;
@@ -310,8 +310,8 @@ int wmain(int argc,wchar_t** argv){
         last.open(c,15,15);last.size();last.detach();REQUIRE(last.frame.refs==1);
      }last.view->release();last.view=nullptr;}
     std::puts("P030 stale parent accept/refuse/detach and 24 last-view cycles PASS");
-    recall(c,1,0);
-    a.frame.accept=true;a.open(c,15,15);a.size();saved(c,1,0);
+    recall(c,1);
+    a.frame.accept=true;a.open(c,15,15);a.size();saved(c,1);
     SetForegroundWindow(a.frame.window);
     std::puts("P028l native testing interrupted fade");
     PixelCapture capture(150,150);
@@ -352,7 +352,7 @@ int wmain(int argc,wchar_t** argv){
             trial,maxStep,retarget,samples,validRetarget,int(bracketed),int(measured));
     }
     REQUIRE(measured);
-    a.close();saved(c,1,0);
+    a.close();saved(c,1);
     REQUIRE(c->terminate()==kResultOk);c->release();factory->release();REQUIRE(exit());FreeLibrary(dll);timeEndPeriod(1);CoUninitialize();
     std::puts("P030 native fixed geometry, DPI and R04/R07 actual DLL probes PASS");
     return 0;

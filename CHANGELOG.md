@@ -1,3 +1,6 @@
+## P030a — remove development-only zoom state
+- UI state v4 is 16 bytes, containing only magic, version, language and MOTION. No legacy zoom field or migration. Unreleased v1–v3 UI states rejected; audio processor state unchanged. Restore original artwork README.txt to preserve the manifest; current editor documentation lives in README.md. P030 configure stopped at README.txt SHA256 mismatch, no Windows runtime evidence yet.
+
 ## P030 — fixed-size editor (0.9.28 candidate)
 - Owner removed user zoom; fixed 960 × 640 at DPI 1, automatic host DPI only. Removed zoom control, context menu choices and controller zoom state/resize synchronization. Legacy UI state v1–v3 readable; v3 reserved zoom slot saved as zero. DSP, artwork and audio parameter IDs unchanged. Native and state verification pending.
 

@@ -1,3 +1,11 @@
+# Change history — 125A PSYCHIATRY
+
+Current candidate: **0.9.29 / P031**. Only `main`. Current evidence: [STATUS.md](STATUS.md). Earlier entries are historical development checkpoints, not current instructions.
+
+## Documentation cleanup — 2026-11-26
+- Consolidated README, current status and handoff; historical documentation retained by immutable Git links.
+- No source, DSP, GUI, state, build or binary changes. No V1.0 release claimed.
+
 ## P031 — 0.9.29 candidate, owner-requested usability
 - First-aid box resets all 13 rotary controls through grouped host edits; BYPASS and MOTION unchanged.
 - Left double-click resets the individual knob, retaining native drag, wheel and keyboard behavior.
@@ -20,10 +28,6 @@
 
 
 - A01–A10 source corrections, consolidated regressions, centralized factory version and silence flags. Four workflows PASS at `502227585a874dccd84cd5031bbae2092f354ae7`; independent follow-up audit and Studio Pro acceptance pending. See STATUS.md and docs/P028k-AUDIT-CORRECTIONS.md.
-
-# Change history — 125A PSYCHIATRY
-
-Only the `main` branch is used. The most recent **verified code commit** and test links are always in [STATUS.md](STATUS.md).
 
 ## 0.9.26 — P028h scene library candidate
 

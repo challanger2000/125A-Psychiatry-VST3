@@ -104,46 +104,7 @@ jobs:
                 cat evidence/editorhost-backtrace.log
                 exit 1
               fi
-              win="$(xdotool search --onlyvisible --name '^Editor
-              if [ -n "$win" ]; then break; fi
-              sleep .25
-            done
-            test -n "$win"
-            xwininfo -id "$win" | tee "evidence/editorhost-geometry-$i.txt"
-            sleep 2
-            kill -0 "$pid"
-            xdotool windowactivate --sync "$win" key alt+F4
-            for retry in $(seq 1 60); do
-              if ! kill -0 "$pid" 2>/dev/null; then break; fi
-              sleep .25
-            done
-            if kill -0 "$pid" 2>/dev/null; then kill "$pid" || true; echo 'EditorHost failed to close normally'; exit 1; fi
-            wait "$pid"
-            echo "Native process open/close $i PASS"
-          done
-          SH
-      - name: Package Linux development candidate (not a release)
-        run: |
-          mkdir -p package
-          cp -a "$BUNDLE" package/
-          (cd package && zip -q -r ../125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip 125A-PSYCHIATRY.vst3)
-          unzip -t 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip
-          sha256sum 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip | tee evidence/package.sha256
-      - uses: actions/upload-artifact@v4
-        with:
-          name: 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST
-          path: 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Linux-native-qualification-evidence
-          path: evidence/
-          if-no-files-found: ignore
- 2>/dev/null | tail -1 || true)"
-              if [ -z "$win" ]; then
-                win="$(xdotool search --onlyvisible --pid "$pid" 2>/dev/null | tail -1 || true)"
-              fi
+              win="$(xdotool search --onlyvisible --pid "$pid" 2>/dev/null | tail -1 || true)"
               if [ -n "$win" ]; then break; fi
               sleep .25
             done

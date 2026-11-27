@@ -99,11 +99,21 @@ local function test()
     eq(p,0)
     log("physical drag/double-click "..p.." PASS")
   end
+  -- Product contract: LOSS intentionally activates only 3..6 macros
+  -- and clears the others (see testRandomizerRecall).
+  for i=1,12 do set(names[i],.85) end
   set("THERAPY",.37);wait(.3)
   action("click 883 576")
-  for i=1,12 do check(get(names[i])>.001,"LOSS failed to set "..names[i]) end
+  local active,zero=0,0
+  for i=1,12 do
+    local v=get(names[i])
+    check(v>=0 and v<=1,"LOSS out of range "..names[i])
+    if v>0 then active=active+1 else zero=zero+1 end
+    log("LOSS "..names[i].." = "..v)
+  end
+  check(active>=3 and active<=6 and zero==12-active,"LOSS active count "..active.." zero "..zero)
   eq("THERAPY",.37)
-  log("LOSS OF CONTROL 12 macros, THERAPY unchanged PASS")
+  log("LOSS OF CONTROL "..active.." active/"..zero.." zero; THERAPY unchanged PASS")
   action("shot motion-a.png");wait(1.6);action("shot motion-b.png");action("motion_on")
   action("click 378 616");wait(2);action("shot still-a.png");wait(1.4);action("shot still-b.png");action("motion_off")
   action("click 378 616");wait(1)

@@ -10,6 +10,7 @@ on:
       - 'resource/**'
       - 'sound-library/**'
       - 'tools/**'
+      - '!tools/linux-qa/**'
       - 'tests/**'
   workflow_dispatch:
 permissions:
@@ -22,6 +23,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   linux:
+    # Test-only workflow fixes consume the exact prior artifact, not a rebuild.
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[daw-only]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:

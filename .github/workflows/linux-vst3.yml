@@ -14,6 +14,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: psychiatry-linux-${{ github.ref }}
   cancel-in-progress: true
@@ -71,8 +74,8 @@ jobs:
           echo "EDITORHOST=$(realpath "$editorhost")" >> "$GITHUB_ENV"
       - name: Native standalone DSP plus actual processor and controller tests
         run: |
-          xvfb-run -a ctest --test-dir build -C Release -V -R '^P(028h_SceneSequence|028k_SceneBlend|018_LinearPhaseFIR|001_ParanoiaDSP|003_DarkMacros|004_ThreeWorlds|005_AllNineConcurrent_NoHeap|005_SpectralMacros|026k_CreativeWorlds|006_HilbertCoefficientRegression|006_VST3LegacyState|010_ActualVST3AudioWetDry)' 2>&1 | tee evidence/ctest.log
-          grep -q '100% tests passed' evidence/ctest.log
+          xvfb-run -a ctest --test-dir build -C Release -V 2>&1 | tee evidence/ctest.log
+          grep -q '100% tests passed, 0 tests failed out of 12' evidence/ctest.log
           grep -q 'P006_VST3LegacyState' evidence/ctest.log
           grep -q 'P010_ActualVST3AudioWetDry' evidence/ctest.log
       - name: Official Linux VST3 validator

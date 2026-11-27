@@ -1,0 +1,94 @@
+name: Linux DAW acceptance - frozen P031 binary
+on:
+  push:
+    branches: [linux-x64]
+    paths:
+      - '.github/workflows/linux-daw-qualification.yml'
+      - 'tools/linux-qa/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reaper:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST
+          run-id: 46055072598
+          github-token: ${{ github.token }}
+          path: candidate
+      - name: Verify unchanged candidate and install host dependencies
+        run: |
+          mkdir -p evidence "$HOME/.vst3" reaper-test
+          (cd candidate && echo '986da6de7c4ddf17aa65971f3b551eb7e46de59503e5ad82532b9a112650f408  125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip' | sha256sum -c -) | tee evidence/candidate.sha256
+          unzip -q candidate/125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip -d "$HOME/.vst3"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-3-0t64 libasound2t64 libxcb-cursor0 libxcb-util1 libxcb-keysyms1 libxcb-xkb1 libxkbcommon-x11-0 libcairo2 libfontconfig1 libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libxcb-icccm4 libxcb-image0 libxcb-render-util0 xvfb xauth xdotool x11-utils openbox imagemagick python3-pil lua5.4 ffmpeg
+          ldd "$HOME/.vst3/125A-PSYCHIATRY.vst3/Contents/x86_64-linux/125A-PSYCHIATRY.so" | tee evidence/plugin-ldd.txt
+          ! grep -q 'not found' evidence/plugin-ldd.txt
+          luac5.4 -p tools/linux-qa/reaper.lua
+          /usr/bin/python3 -m py_compile tools/linux-qa/x11_probe.py
+      - name: Download official REAPER evaluation host (not redistributed)
+        run: |
+          curl --fail --location --retry 2 -o reaper.tar.xz https://www.reaper.fm/files/7.x/reaper786_linux_x86_64.tar.xz
+          echo 'c2f9d8616bd1dc6175993b82451e1c6e352c6761e7ae6d72400a3f3dfb03bedb  reaper.tar.xz' | sha256sum -c -
+          tar -xf reaper.tar.xz -C reaper-test
+          test -x reaper-test/reaper_linux_x86_64/REAPER/reaper
+          echo "REAPER_BIN=$(realpath reaper-test/reaper_linux_x86_64/REAPER/reaper)" >> "$GITHUB_ENV"
+      - name: Native GUI, same-process lifetime, playback, recall and rendered PCM in REAPER
+        run: |
+          export PSY_EVIDENCE="$PWD/evidence" PSY_GUI_HELPER="$PWD/tools/linux-qa/x11_probe.py"
+          /usr/bin/python3 "$PSY_GUI_HELPER" fixture
+          cat > reaper-test/reaper.ini <<INI
+          [reaper]
+          audiocfgopen=0
+          vst_scan=0
+          vstpath=$HOME/.vst3
+          vstpath64=$HOME/.vst3
+          [audioconfig]
+          audiodev=dummy
+          mode=0
+          INI
+          xvfb-run -a -s '-screen 0 1920x1080x24' bash -euo pipefail <<'SH'
+          openbox > evidence/openbox.log 2>&1 &
+          wm=$!
+          trap 'kill "$wm" 2>/dev/null || true' EXIT
+          sleep 1
+          xprop -root -f _XEMBED_INFO 32c -set _XEMBED_INFO '0, 0'
+          xprop -root -remove _XEMBED_INFO
+          "$REAPER_BIN" -newinst -cfgfile "$PWD/reaper-test/reaper.ini" -nosplash -new "$PWD/tools/linux-qa/reaper.lua" > evidence/reaper-console.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 240); do
+            if [ -f evidence/result ]; then break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          cat evidence/daw-results.log 2>/dev/null || true
+          if ! grep -qx PASS evidence/result 2>/dev/null; then
+            xwininfo -root -tree > evidence/failure-windows.txt || true
+            import -window root evidence/failure-desktop.png || true
+            kill "$pid" 2>/dev/null || true
+            exit 1
+          fi
+          for i in $(seq 1 20); do
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$pid" 2>/dev/null; then
+            import -window root evidence/shutdown-desktop.png || true
+            kill "$pid" 2>/dev/null || true
+            echo 'DAW did not shut down gracefully' >&2
+            exit 1
+          fi
+          wait "$pid"
+          SH
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Linux-REAPER-qualification-evidence
+          path: evidence/
+          if-no-files-found: warn

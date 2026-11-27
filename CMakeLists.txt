@@ -199,6 +199,19 @@ if(PSYCHIATRY_BUILD_VST3)
   target_include_directories(test_vst3_recall PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_link_libraries(test_vst3_recall PRIVATE psychiatry_audio sdk vstgui_support)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Linux VSTGUI registers a factory host-context callback in its module
+    # initializer. The non-GUI recall executable still links the editor
+    # object, so it needs the genuine SDK module/factory definitions too.
+    # This applies only to the test executable, never the product target.
+    target_sources(test_vst3_recall PRIVATE
+        vst3/entry.cpp
+        "${PSYCHIATRY_VST3_SDK_DIR}/public.sdk/source/main/linuxmain.cpp"
+        "${PSYCHIATRY_VST3_SDK_DIR}/public.sdk/source/main/moduleinit.cpp"
+        "${PSYCHIATRY_VST3_SDK_DIR}/public.sdk/source/main/pluginfactory.cpp")
+    target_compile_definitions(test_vst3_recall PRIVATE
+        PSYCHIATRY_PRODUCT_VERSION="${PROJECT_VERSION}")
+  endif()
   add_test(NAME P006_VST3LegacyState COMMAND test_vst3_recall)
 
   # P010: process real stereo input through the actual Processor::process()

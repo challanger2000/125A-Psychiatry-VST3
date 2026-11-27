@@ -203,10 +203,11 @@ if(PSYCHIATRY_BUILD_VST3)
     # Linux VSTGUI registers a factory host-context callback in its module
     # initializer. The non-GUI recall executable still links the editor
     # object, so it needs the genuine SDK module/factory definitions too.
+    # The recall test already defines moduleHandle; do not link linuxmain.cpp
+    # (the shared-library entry point would define it a second time).
     # This applies only to the test executable, never the product target.
     target_sources(test_vst3_recall PRIVATE
         vst3/entry.cpp
-        "${PSYCHIATRY_VST3_SDK_DIR}/public.sdk/source/main/linuxmain.cpp"
         "${PSYCHIATRY_VST3_SDK_DIR}/public.sdk/source/main/moduleinit.cpp"
         "${PSYCHIATRY_VST3_SDK_DIR}/public.sdk/source/main/pluginfactory.cpp")
     target_compile_definitions(test_vst3_recall PRIVATE

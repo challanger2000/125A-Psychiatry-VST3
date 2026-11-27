@@ -1,0 +1,130 @@
+name: Linux x64 VST3 - P031 native qualification
+on:
+  push:
+    branches: [linux-x64]
+    paths:
+      - '.github/workflows/linux-vst3.yml'
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'vst3/**'
+      - 'resource/**'
+      - 'sound-library/**'
+      - 'tools/**'
+      - 'tests/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: psychiatry-linux-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CTEST_OUTPUT_ON_FAILURE: 1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native X11, Cairo and SDK dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libx11-xcb-dev libxcb-util-dev libxcb-cursor-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev libfontconfig1-dev libcairo2-dev libgtkmm-3.0-dev libsqlite3-dev libxcb-keysyms1-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-render-util0-dev libxcb-shm0-dev libxcb-xfixes0-dev libfreetype6-dev libpango1.0-dev xvfb xauth xdotool x11-utils openbox zip unzip
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned acoustic decoder
+        run: python -m pip install imageio-ffmpeg==0.6.0
+      - name: Fetch exact Windows-baseline SDK
+        run: |
+          git clone --no-checkout https://github.com/steinbergmedia/vst3sdk.git external/vst3sdk
+          git -C external/vst3sdk checkout 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          git -C external/vst3sdk submodule update --init --recursive
+      - name: Configure native x86_64 VST3
+        run: |
+          mkdir -p evidence
+          git rev-parse HEAD | tee evidence/source.txt
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE="$(command -v python)" -DPSYCHIATRY_BUILD_VST3=ON -DSMTG_CREATE_PLUGIN_LINK=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=ON -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=ON 2>&1 | tee evidence/configure.log
+      - name: Build actual plugin, official validator, EditorHost and regressions
+        run: |
+          cmake --build build --parallel 3 --target PsychiatryPrototype validator editorhost test_vst3_recall test_vst3_audio_path test_scene_sequence test_scene_blend test_linear_phase_2x test_paranoia test_dark_macros test_three_worlds test_spectral_worlds test_creative_worlds test_full_chain test_hilbert_coefficients 2>&1 | tee evidence/build.log
+      - name: Locate and verify native bundle
+        run: |
+          bundle="$(find build -type d -name '125A-PSYCHIATRY.vst3' -print -quit)"
+          test -n "$bundle"
+          bundle="$(realpath "$bundle")"
+          module="$bundle/Contents/x86_64-linux/125A-PSYCHIATRY.so"
+          test -f "$module"
+          file "$module" | tee evidence/module.txt
+          grep -q 'ELF 64-bit.*x86-64' evidence/module.txt
+          ldd "$module" | tee evidence/dependencies.txt
+          ! grep -q 'not found' evidence/dependencies.txt
+          test -f "$bundle/Contents/Resources/psychiatry.uidesc"
+          for name in LICENSE-VST3-SDK.txt LICENSE-VSTGUI.txt LICENSE-ACOUSTIC-SOURCES.txt; do
+            test -f "$bundle/Contents/Resources/$name"
+          done
+          test "$(find "$bundle/Contents/Resources" -name '*.png' | wc -l)" -eq 47
+          validator="$(find build -type f -name validator -executable -print -quit)"
+          editorhost="$(find build -type f -name editorhost -executable -print -quit)"
+          test -n "$validator" && test -n "$editorhost"
+          echo "BUNDLE=$bundle" >> "$GITHUB_ENV"
+          echo "VALIDATOR=$(realpath "$validator")" >> "$GITHUB_ENV"
+          echo "EDITORHOST=$(realpath "$editorhost")" >> "$GITHUB_ENV"
+      - name: Native standalone DSP plus actual processor and controller tests
+        run: |
+          xvfb-run -a ctest --test-dir build -C Release -V -R '^P(028h_SceneSequence|028k_SceneBlend|018_LinearPhaseFIR|001_ParanoiaDSP|003_DarkMacros|004_ThreeWorlds|005_AllNineConcurrent_NoHeap|005_SpectralMacros|026k_CreativeWorlds|006_HilbertCoefficientRegression|006_VST3LegacyState|010_ActualVST3AudioWetDry)' 2>&1 | tee evidence/ctest.log
+          grep -q '100% tests passed' evidence/ctest.log
+          grep -q 'P006_VST3LegacyState' evidence/ctest.log
+          grep -q 'P010_ActualVST3AudioWetDry' evidence/ctest.log
+      - name: Official Linux VST3 validator
+        run: |
+          xvfb-run -a "$VALIDATOR" "$BUNDLE" 2>&1 | tee evidence/validator.log
+          grep -Ei '([0-9]+ tests? passed|tests? passed.*tests? failed)' evidence/validator.log
+      - name: Actual X11 EditorHost open and graceful close - separate processes
+        run: |
+          xvfb-run -a -s '-screen 0 1920x1080x24' bash -euo pipefail <<'SH' 2>&1 | tee evidence/editorhost.log
+          openbox > evidence/openbox.log 2>&1 &
+          wm=$!
+          trap 'kill "$wm" 2>/dev/null || true' EXIT
+          sleep 1
+          for i in $(seq 1 6); do
+            "$EDITORHOST" "$BUNDLE" > "evidence/editorhost-$i.log" 2>&1 &
+            pid=$!
+            win=
+            for retry in $(seq 1 60); do
+              kill -0 "$pid"
+              win="$(xdotool search --onlyvisible --pid "$pid" 2>/dev/null | tail -1 || true)"
+              if [ -n "$win" ]; then break; fi
+              sleep .25
+            done
+            test -n "$win"
+            xwininfo -id "$win" | tee "evidence/editorhost-geometry-$i.txt"
+            sleep 2
+            kill -0 "$pid"
+            xdotool windowactivate --sync "$win" key alt+F4
+            for retry in $(seq 1 60); do
+              if ! kill -0 "$pid" 2>/dev/null; then break; fi
+              sleep .25
+            done
+            if kill -0 "$pid" 2>/dev/null; then kill "$pid" || true; echo 'EditorHost failed to close normally'; exit 1; fi
+            wait "$pid"
+            echo "Native process open/close $i PASS"
+          done
+          SH
+      - name: Package Linux development candidate (not a release)
+        run: |
+          mkdir -p package
+          cp -a "$BUNDLE" package/
+          (cd package && zip -q -r ../125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip 125A-PSYCHIATRY.vst3)
+          unzip -t 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip
+          sha256sum 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip | tee evidence/package.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST
+          path: 125A-PSYCHIATRY-v0.9.29-Linux-x64-TEST.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Linux-native-qualification-evidence
+          path: evidence/
+          if-no-files-found: ignore

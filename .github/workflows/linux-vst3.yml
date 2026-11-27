@@ -89,6 +89,11 @@ jobs:
           wm=$!
           trap 'kill "$wm" 2>/dev/null || true' EXIT
           sleep 1
+          # SDK EditorHost requires this atom to exist before creating its
+          # own window. A fresh Xvfb server may not have it yet.
+          xprop -root -f _XEMBED_INFO 32c -set _XEMBED_INFO '0, 0'
+          xprop -root -remove _XEMBED_INFO
+          xlsatoms | grep -w _XEMBED_INFO
           for i in $(seq 1 6); do
             "$EDITORHOST" "$BUNDLE" > "evidence/editorhost-$i.log" 2>&1 &
             pid=$!
@@ -104,7 +109,8 @@ jobs:
                 cat evidence/editorhost-backtrace.log
                 exit 1
               fi
-              win="$(xdotool search --onlyvisible --pid "$pid" 2>/dev/null | tail -1 || true)"
+              # SDK X11 window is titled Editor and does not set _NET_WM_PID.
+              win="$(xdotool search --onlyvisible --name '^Editor$' 2>/dev/null | tail -1 || true)"
               if [ -n "$win" ]; then break; fi
               sleep .25
             done
